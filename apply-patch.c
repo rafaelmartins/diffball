@@ -50,43 +50,12 @@ reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh, int reorder_for_seq_acces
     DCommand_abbrev *d1, *d2;
     unsigned long l1, l2;
     DCBufferReset(dcbuff);
+    
     reorder_for_seq_access = 1;
-//    reorder_for_seq_access = 0;
+    reorder_for_seq_access = 0;
+
     assert(reorder_for_seq_access == 0 || CFH_IS_SEEKABLE(out_cfh) || 1);
     if(reorder_for_seq_access) {
-/*	
-	array_size = 1024;
-	if((dc_array = (DCommand *)malloc(sizeof(DCommand) * array_size))
-	     == NULL) {
-	    return MEM_ERROR;
-	}
-	dc = dc_array;
-	DCBufferReset(dcbuff);
-	while(DCB_commands_remain(dcbuff)) {
-	    DCB_get_next_command(dcbuff, dc);
-	    dc++;
-	    if((unsigned long)(dc - dc_array) >= array_size) {
-		if((dc_array = (DCommand *)realloc(dc_array, 
-		   sizeof(DCommand) * array_size * 2)) == NULL) {
-		   return MEM_ERROR;
-		}
-		dc = dc_array + array_size;
-		array_size *= 2;
-	    }
-	}
-	// shirk off unused memory
-	array_size = dc - dc_array;
-	if((dc_array = (DCommand *)realloc(dc_array, sizeof(DCommand) *
-	    array_size))==NULL) {
-	    return MEM_ERROR;
-	}
-	qsort(dc_array, array_size, sizeof(DCommand), cmp_DCommand);
-	dc = dc_array;
-	if(read_seq_write_rand(dcbuff, dc_array, array_size, out_cfh)){
-	    return IO_ERROR;
-	}
-	free(dc_array);
-	*/
 	DCB_collapse_commands(dcbuff, &d1, &l1, &d2, &l2);
 	if(l1) 
 	    qsort(d1, l1, sizeof(DCommand_abbrev), cmp_DCommand_abbrev);
@@ -96,16 +65,20 @@ reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh, int reorder_for_seq_acces
 	if(read_seq_write_rand(dcbuff, d1, l1 + l2, out_cfh)) {
 	    return IO_ERROR;
 	}
+	free(d1);
     } else {
 	if((dc = (DCommand *)malloc(sizeof(DCommand))) == NULL) {
 	    return MEM_ERROR;
 	}
 	DCBufferReset(dcbuff);
+	l1 = 0;
 	while(DCB_commands_remain(dcbuff)) {
+//	    ap_printf("processing command %lu\n", l1);
 	    DCB_get_next_command(dcbuff, dc);
 	    if(dc->data.len != copyDCB_add_src(dcbuff, dc, out_cfh)) {
 		return EOF_ERROR;
 	    }
+	    l1++;
 	}
 	free(dc);
     }
@@ -204,7 +177,7 @@ read_seq_write_rand(CommandBuffer *dcb, DCommand_abbrev *dc_array, unsigned long
 			    	cfw->pos++;
 			    }
 			    cfw->write_end = cfw->pos;
-			    ap_printf("finished w/ ov command\n");
+//			    ap_printf("finished w/ ov command\n");
 			    
 			} else {
 			    if(tmp_len != cwrite(out_cfh, buf + offset - pos, tmp_len)) {
