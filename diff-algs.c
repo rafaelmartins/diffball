@@ -33,6 +33,7 @@ signed int
 OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 {
     off_u64 ver_len, ref_len;
+    int err;
     unsigned long x, len;
     unsigned long no_match=0, bad_match=0, good_match=0;
     off_u64 vc, va, vs, vm, rm, hash_offset;
@@ -41,13 +42,15 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
     off_u64 rbuff_start=0, vbuff_start=0, rbuff_end=0, vbuff_end=0;
     ADLER32_SEED_CTX ads;
 
-    init_adler32_seed(&ads, rhash->seed_len, 1);
+    err = init_adler32_seed(&ads, rhash->seed_len, 1);
+    if(err) 
+	return err;
     ref_len = cfile_len(rhash->ref_cfh);    
     ver_len = cfile_len(ver_cfh);
     
     va=vs =vc =0;
     vbuff_start = cseek(ver_cfh, 0, CSEEK_FSTART);
-    //vbuff_start=0;
+
     vbuff_end=cread(ver_cfh, vbuff, MIN(vbuff_size, ver_len));
     v3printf("vbuff_start(%lu), vbuff_end(%lu)\n", vbuff_start, vbuff_end);
     while(vc + rhash->seed_len < ver_len) {
@@ -73,23 +76,20 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 	    v3printf("setting vbuff_start(%lu), vbuff_end(%lu), fstart(%lu)\n", 
 		vbuff_start, vbuff_end, ctell(ver_cfh, CSEEK_FSTART));
 	}
-	//assert(ctell(ver_cfh, CSEEK_FSTART)==vbuff_start + vbuff_end);
 	if(va -vc >= rhash->seed_len) {
 	    update_adler32_seed(&ads, vbuff + vc - vbuff_start, rhash->seed_len);
 	} else {
 	    update_adler32_seed(&ads, vbuff + (va - vbuff_start), vc + rhash->seed_len -va);
 	}
 	va = vc + rhash->seed_len;
-//	index = hash_it(rhash, &ads);
 	hash_offset = lookup_offset(rhash, &ads);
 	if(hash_offset) {
-//	    v1printf("possible match for vc(%lu):", vc);
 	    if(hash_offset != cseek(rhash->ref_cfh, 
 		hash_offset, CSEEK_FSTART)) {
 
 		v3printf("ctell(%lu), wanted(%lu)\n", ctell(rhash->ref_cfh, CSEEK_FSTART), 
 		   hash_offset);
-		return EOF_ERROR;
+		return IO_ERROR;
 	    } else {
 		rbuff_start = hash_offset;
 		rbuff_end = cread(rhash->ref_cfh, rbuff, rbuff_size);
@@ -227,6 +227,7 @@ signed int
 MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, cfile *ver_cfh,
     unsigned long max_hash_size)
 {
+    int err;
     RefHash rhash;
     cfile ver_window;
     unsigned long hash_size=0, sample_rate=1;
@@ -236,7 +237,9 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, cfile *ver_cfh,
     unsigned char first_run=0;
     DCLoc dc;
     assert(buff->DCBtype & DCBUFFER_LLMATCHES_TYPE);
-    DCB_insert(buff);
+    err = DCB_insert(buff);
+    if(err)
+	return err;
     v1printf("multipass, hash_size(%lu)\n", hash_size);
     if(buff->DCB.llm.main_head == NULL) {
 	seed_len = 512;
@@ -271,8 +274,10 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, cfile *ver_cfh,
 	    sample_rate = COMPUTE_SAMPLE_RATE(hash_size, gap_total_len);
 	    v1printf("using hash_size(%lu), sample_rate(%lu)\n", 
 		hash_size, sample_rate);
-	    init_RefHash(&rhash, ref_cfh, seed_len, sample_rate, 
+	    err = init_RefHash(&rhash, ref_cfh, seed_len, sample_rate, 
 		hash_size, RH_RBUCKET_HASH);
+	    if(err)
+		return err;
 	    DCBufferReset(buff);
 	    v1printf("building hash array out of total_gap(%lu)\n",
 		gap_total_len);
@@ -282,7 +287,11 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, cfile *ver_cfh,
 	    }
 	    RHash_sort(&rhash);
 	    v1printf("looking for matches in reference file\n");
-	    RHash_find_matches(&rhash, ref_cfh);
+	    err=RHash_find_matches(&rhash, ref_cfh);
+	    if(err) {
+		eprintf("error detected\n");
+		return err;
+	    }
 	    v1printf("cleansing hash, to speed bsearch's\n");
 	    RHash_cleanse(&rhash);
 	    print_RefHash_stats(&rhash);
@@ -291,11 +300,19 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, cfile *ver_cfh,
 	    while(DCB_get_next_gap(buff, gap_req, &dc)) {
 		v2printf("handling gap %lu:%lu, size %lu\n", dc.offset, 
 		    dc.offset + dc.len, dc.len);
-		copen(&ver_window, ver_cfh->raw_fh, dc.offset, dc.len + 
+		err=copen(&ver_window, ver_cfh->raw_fh, dc.offset, dc.len + 
 		    dc.offset, NO_COMPRESSOR, CFILE_RONLY);
-	        DCB_llm_init_buff(buff, 128);
-	        OneHalfPassCorrecting(buff, &rhash, &ver_window);
-	        DCB_insert(buff);
+		if(err)
+		    return err;
+	        err = DCB_llm_init_buff(buff, 128);
+		if(err)
+		    return err;
+	        err = OneHalfPassCorrecting(buff, &rhash, &ver_window);
+		if(err)
+		    return err;
+	        err = DCB_insert(buff);
+		if(err)
+		    return err;
 	        cclose(&ver_window);
 	    }
 	} else {
@@ -306,14 +323,24 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, cfile *ver_cfh,
 	    sample_rate = COMPUTE_SAMPLE_RATE(hash_size, cfile_len(ref_cfh));
 	    v1printf("using hash_size(%lu), sample_rate(%lu)\n", 
 		hash_size, sample_rate);
-	    init_RefHash(&rhash, ref_cfh, seed_len, sample_rate, 
+	    err = init_RefHash(&rhash, ref_cfh, seed_len, sample_rate, 
 		hash_size, RH_BUCKET_HASH);
-	    RHash_insert_block(&rhash, ref_cfh, 0L, cfile_len(ref_cfh));
+	    if(err)
+		return err;
+	    err = RHash_insert_block(&rhash, ref_cfh, 0L, cfile_len(ref_cfh));
+	    if(err)
+		return err;
 	    print_RefHash_stats(&rhash);
 	    v1printf("making initial run...\n");
-	    DCB_llm_init_buff(buff, 128);
-	    OneHalfPassCorrecting(buff, &rhash, ver_cfh);
-	    DCB_insert(buff);
+	    err = DCB_llm_init_buff(buff, 128);
+	    if(err)
+		return err;
+	    err = OneHalfPassCorrecting(buff, &rhash, ver_cfh);
+	    if(err)
+		return err;
+	    err = DCB_insert(buff);
+	    if(err)
+		return err;
 	}
 	RHash_sort(&rhash);
 

@@ -51,7 +51,7 @@ int main(int argc, char **argv)
 {
     struct stat ref_stat, ver_stat;
     cfile out_cfh, ref_cfh, ver_cfh;
-    int ref_fh, ver_fh, out_fh;
+    int ref_fh, ver_fh, out_fh, err;
     //char *src, *trg;
     CommandBuffer buffer;
     RefHash rhash;
@@ -147,19 +147,27 @@ int main(int argc, char **argv)
     v1printf("verbosity level(%u)\n", global_verbosity);
     v1printf("initializing Command Buffer...\n");
     if(0==1) {
-	DCBufferInit(&buffer, 4096, ref_stat.st_size, ver_stat.st_size, 
+	err=DCBufferInit(&buffer, 4096, ref_stat.st_size, ver_stat.st_size, 
 	    DCBUFFER_MATCHES_TYPE);
-	init_RefHash(&rhash, &ref_cfh, seed_len, sample_rate, hash_size, 
+	if(err)
+	    print_exit(err);
+	err=init_RefHash(&rhash, &ref_cfh, seed_len, sample_rate, hash_size, 
 	    RH_MOD_HASH);
+	if(err)
+	    print_exit(err);
 	v1printf("insertting block\n");
-	RHash_insert_block(&rhash, &ref_cfh, 0, cfile_len(&ver_cfh));
+	err = RHash_insert_block(&rhash, &ref_cfh, 0, cfile_len(&ver_cfh));
+	if(err)
+	    print_exit(err);
 	v1printf("sorting\n");
 //	RHash_sort(&rhash);
 	v1printf("hunting for matches\n");
 //	RHash_find_matches(&rhash, &ref_cfh);
 //	RHash_cleanse(&rhash);
 	print_RefHash_stats(&rhash);
-	OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh);
+	err = OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh);
+	if(err)
+	    print_exit(err);
 	free_RefHash(&rhash);
     } else if (1==1) {
 	DCBufferInit(&buffer, 4, ref_stat.st_size, ver_stat.st_size,
