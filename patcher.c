@@ -84,11 +84,10 @@ main(int argc, char **argv)
 	case OVERSION:
 	    print_version("patcher");	exit(0);
 	case OUSAGE:
+	case OHELP:
 	    DUMP_USAGE(0);
 	case OVERBOSE:
 	    global_verbosity++;		break;
-	case OHELP:
-	    DUMP_USAGE(0);
 	case OSTDOUT:
 	    output_to_stdout = 1;	break;
 	case 'f':
@@ -109,7 +108,10 @@ main(int argc, char **argv)
     }
     if( ((src_name=(char *)get_next_arg(argc, argv))==NULL) || 
 	(stat(src_name, &src_stat))) {
-	v0printf("Must specify an existing source file!- %s not found\n", src_name);
+	if(src_name) {
+	    v0printf("Must specify an existing source file!- %s not found\n", src_name);
+	    exit(EXIT_USAGE);
+	}
 	DUMP_USAGE(EXIT_USAGE);
     } else if (optind >= argc) {
 	v0printf("Must specify a patch file!\n")

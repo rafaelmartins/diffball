@@ -1,3 +1,5 @@
+AUTOMAKE_OPTIONS        = dist-bzip2 no-dist-gzip
+
 if COMPILE_PROFILING_CFLAGS
     EXTRA_CFLAGS = -ftest-coverage -fprofile-arcs -pg -ftest-coverage 
 else
@@ -10,8 +12,8 @@ FORMATS = cfile.c bit-functions.c gdiff.c switching.c bdiff.c \
 DCB_FILES  = dcbuffer.c dcb-cfh-funcs.c command_list.c
 DIFF_FILES = diff-algs.c adler32.c primes.c hash.c $(DCB_FILES)
 
-ctest_SOURCES = ctest.c cfile.c
-hash_stats_SOURCES = hash_stats.c $(DIFF_FILES) options.c cfile.c
+#ctest_SOURCES = ctest.c cfile.c
+#hash_stats_SOURCES = hash_stats.c $(DIFF_FILES) options.c cfile.c
 
 if BUILD_DEBUG_CFILE
     cfile_bins = ctest
@@ -24,32 +26,34 @@ else
     hash_bins =
 endif
 
+lib_LTLIBRARIES = libdiffball.la
+
+libdiffball_la_SOURCES = $(FORMATS) $(DIFF_FILES)
+
 bin_PROGRAMS = differ patcher diffball convert_delta ${cfile_bins} \
     ${hash_bins}
 
+patcher_LDADD	=	libdiffball.la
 patcher_SOURCES = 	patcher.c	\
 			apply-patch.c	\
 			options.c	\
-			errors.c	\
-			$(FORMATS)	\
-			$(DCB_FILES)
 			errors.c
+
+diffball_LDADD	= 	libdiffball.la
 diffball_SOURCES = 	diffball.c	\
 			string-misc.c	\
 			tar.c 		\
 			options.c 	\
-			$(DIFF_FILES) 	\
-			$(FORMATS) 	\
 			errors.c
+
+differ_LDADD	=	libdiffball.la
 differ_SOURCES = 	differ.c 	\
-			$(DIFF_FILES) 	\
 			options.c 	\
-			$(FORMATS) 	\
 			errors.c
+
+convert_delta_LDADD   =	libdiffball.la
 convert_delta_SOURCES = convert_delta.c	\
 			options.c 	\
-			$(FORMATS) 	\
-			$(DCB_FILES) 	\
 			errors.c
 man_MANS = differ.1 diffball.1 patcher.1 convert_delta.1
 EXTRA_DIST = $(man_MANS)

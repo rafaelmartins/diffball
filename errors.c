@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "defs.h"
 #include "cfile.h"
+#include "errors.h"
 
 void
 print_error(int err)

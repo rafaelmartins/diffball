@@ -111,16 +111,17 @@ main(int argc, char **argv)
     }
     if( ((src_file=(char *)get_next_arg(argc, argv))==NULL) || 
 	(stat(src_file, &in_stat))) {
-	v0printf("Must specify an existing patch\n");
-	exit(EXIT_USAGE);
+	if(src_file) {
+	    v0printf("Must specify an existing patch\n");
+	    exit(EXIT_USAGE);
+	}
+	DUMP_USAGE(EXIT_USAGE);
     }
     if(output_to_stdout) {
 	out_fh = 1;
     } else {
-	if((trg_file = (char *)get_next_arg(argc, argv))==NULL) {
-	    v0printf("Must specify a name for the new patch\n");
-	    exit(EXIT_USAGE);
-        }
+	if((trg_file = (char *)get_next_arg(argc, argv))==NULL)
+	    DUMP_USAGE(EXIT_USAGE);
 	if((out_fh = open(trg_file, O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1){
 	    v0printf( "error creating output file '%s'\n", trg_file);
 	    exit(1);

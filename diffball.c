@@ -119,7 +119,6 @@ main(int argc, char **argv)
 	case OSTDOUT:
 	    patch_to_stdout = 1;		break;
 	case OUSAGE:
-	    DUMP_USAGE(0);			break;
 	case OHELP:
 	    DUMP_USAGE(0);			break;
 /*	case OBZIP2:
@@ -141,16 +140,18 @@ main(int argc, char **argv)
     }
     if( ((src_file = (char *)get_next_arg(argc, argv)) == NULL) ||
 	(stat(src_file, &ref_stat))) {
-//	usage("diffball", p_opt, 1, "Must specify an existing source file.", NULL);
-	if(src_file)
+	if(src_file) {
 	    v0printf("%s not found!\n", src_file);
+	    exit(EXIT_USAGE);
+	}
 	DUMP_USAGE(EXIT_USAGE);
     }
     if( ((trg_file=(char *)get_next_arg(argc, argv)) == NULL) ||
 	(stat(trg_file, &ver_stat)) ) {
-//	usage("diffball", p_opt, 1, "Must specify an existing target file.", NULL);
-	if (trg_file)
+	if (trg_file) {
 	    v0printf("%s not found!\n", trg_file);
+	    exit(EXIT_USAGE);
+	}
 	DUMP_USAGE(EXIT_USAGE);
     }
     if(patch_format==NULL) {

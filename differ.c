@@ -122,21 +122,25 @@ int main(int argc, char **argv)
     }
     if( ((src_file=(char *)get_next_arg(argc,argv)) == NULL) ||
 	(stat(src_file, &ref_stat)) ) {
-	v0printf("Must specify an existing source file.\n");
-	exit(EXIT_USAGE);
+	if(src_file) {
+	    v0printf("Must specify an existing source file.\n");
+	    exit(EXIT_USAGE);
+	}
+	DUMP_USAGE(EXIT_USAGE);
     }
     if( ((trg_file=(char *)get_next_arg(argc, argv)) == NULL) ||
 	(stat(trg_file, &ver_stat)) ) {
-	v0printf("Must specify an existing target file.\n");
-	exit(EXIT_USAGE);
+	if(trg_file) {
+	    v0printf("Must specify an existing target file.\n");
+	    exit(EXIT_USAGE);
+	}
+	DUMP_USAGE(EXIT_USAGE);
     }
     if(patch_to_stdout != 0) {
 	out_fh = 1;
     } else {
-	if((patch_name = (char *)get_next_arg(argc, argv)) == NULL) {
-	    v0printf("Must specify a name for the patch file!\n");
-	    exit(EXIT_USAGE);
-	}
+	if((patch_name = (char *)get_next_arg(argc, argv)) == NULL)
+	    DUMP_USAGE(EXIT_USAGE);
 	if((out_fh = open(patch_name, O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1) {
 	    v0printf( "error creating patch file '%s' (open failed)\n", patch_name);
 	    exit(1);
