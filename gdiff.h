@@ -3,6 +3,8 @@
 #define GDIFF_MAGIC 0xd1ffd1ff
 #define GDIFF_MAGIC_LEN 4
 #define GDIFF_VER4 4
+#define GDIFF_VER5 5
+#define GDIFF_VER6 6
 #define GDIFF_VER_LEN 1
 
 /* gdiff format

@@ -27,7 +27,16 @@ signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer,
     buffer->cb_tail = buffer->cb_head;
     buffer->cb_tail_bit = buffer->cb_head_bit;
     writeUBytes(fh, GDIFF_MAGIC, GDIFF_MAGIC_LEN);
-    writeUBytes(fh, GDIFF_VER4, GDIFF_VER_LEN);
+    if(offset_type==ENCODING_OFFSET_START)
+	writeUBytes(fh, GDIFF_VER4, GDIFF_VER_LEN);
+    else if(offset_type==ENCODING_OFFSET_VERS_POS)
+	writeUBytes(fh, GDIFF_VER5, GDIFF_VER_LEN);
+    else if(offset_type==ENCODING_OFFSET_DC_POS)
+	writeUBytes(fh, GDIFF_VER6, GDIFF_VER_LEN);
+    else {
+	printf("wtf, gdiff doesn't know offset_type(%u). bug.\n");
+	exit(1);
+    }
     while(buffer->count--){
 	if((*buffer->cb_tail & (1 << buffer->cb_tail_bit))>0) {
 	    ptr=ver + buffer->lb_tail->offset;
