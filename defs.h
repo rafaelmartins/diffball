@@ -48,7 +48,7 @@ extern unsigned int global_verbosity;
     fprintf(stderr, "%s: ",__FILE__);   \
     fprintf(stderr, fmt);
 #else
-#define dcprintf(expr...) v4printf(expr)
+#define dcprintf(expr...) ((void) 0);
 #endif
 
 #endif
