@@ -2,12 +2,11 @@
 #include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
-//#include "adler32.h"
+#include "adler32.h"
 
 int main(int argc, char **argv)
 {
     unsigned long int x;
-    uLong y;
     int src_fh, trg_fh, out_fh;
     if(argc <3){
 	printf("pardon, but...\nI need at least 2 args- (source file), (target file), [patch-file]\n");

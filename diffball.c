@@ -12,6 +12,114 @@
 int cmp_tar_entries(const void *te1, const void *te2);
 int command_pipes(const char *command, const char *args, int *pipes);
 
+struct long_dllist *init_long_dllist(unsigned long int value) {
+    struct long_dllist *em;
+    if((em = (struct long_dllist *)malloc(sizeof(struct str_dllist)))==NULL){
+        perror("couldn't alloc needed memory...\n");
+        exit(EXIT_FAILURE);
+    }
+    em->data = value;
+    em->count = 0;
+    em->prev = em->next = NULL;
+    return em;
+}
+struct str_dllist *init_str_dllist(char *string, int len) {
+    struct str_dllist *em;
+    if((em = (struct str_dllist *)malloc(sizeof(struct str_dllist)))==NULL){
+        perror("couldn't alloc needed memory...\n");
+        exit(EXIT_FAILURE);
+    } else if((em->data = (char *)malloc(len+1))==NULL) {
+        perror("couldn't alloc needed memory...\n");
+        exit(EXIT_FAILURE);
+    }
+    strncpy((char *)em->data, (char *)string, len);
+    em->data[len] = '\0';
+    em->count=0;
+    em->len=len;
+    em->prev = em->next = NULL;
+    return em;
+}
+
+void update_long_dllist(struct long_dllist **em, unsigned long int value) {
+    struct long_dllist *ptr, *tmp;
+    int x = 0;
+    //printf("\nupdating\n");
+    for (ptr = *em; ptr != NULL; ptr = (struct long_dllist *)ptr->next, x++) {
+        //printf("examining node(%u)\n", x);
+        if(ptr->data == value) {
+    	//printf("match ptr(%lu), data(%lu), current count(%lu)\n", ptr, ptr->data, ptr->count);
+    	ptr->count += 1;
+    	while (ptr->prev != NULL
+    	   && ptr->count > ptr->prev->count) {
+    	    /* I'm sure this could be wrote better. don't feel like screwing with it though. */
+    	    tmp = ptr->prev;
+    	    //printf("moving node, p.count(%u), c.count(%u)\n",ptr->prev->count, ptr->count);
+    	    //printf("  p.p(%lu), p.n(%lu); n.p(%lu), n.n(%lu)\n", tmp->prev, tmp->next, ptr->prev, ptr->next);
+    	    ptr->prev = tmp->prev;
+    	    tmp->next = ptr->next;
+    	    if (tmp->prev != NULL)
+    		tmp->prev->next = ptr;
+    	    tmp->prev = ptr;
+    	    if (ptr->next != NULL)
+    		ptr->next->prev = tmp;
+    	    ptr->next = tmp;
+    	}
+    	if(ptr->prev == NULL)
+    	    *em = ptr;
+    	break;
+        } else if (ptr->next == NULL) {
+    	//printf("adding llist value(%lu)\n", value);
+    	ptr->next = init_long_dllist(value);
+    	ptr->next->prev = ptr;
+    	ptr->next->count += 1;
+    	//printf("  c.p(%lu), c(%lu), c.n(%lu), n.p(%lu), n.n(%lu)\n",ptr->prev, ptr, ptr->next, ptr->next->prev, ptr->next->next);
+    	break;
+        }
+    }
+}
+    
+void update_str_dllist(struct str_dllist **em, char *value, int len) {
+    struct str_dllist *ptr, *tmp;
+    int x = 0;
+    //printf("\nupdating\n");
+    for (ptr = *em; ptr != NULL; ptr = (struct str_dllist *)ptr->next, x++) {
+        //printf("examining node('%u'), '%s'=='%s'\n", x, ptr->data, value);
+        /* this next statement likely could use some tweaking. */
+        if(len == ptr->len && strncmp(ptr->data, value,len) == 0) {
+    	//printf("match ptr(%lu), data('%s'), current count(%lu)\n", ptr, ptr->data, ptr->count);
+    	ptr->count += 1;
+    	while (ptr->prev != NULL
+    	   && ptr->count > ptr->prev->count) {
+    	    /* I'm sure this could be wrote better. don't feel like screwing with it though. */
+    	    tmp = ptr->prev;
+    	    //printf("moving node, p.count(%u), c.count(%u)\n",ptr->prev->count, ptr->count);
+    	    //printf("  p.p(%lu), p.n(%lu); n.p(%lu), n.n(%lu)\n", tmp->prev, tmp->next, ptr->prev, ptr->next);
+    	    ptr->prev = tmp->prev;
+    	    tmp->next = ptr->next;
+    	    if (tmp->prev != NULL)
+    		tmp->prev->next = ptr;
+    	    tmp->prev = ptr;
+    	    if (ptr->next != NULL)
+    		ptr->next->prev = tmp;
+    	    ptr->next = tmp;
+    	}
+    	if(ptr->prev == NULL)
+    	    *em = ptr;
+    	break;
+        } else if (ptr->next == NULL) {
+    	//printf("adding llist value('%s')\n", value);
+    	ptr->next = init_str_dllist(value, len);
+    	ptr->next->prev = ptr;
+    	ptr->next->count += 1;
+    	//printf("  new node data('%s')\n", ptr->data);
+    	//printf("  c.p(%lu), c(%lu), c.n(%lu), n.p(%lu), n.n(%lu)\n",ptr->prev, ptr, ptr->next, ptr->next->prev, ptr->next->next);
+    	break;
+        }
+    }
+}
+
+
+
 int main(int argc, char **argv)
 {
     int src_fh;
@@ -19,13 +127,16 @@ int main(int argc, char **argv)
     struct tar_entry **source, **target, *tar_ptr;
     void *vptr;
     unsigned char source_md5[32], target_md5[32];
-    unsigned long source_count, target_count;
+    unsigned long source_count, target_count, halfway;
     unsigned long x;
-    char src_common[256], trg_common[256];  /* common dir's... */
+    char src_common[256], trg_common[256], *p;  /* common dir's... */
     unsigned int src_common_len=0, trg_common_len=0;
     /*probably should convert these arrays to something more compact, use bit masking. */
     unsigned char *source_matches, *target_matches;
-    
+    struct long_dllist *trg_mode_ll, *trg_uid_ll, *trg_gid_ll, *trg_devmajor_ll, *trg_devminor_ll, *ldll_ptr;
+    struct str_dllist *trg_uname_ll, *trg_gname_ll, *trg_magic_ll, *trg_version_ll, *trg_mtime_ll, *sdll_ptr;
+
+
 /*    printf("sizeof struct tar_entry=%u, sizeof *tar_entry=%u, size of **tar_entry=%u\n",
         sizeof(struct tar_entry), sizeof(struct tar_entry *), sizeof(struct tar_entry**));
     printf("sizeof *char[6]=%u\n", sizeof(char *[6]));*/
@@ -78,7 +189,6 @@ int main(int argc, char **argv)
     for (x=0; x < target_count; x++) {
         if (strncmp((const char *)trg_common, (const char *)target[x]->fullname, trg_common_len) !=0) {
             printf("found a breaker(%s) at pos(%lu), loc(%lu)\n", target[x]->fullname, x, target[x]->file_loc);
-            char *p;
             /* null the / at trg_common_len-1, and attempt rindex again. */
             trg_common[trg_common_len -1]='\0';
             if((p = rindex(trg_common, '/'))==NULL){
@@ -91,129 +201,21 @@ int main(int argc, char **argv)
         }
     }
     printf("final trg_common='%.255s'\n", trg_common);
-    
-    struct long_dllist *init_long_dllist(unsigned long int value) {
-	struct long_dllist *em;
-	if((em = (struct long_dllist *)malloc(sizeof(struct str_dllist)))==NULL){
-	    perror("couldn't alloc needed memory...\n");
-	    exit(EXIT_FAILURE);
-	}
-	em->data = value;
-	em->count = 0;
-	em->prev = em->next = NULL;
-	return em;
-    }
-    struct str_dllist *init_str_dllist(char *string, int len) {
-	struct str_dllist *em;
-	if((em = (struct str_dllist *)malloc(sizeof(struct str_dllist)))==NULL){
-	    perror("couldn't alloc needed memory...\n");
-	    exit(EXIT_FAILURE);
-	} else if((em->data = (char *)malloc(len+1))==NULL) {
-	    perror("couldn't alloc needed memory...\n");
-	    exit(EXIT_FAILURE);
-	}
-	strncpy((char *)em->data, (char *)string, len);
-	em->data[len] = '\0';
-	em->count=0;
-	em->len=len;
-	em->prev = em->next = NULL;
-	return em;
-    }
 
     printf("initing struct's for checking for common longs...\n");
-    struct long_dllist *trg_mode_ll, *trg_uid_ll, *trg_gid_ll, *trg_devmajor_ll, *trg_devminor_ll, *ldll_ptr;
     trg_mode_ll = init_long_dllist(target[0]->mode);
     trg_uid_ll = init_long_dllist(target[0]->uid);
     trg_gid_ll = init_long_dllist(target[0]->gid);
     trg_devmajor_ll = init_long_dllist(target[0]->devmajor);
     trg_devminor_ll = init_long_dllist(target[0]->devminor);
     printf("initing struct's for checking for common strs...\n");
-    struct str_dllist *trg_uname_ll, *trg_gname_ll, *trg_magic_ll, *trg_version_ll, *trg_mtime_ll, *sdll_ptr;
     trg_uname_ll = init_str_dllist(target[0]->uname, target[0]->uname_len);
     trg_gname_ll = init_str_dllist(target[0]->gname, target[0]->gname_len);
     trg_magic_ll = init_str_dllist(target[0]->magic, TAR_MAGIC_LEN);
     trg_version_ll = init_str_dllist(target[0]->version, TAR_VERSION_LEN);
     trg_mtime_ll = init_str_dllist(target[0]->mtime, TAR_MTIME_LEN);
     printf("inited.\n");
-    
-    void update_long_dllist(struct long_dllist **em, unsigned long int value) {
-	struct long_dllist *ptr, *tmp;
-	int x = 0;
-	//printf("\nupdating\n");
-	for (ptr = *em; ptr != NULL; ptr = (struct long_dllist *)ptr->next, x++) {
-	    //printf("examining node(%u)\n", x);
-	    if(ptr->data == value) {
-		//printf("match ptr(%lu), data(%lu), current count(%lu)\n", ptr, ptr->data, ptr->count);
-		ptr->count += 1;
-		while (ptr->prev != NULL
-		   && ptr->count > ptr->prev->count) {
-		    /* I'm sure this could be wrote better. don't feel like screwing with it though. */
-		    tmp = ptr->prev;
-		    //printf("moving node, p.count(%u), c.count(%u)\n",ptr->prev->count, ptr->count);
-		    //printf("  p.p(%lu), p.n(%lu); n.p(%lu), n.n(%lu)\n", tmp->prev, tmp->next, ptr->prev, ptr->next);
-		    ptr->prev = tmp->prev;
-		    tmp->next = ptr->next;
-		    if (tmp->prev != NULL)
-			tmp->prev->next = ptr;
-		    tmp->prev = ptr;
-		    if (ptr->next != NULL)
-			ptr->next->prev = tmp;
-		    ptr->next = tmp;
-		}
-		if(ptr->prev == NULL)
-		    *em = ptr;
-		break;
-	    } else if (ptr->next == NULL) {
-		//printf("adding llist value(%lu)\n", value);
-		ptr->next = init_long_dllist(value);
-		ptr->next->prev = ptr;
-		ptr->next->count += 1;
-		//printf("  c.p(%lu), c(%lu), c.n(%lu), n.p(%lu), n.n(%lu)\n",ptr->prev, ptr, ptr->next, ptr->next->prev, ptr->next->next);
-		break;
-	    }
-	}
-    }
-    
-    void update_str_dllist(struct str_dllist **em, char *value, int len) {
-	struct str_dllist *ptr, *tmp;
-	int x = 0;
-	//printf("\nupdating\n");
-	for (ptr = *em; ptr != NULL; ptr = (struct str_dllist *)ptr->next, x++) {
-	    //printf("examining node('%u'), '%s'=='%s'\n", x, ptr->data, value);
-	    /* this next statement likely could use some tweaking. */
-	    if(len == ptr->len && strncmp(ptr->data, value,len) == 0) {
-		//printf("match ptr(%lu), data('%s'), current count(%lu)\n", ptr, ptr->data, ptr->count);
-		ptr->count += 1;
-		while (ptr->prev != NULL
-		   && ptr->count > ptr->prev->count) {
-		    /* I'm sure this could be wrote better. don't feel like screwing with it though. */
-		    tmp = ptr->prev;
-		    //printf("moving node, p.count(%u), c.count(%u)\n",ptr->prev->count, ptr->count);
-		    //printf("  p.p(%lu), p.n(%lu); n.p(%lu), n.n(%lu)\n", tmp->prev, tmp->next, ptr->prev, ptr->next);
-		    ptr->prev = tmp->prev;
-		    tmp->next = ptr->next;
-		    if (tmp->prev != NULL)
-			tmp->prev->next = ptr;
-		    tmp->prev = ptr;
-		    if (ptr->next != NULL)
-			ptr->next->prev = tmp;
-		    ptr->next = tmp;
-		}
-		if(ptr->prev == NULL)
-		    *em = ptr;
-		break;
-	    } else if (ptr->next == NULL) {
-		//printf("adding llist value('%s')\n", value);
-		ptr->next = init_str_dllist(value, len);
-		ptr->next->prev = ptr;
-		ptr->next->count += 1;
-		//printf("  new node data('%s')\n", ptr->data);
-		//printf("  c.p(%lu), c(%lu), c.n(%lu), n.p(%lu), n.n(%lu)\n",ptr->prev, ptr, ptr->next, ptr->next->prev, ptr->next->next);
-		break;
-	    }
-	}
-    }
-    
+        
         /*perhaps this is a crappy method, but basically for the my sanity, just up the fullname ptr
          to remove the common-prefix.  wonder if string functions behave and don't go past the sp... */
         /* init the fullname_ptr to point to the char after the common-prefix dir.  if no prefix, points
@@ -229,7 +231,7 @@ int main(int argc, char **argv)
         target[x]->fullname_ptr = (char *)target[x]->fullname + trg_common_len;
 	target[x]->fullname_ptr_len = target[x]->fullname_len - trg_common_len;
     }
-    unsigned int halfway = (target_count+1)/2; // give it a +1 for those odd numbers, ensure it's 50%
+    halfway = (target_count+1)/2; // give it a +1 for those odd numbers, ensure it's 50%
     for (x=0; x < target_count && halfway > trg_mode_ll->count; x++)
 	update_long_dllist(&trg_mode_ll, target[x]->mode);
     for (x=0; x < target_count && halfway > trg_uid_ll->count; x++)
@@ -251,7 +253,7 @@ int main(int argc, char **argv)
     for (x=0; x < target_count && halfway > trg_mtime_ll->count; x++)
 	update_str_dllist(&trg_mtime_ll, target[x]->mtime, TAR_MTIME_LEN);
     
-    printf("target has %lu files, halfway=%lu\n", target_count, halfway);
+    /*printf("target has %lu files, halfway=%lu\n", target_count, halfway);
     printf("\ndumping mode\n");
     for(ldll_ptr = trg_mode_ll, x=0; ldll_ptr != NULL; ldll_ptr = ldll_ptr->next, x++) 
 	printf("node (%lu), value=%lu, count=%lu\n", x, ldll_ptr->data, ldll_ptr->count);
@@ -283,7 +285,7 @@ int main(int argc, char **argv)
     printf("\ndumping mtime\n");
     for(sdll_ptr = trg_mtime_ll, x=0; sdll_ptr != NULL; sdll_ptr = sdll_ptr->next, x++) 
 	printf("value='%.*s', count=%lu\n", sdll_ptr->len, sdll_ptr->data, sdll_ptr->count);
-    printf("mtime total count=%lu\n\n", x);
+    printf("mtime total count=%lu\n\n", x);*/
     printf("qsorting\n");
     
     /* this next one is moreso for bsearch's, but it's prob useful for the common-prefix alg too */

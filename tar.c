@@ -43,8 +43,8 @@ inline unsigned long octal_str2long(char *string, unsigned int length)
 struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, unsigned char *md5sum)
 {
     struct tar_entry **file, *entry;
-    //struct tar_llist source, target, *src_ptr, *trg_ptr;
-    char block[512];
+    unsigned int md5len;
+    unsigned char block[512], temp[3], hexmd5[EVP_MAX_MD_SIZE];
     //unsigned int count=0, offset=0;
     unsigned long offset=0, array_size=100000;
     unsigned long count =0;
@@ -215,11 +215,8 @@ struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, 
     }
     
     /* I have no doubt there is a better method */
-    unsigned int md5len;
-    unsigned char hexmd5[EVP_MAX_MD_SIZE];
     EVP_DigestFinal(&mdctx, hexmd5, &md5len);
     /* write a better method for this.  returned is aparently in hex. */
-    unsigned char temp[3];
     for(count=0; count < md5len; count++){
 	snprintf(temp, 3, "%02x", hexmd5[count]);
 	memcpy(md5sum + count*2, temp, 2);
