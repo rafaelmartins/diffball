@@ -53,7 +53,7 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
     s_lastoff = 0;
     s_lastline = 1;
     while(cfile_len(patchf)!= ctell(patchf, CSEEK_FSTART)) {
-	printf("pos=%lu\n", patchf->data.pos);
+//	printf("pos=%lu\n", patchf->data.pos);
 	cread(patchf, buff, 4);
 	assert(0==memcmp(buff, "@@ -",4));
 	s_line = getUDec(patchf);
@@ -61,6 +61,7 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 	    s_lastline);
 	skip_lines_forward(src_cfh, s_line - s_lastline);
 	s_lastline = s_line;
+	printf("at pos(%lu) in src_cfh\n", ctell(src_cfh, CSEEK_FSTART));
 	//printf("s_line=%lu\n", s_line);
 	cread(patchf, buff, 1);
 	if(buff[0]==',')
@@ -78,38 +79,42 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 	skip_lines_forward(patchf, 1);
 	line_count=0;
 	add_copy=1;
+	/* now handle the specific segment data. */
 	while(line_count < v_len) {
 //	    printf("line_count=%lu, v_len=%lu\n", line_count + 1, v_len);
 	    cread(patchf, buff, 1);
 	    assert(' '==buff[0] || '+'==buff[0] || '-'==buff[0]);
 	    if(' '==buff[0]) {
-		printf("got a common  line( )\n");
+		printf("got a common  line( ): ");
 		/* common line */
-		line_count++;
 		printf("skipping a line in both src and patch\n");
+		if(add_copy==0) 
+		    s_lastoff = ctell(src_cfh, CSEEK_FSTART);
+		line_count++;
 		skip_lines_forward(src_cfh, 1);
+		s_lastline++;
 		skip_lines_forward(patchf, 1);
 		add_copy=1;
 	    } else if('+'==buff[0]) {
-		printf("got a version tweak(+)\n");
+		printf("got a version tweak(+): ");
 		if(add_copy) {
 		    offset = ctell(src_cfh, CSEEK_FSTART);
 		    printf("adding copy for add_copy, offset(%lu), len(%lu)\n",
-
 			s_lastoff, offset - s_lastoff);
 		    DCBufferAddCmd(dcbuff, DC_COPY, s_lastoff, 
 			offset - s_lastoff);
 		    s_lastoff = offset;
+		    s_lastline++; 
 		    add_copy=0;
 		}
 		offset = ctell(patchf, CSEEK_FSTART);
 		printf("skipping a line in patch\n");
 		skip_lines_forward(patchf, 1);
-		len = (ctell(patchf, CSEEK_FSTART)-1) - offset;
+		len = (ctell(patchf, CSEEK_FSTART)) - offset;
 		DCBufferAddCmd(dcbuff, DC_ADD, offset, len);
 		line_count++;
 	    } else if('-'==buff[0]) {
-		printf("got a source  tweak(-)\n");
+		printf("got a source  tweak(-): ");
 		if(add_copy) {
 		    offset = ctell(src_cfh, CSEEK_FSTART);
 		    printf("adding copy for add_copy, offset(%lu), len(%lu)\n",
@@ -120,12 +125,13 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 		}
 		printf("skipping a line in patch\n");
 		skip_lines_forward(patchf, 1);
+		s_lastline++;
 		skip_lines_forward(src_cfh, 1);
-		s_lastoff = ctell(src_cfh, CSEEK_FSTART) -1;
+		s_lastoff = ctell(src_cfh, CSEEK_FSTART);
 	    }
 	} 
     }
-    DCBufferAddCmd(dcbuff, DC_COPY, s_lastoff, cfile_len(src_cfh) - s_lastoff);
-//    DCBufferAddCmd(dcbuff, DC_COPY, last_offset, cfile_len(patchf)-last_offset);
+    if(ctell(src_cfh, CSEEK_FSTART)!=cfile_len(src_cfh))
+	DCBufferAddCmd(dcbuff, DC_COPY, s_lastoff, cfile_len(src_cfh) - s_lastoff);
     return 0;
 }
