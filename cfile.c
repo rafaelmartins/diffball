@@ -24,6 +24,24 @@
 
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
+/* quick kludge */
+signed long
+cfile_identify_compressor(int fh)
+{
+    unsigned char buff[2];
+    if(read(fh, buff, 2)!=2) {
+	return -1;
+    } else {
+	lseek(fh, -2, SEEK_CUR);
+    }
+    if(memcmp(buff, "BZ", 2)==0) {
+        return BZIP2_COMPRESSOR;
+    } else if(0x1f==buff[0] && 0x8b==buff[1]) {
+        return GZIP_COMPRESSOR;
+    }
+    return NO_COMPRESSOR;
+}
+
 unsigned int
 cmemopen(cfile *cfh, unsigned char *buff_start, unsigned long buff_len,
     unsigned long fh_offset, unsigned int access_flags)
@@ -43,13 +61,13 @@ copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
     unsigned int compressor_type, unsigned int access_flags)
 {
     const EVP_MD *md;
+    signed long ret_val;
     /* this will need adjustment for compressed files */
     cfh->raw_fh = fh;
     assert(fh_start <= fh_end);
     cfh->access_flags = (access_flags & ~CFILE_COMPUTE_MD5);
     cfh->state_flags = 0;
     cfh->data_md5 = NULL;
-    cfh->compressor_type = compressor_type;
 
     if(access_flags & CFILE_COMPUTE_MD5) {
 	cfh->state_flags |= CFILE_COMPUTE_MD5;
@@ -63,7 +81,19 @@ copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
 	cfh->data_md5_pos = cfh->data_total_len;
     }
 
-    switch(compressor_type) {
+    if(AUTODETECT_COMPRESSOR == compressor_type) {
+	dcprintf("copen: autodetecting comp_type: ");
+	ret_val = cfile_identify_compressor(fh);
+	if(ret_val < 0) {
+	    abort();
+	}
+	dcprintf("got %i\n", ret_val);
+	cfh->compressor_type = ret_val;
+    } else {
+	cfh->compressor_type = compressor_type;
+    }
+
+    switch(cfh->compressor_type) {
     case NO_COMPRESSOR:
 	dcprintf("copen: opening w/ no_compressor\n");
 	cfh->data_fh_offset = fh_start;
@@ -273,6 +303,8 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 	break;
     case BZIP2_COMPRESSOR: 
 	if(data_offset < cfh->data.offset ) {
+	    /* note this ain't optimal, but the alternative is modifying 
+	       bzlib to support seeking... */
 	    dcprintf("cseek: bz2: data_offset < cfh->data.offset, resetting\n");
 	    BZ2_bzDecompressEnd(cfh->bzs);
 	    cfh->bzs->bzalloc = NULL;
@@ -390,6 +422,7 @@ crefill(cfile *cfh)
 	    cfh->bzs->next_in = cfh->raw.buff;
 	}
 	if(cfh->state_flags & CFILE_EOF) {
+	    dcprintf("crefill: bz2: CFILE_EOF flagged, returning 0\n");
 	    cfh->data.offset += cfh->data.end;
 	    cfh->data.end = cfh->data.pos = 0;
 	} else {

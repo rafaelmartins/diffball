@@ -30,6 +30,8 @@
 #define NO_COMPRESSOR			(0x0)
 #define GZIP_COMPRESSOR			(0x1)
 #define BZIP2_COMPRESSOR		(0x2)
+#define AUTODETECT_COMPRESSOR		(0x4)
+
 #define CFILE_RONLY			(0x1)
 #define CFILE_WONLY			(0x2)
 
