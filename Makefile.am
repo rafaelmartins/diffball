@@ -55,7 +55,7 @@ EXTRA_DIST = $(man_MANS)
 
 noinst_HEADERS = cfile.h dcbuffer.h diff-algs.h bit-functions.h gdiff.h \
 	apply-patch.h adler32.h switching.h primes.h string-misc.h \
-	data-structs.h tar.h bdiff.h xdelta1.h cfile.h bdelta.h line-util.h \
+	tar.h bdiff.h xdelta1.h cfile.h bdelta.h line-util.h \
 	udiff.h fdtu.h bsdiff.h defs.h options.h formats.h hash.h errors.h \
 	dcb-cfh-funcs.h
 

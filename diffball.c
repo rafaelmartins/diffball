@@ -24,7 +24,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include "tar.h"
-#include "data-structs.h"
+//#include "data-structs.h"
 #include "cfile.h"
 #include "dcbuffer.h"
 #include "diff-algs.h"
