@@ -184,6 +184,11 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
     add_start = add_pos;
     v2printf("add block starts at %lu\nprocessing commands\n", add_pos);
     unsigned long match_orig = matches;
+    if(size1==0) {
+	v0printf("size1 was zero, processing anyways.\n");
+	v0printf("this patch should be incompatible w/ bdelta, although I ");
+	v0printf("have no problems reading it.\n");
+    }
     while(matches--){
 	v2printf("handling match(%lu)\n", match_orig - matches);
 	cread(patchf, buff, 3 * int_size);
@@ -208,7 +213,7 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 	    ver_pos += copy_offset;
 	}
 	/* an attempt to ensure things aren't whacky. */
-	assert(ver_pos <= size1);
+	assert(size1==0 || ver_pos <= size1);
 	if(copy_len) {
 	    v2printf("copy len(%lu), off(%ld), pos(%lu)\n", 
 		copy_len, (signed long)copy_offset, ver_pos);
