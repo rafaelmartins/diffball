@@ -260,6 +260,7 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 {
     ADLER32_SEED_CTX ads;
     unsigned long index, skip=0, chksum;
+    unsigned long len;
     signed long low, mid, high;
     unsigned char worth_continuing;
     cfile_window *cfw;
@@ -275,11 +276,11 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
     if(cfw->pos + rhash->seed_len < cfw->end) {
 	update_adler32_seed(&ads, cfw->buff + cfw->pos, rhash->seed_len);
     } else {
-	skip = rhash->seed_len;
-	while(skip) {
-	    update_adler32_seed(&ads, cfw->buff + cfw->pos, cfw->end - 
-		cfw->pos);
-	    skip -= cfw->end - cfw->pos;
+	len = rhash->seed_len;
+	while(len) {
+	    skip = MIN(cfw->end - cfw->pos, len);
+	    update_adler32_seed(&ads, cfw->buff + cfw->pos, skip);
+	    len -= skip;
 	    cfw = next_page(ref_cfh);
 	    if(cfw->end==0) {
 		return EOF_ERROR;
