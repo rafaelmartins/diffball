@@ -39,6 +39,7 @@ signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer,
     unsigned char add_buff[add_buff_size];
     unsigned int  bytes_read=0, temp=0;
     unsigned long  bytes_wrote=0;
+    unsigned long count;
     if(offset_type==ENCODING_OFFSET_VERS_POS || offset_type==ENCODING_OFFSET_DC_POS)
 		off_is_sbytes=1;
     else
@@ -60,7 +61,8 @@ signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer,
 		exit(1);
     }
     cwrite(out_fh, out_buff, GDIFF_VER_LEN);
-    while(buffer->count--){
+    count = buffer->count;
+    while(count--){
 		if(buffer->lb_tail->len==0) {
 		    DCBufferIncr(buffer);
 		    continue;

@@ -127,10 +127,10 @@ signed int switchingEncodeDCBuffer(struct CommandBuffer *buffer,
     buffer->lb_tail = buffer->lb_start;
     buffer->cb_tail = buffer->cb_head;
     buffer->cb_tail_bit = buffer->cb_head_bit;
-	count=buffer->count;
     last_com = DC_COPY;
     dc_pos=0;
-    while(buffer->count--){
+    count = buffer->count;
+    while(count--){
 		if(buffer->lb_tail->len==0) {
 		    DCBufferIncr(buffer);
 		    continue;
@@ -317,7 +317,6 @@ signed int switchingReconstructDCBuff(struct cfile *patchf, struct CommandBuffer
 	printf("add data block size(%lu), starting commands at pos(%lu)\n", com_start,
 		ctell(patchf, CSEEK_ABS));
     while(cread(patchf, buff, 1)==1 && end_of_patch==0) {
-    //printf("adding command num(%lu)\n", dcbuff->count+1);
     	printf("processing(%u) at pos(%lu): ", buff[0], ctell(patchf, CSEEK_ABS) -1);
 	    if(last_com != DC_ADD) {
 	    	lb = (buff[0] >> 6) & 0x3;
