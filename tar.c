@@ -112,7 +112,7 @@ struct tar_entry *convert_str_tar_entry(char *block/*[512]*/)
         //printf("non-null prefix\n");
         strncpy((char *)t->prefix, (char *)block, 155);
         strncpy((char *)p, (char *)t->prefix, 155);
-        printf("so far='%s'\n", t->prefix);
+        //printf("so far='%s'\n", t->prefix);
         //printf("part deux\n");
         p[strnlen((char *)t->prefix, 155) +1]=(char)'/';
         //printf("midway\n");

@@ -43,7 +43,8 @@ int main(int argc, char **argv)
            one thing I do wonder about... I make user of ptr algebra, do these methods hold for all architectures?
            ergo, do all arch's storage of a string have for ptr's string[x] < then string[x+1]? */
         /*note, we want the slash, hence +1 */
-        src_common_len=(char *)rindex((const char *)source[0]->fullname, '/') - (char *)source[0]->fullname+1;
+        src_common_len=(char *)rindex(
+            (const char *)source[0]->fullname, '/') - (char *)source[0]->fullname+1;
         strncpy((char *)src_common, (char *)source[0]->fullname,src_common_len);
         src_common[src_common_len] = '\0';  /*null delimit it */
         for (x=0; x < source_count; x++) {
@@ -62,11 +63,13 @@ int main(int argc, char **argv)
             }
         }
         printf("final src_common='%.255s'\n", src_common);
-        trg_common_len=(char *)rindex((const char *)target[0]->fullname, '/') - (char *)target[0]->fullname+1;
+        trg_common_len=(char *)rindex(
+                (const char *)target[0]->fullname, '/') - (char *)target[0]->fullname+1;
         strncpy((char *)trg_common, (char *)target[0]->fullname,trg_common_len);
         trg_common[trg_common_len] = '\0';  /* null delimit it */
         for (x=0; x < target_count; x++) {
             if (strncmp((const char *)trg_common, (const char *)target[x]->fullname, trg_common_len) !=0) {
+                printf("found a breaker(%s) at pos(%lu), loc(%lu)\n", target[x]->fullname, x, target[x]->file_loc);
                 char *p;
                 /* null the / at trg_common_len-1, and attempt rindex again. */
                 trg_common[trg_common_len -1]='\0';
@@ -80,7 +83,7 @@ int main(int argc, char **argv)
                 }
             }
         }
-        printf("new trg_common='%.255s'\n", trg_common);
+        printf("final trg_common='%.255s'\n", trg_common);
         /*perhaps this is a crappy method, but basically for the my sanity, just up the fullname ptr
          to remove the common-prefix.  wonder if string functions behave and don't go past the sp... */
         /* init the fullname_ptr to point to the char after the common-prefix dir.  if no prefix, points
@@ -92,7 +95,6 @@ int main(int argc, char **argv)
             target[x]->fullname_ptr = (char *)&target[x]->fullname + trg_common_len;
             
     /* this next one is moreso for bsearch's, but it's prob useful for the common-prefix alg too */
-    printf("checking something='%s'\n", target[0]->fullname);
     qsort((struct tar_entry **)target, target_count, sizeof(struct tar_entry *), cmp_tar_entries);
     
 
