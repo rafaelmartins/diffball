@@ -1,0 +1,6 @@
+The author is Brian Harring, <bdharring@wisc.edu>.
+Marc Adler, Randal Burns, and Andrew Tridgell deserve credit for basically the 
+algorithms- the adler32 rolling hash is based on Adler's implementation/alg, 
+tridgell for his master thesis (which basically brought me up to speed on the 
+lovely subject), and burns for the algorithm- it's one half pass correcting algoritm,
+detailed in his paper on delta compression on unstructured data.
