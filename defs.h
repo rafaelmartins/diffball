@@ -26,8 +26,14 @@ extern unsigned int verbosity;
 
 #ifdef DEV_VERSION
 #include <assert.h>
+#define v1printf(expr...)  fprintf(stderr,expr);
+#define v2printf(expr...)  if(verbosity>0){fprintf(stderr,expr);}
+#define v3printf(expr...)  if(verbosity>1){fprintf(stderr,expr);}
 #else
 #define assert(expr) ((void)0)
+#define v1printf(expr...)  if(verbosity>0){fprintf(stderr,expr);}
+#define v2printf(expr...)  if(verbosity>1){fprintf(stderr,expr);}
+#define v3printf(expr...)  if(verbosity>2){fprintf(stderr,expr);}
 #endif
 
 #ifdef DEBUG_CFILE
@@ -39,8 +45,5 @@ extern unsigned int verbosity;
 #define dcprintf(expr...) v3printf(expr)
 #endif
 
-#define v1printf(expr...)  if(verbosity==1){fprintf(stderr,expr);}
-#define v2printf(expr...)  if(verbosity==2){fprintf(stderr,expr);}
-#define v3printf(expr...)  if(verbosity==3){fprintf(stderr,expr);}
 #endif
 

@@ -37,7 +37,7 @@
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
-unsigned int verbosity;
+unsigned int verbosity = 0;
 
 int cmp_tar_entries(const void *te1, const void *te2);
 

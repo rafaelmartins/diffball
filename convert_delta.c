@@ -28,7 +28,7 @@
 #include "switching.h"
 #include "bdiff.h"
 
-unsigned int verbosity;
+unsigned int verbosity = 0;
 
 int 
 main(int argc, char **argv)
