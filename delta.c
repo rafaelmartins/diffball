@@ -99,25 +99,36 @@ void DCBufferInit(struct CommandBuffer *buffer, unsigned long max_commands)
     buffer->lb_end = buffer->lb_start + buffer->max_commands -1;
 }
 
-inline int bytesNeeded(long y)
+inline int bitsNeeded(long y)
 {
-    /* why 2 rather then 1 (1 due to a bit powers, eg rightmost is power 0)?  cause this treats it
-     ALL as signed. */
-    unsigned int x=2;
+    unsigned int x=1;
     if (y == 0) {
 	//printf("no bytesneeded\n");
 	return 0;
     }
     while((y = y >>1) > 0)
 	x++;
-    //x = (x==0) ? 0 : x -1;
-    /*if(y < 0) {
-	printf("neg num in bytesNeeded:\n");
-	x++;
-    }*/
-    //printf("bytesNeeded(%u)=",x);
+    return x;    
+}
+
+inline int bytesNeeded(long y)
+{
+    /* why 2 rather then 1 (1 due to a bit powers, eg rightmost is power 0)?  cause this treats it
+     ALL as signed. */
+    unsigned int x;
+    if (y == 0) {
+	//printf("no bytesneeded\n");
+	return 0;
+    }
+    x=bitsNeeded(y);
     x= (x/8) + (x % 8 ? 1 : 0);
-    //printf("%u\n", x);
+    return x;
+}
+inline int signedBytesNeeded(signed long y)
+{
+    unsigned int x;
+    x=bitsNeeded(abs(y)) + 1;
+    x= (x/8) + (x % 8 ? 1 : 0);
     return x;
 }
 
@@ -127,6 +138,7 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
     unsigned long fh_pos=0;
     unsigned long offset;
     signed long s_off;
+    unsigned long u_off;
     unsigned long copies=0, adds_in_buff=0, adds_in_file=0;
     int lb, ob;
     unsigned char type, out_buff[256];
@@ -167,8 +179,9 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
 	case DC_COPY:
 	    copies++;
 	    s_off = (signed long)buffer->lb_tail->offset - (signed long)fh_pos;
+	    u_off = abs(s_off);
 	    //printf("s_offset(%d) ob: ");
-	    ob=bytesNeeded(s_off);
+	    ob=signedBytesNeeded(s_off);
 	    //printf("lb: ");
 	    lb=bytesNeeded(buffer->lb_tail->len);
 	    if(ob <= 2 && lb ==1)
@@ -191,24 +204,33 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
 	    //printf("    s_off, offset(%lu), fh_pos(%lu), s_off(%d)\n", buffer->lb_tail->offset, fh_pos, s_off);
 	    write(fh, &clen, 1);
 	    if(clen >= 249 && clen <= 251) {
-		out_buff[0] = (s_off & 0xff00) >> 2;
-		out_buff[1] = (s_off & 0x00ff);
+		out_buff[0] = (u_off & 0xff00) >> 8;
+		if(s_off < 0 ) {
+		    //printf("num is signed, initial byte(%u), ", out_buff[0]);
+		    out_buff[0] |= 0x80;
+		    //printf("final byte(%u)\n", out_buff[0]);
+		}
+		out_buff[1] = (u_off & 0x00ff);
 		write(fh, out_buff, 2);
 	    } else if(clen>=252 && clen <= 254){
-		out_buff[0] = (s_off & 0xff000000) >> 8*3;
-		out_buff[1] = (s_off & 0x00ff0000) >> 8*2;
-		out_buff[2] = (s_off & 0x0000ff00) >> 8;
-		out_buff[3] = (s_off & 0x000000ff);
+		out_buff[0] = (u_off & 0xff000000) >> 8*3;
+		if(s_off < 0)
+		    out_buff[0] |= 0x80;
+		out_buff[1] = (u_off & 0x00ff0000) >> 8*2;
+		out_buff[2] = (u_off & 0x0000ff00) >> 8;
+		out_buff[3] = (u_off & 0x000000ff);
 		write(fh, out_buff, 4);
 	    } else {
-		out_buff[0] = (s_off & 0xff00000000000000) >> 8*7;
-		out_buff[1] = (s_off & 0x00ff000000000000) >> 8*6;
-		out_buff[2] = (s_off & 0x0000ff0000000000) >> 8*5;
-		out_buff[3] = (s_off & 0x000000ff00000000) >> 8*4;
-		out_buff[4] = (s_off & 0x00000000ff000000) >> 8*3;
-		out_buff[5] = (s_off & 0x0000000000ff0000) >> 8*2;
-		out_buff[6] = (s_off & 0x000000000000ff00) >> 8;
-		out_buff[7] = (s_off & 0x00000000000000ff);
+		out_buff[0] = (u_off & 0xff00000000000000) >> 8*7;
+		if(s_off < 0)
+		    out_buff[0] |= 0x80;
+		out_buff[1] = (u_off & 0x00ff000000000000) >> 8*6;
+		out_buff[2] = (u_off & 0x0000ff0000000000) >> 8*5;
+		out_buff[3] = (u_off & 0x000000ff00000000) >> 8*4;
+		out_buff[4] = (u_off & 0x00000000ff000000) >> 8*3;
+		out_buff[5] = (u_off & 0x0000000000ff0000) >> 8*2;
+		out_buff[6] = (u_off & 0x000000000000ff00) >> 8;
+		out_buff[7] = (u_off & 0x00000000000000ff);
 		write(fh, out_buff, 8);
 	    }
 	    /*if(clen >= 249 && clen <= 251) {
