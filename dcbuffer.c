@@ -33,17 +33,17 @@ DCB_register_overlay_srcs(CommandBuffer *dcb,
     int *id2, cfile *add, dcb_src_read_func rf2, dcb_src_copy_func rc2, 
 	char free2)
 {
-    *id1 = internal_DCB_register_src(dcb, src, 
+    *id1 = internal_DCB_register_cfh_src(dcb, src, 
 		rf1, rc1, 
 		DC_ADD, (free1 | DCB_OVERLAY_SRC));
-    *id2 = internal_DCB_register_src(dcb, add, 
+    *id2 = internal_DCB_register_cfh_src(dcb, add, 
 		rf2, rc2,
 		DC_ADD, free2);
     return MIN(*id1, *id2);
 }
 
 int
-internal_DCB_register_DCB_src(CommandBuffer *dcb, CommandBuffer *dcb_src, 
+internal_DCB_register_dcb_src(CommandBuffer *dcb, CommandBuffer *dcb_src, 
     dcb_src_read_func read_func, 
     dcb_src_copy_func copy_func,
     unsigned char type, unsigned char flags)
@@ -62,7 +62,7 @@ internal_DCB_register_DCB_src(CommandBuffer *dcb, CommandBuffer *dcb_src,
 }
 
 int
-internal_DCB_register_src(CommandBuffer *dcb, cfile *cfh, 
+internal_DCB_register_cfh_src(CommandBuffer *dcb, cfile *cfh, 
     dcb_src_read_func read_func, 
     dcb_src_copy_func copy_func,
     unsigned char type, unsigned char flags)

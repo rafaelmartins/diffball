@@ -152,16 +152,24 @@ typedef struct _CommandBuffer {
 	(buff)->DCB.llm.ver_start = cfile_start_offset((cfh));		\
     }
 
-int internal_DCB_register_src(CommandBuffer *dcb, cfile *cfh,
+int internal_DCB_register_dcb_src(CommandBuffer *dcb, CommandBuffer *dcb_src,
     dcb_src_read_func read_func, dcb_src_copy_func copy_func, 
     unsigned char free, unsigned char type);
+#define DCB_register_dcb_src(dcb, dcb_src, read, copy, free, type)	\
+    internal_DCB_register_dcb_src((dcb), (dcb_src), (read), (copy),	\
+    (free), (type))
+
 int DCB_register_overlay_srcs(CommandBuffer *dcb, 
     int *id1, cfile *src, dcb_src_read_func rf1, dcb_src_copy_func rc1, char free1,
     int *id2, cfile *add, dcb_src_read_func rf2, dcb_src_copy_func rc2, char free2);
 
-#define DCB_REGISTER_ADD_SRC(dcb, cfh, func, free)	internal_DCB_register_src((dcb), (cfh), NULL, (func), DC_ADD, (free))
-#define DCB_REGISTER_COPY_SRC(dcb, cfh, func, free)	internal_DCB_register_src((dcb), (cfh), NULL, (func), DC_COPY, (free))
-#define DCB_register_src(dcb, cfh, rf, cf, free, type)  internal_DCB_register_src((dcb), (cfh), (rf), (cf), (type), (free))
+int internal_DCB_register_cfh_src(CommandBuffer *dcb, cfile *cfh,
+    dcb_src_read_func read_func, dcb_src_copy_func copy_func, 
+    unsigned char free, unsigned char type);
+
+#define DCB_REGISTER_ADD_SRC(dcb, cfh, func, free)	internal_DCB_register_cfh_src((dcb), (cfh), NULL, (func), DC_ADD, (free))
+#define DCB_REGISTER_COPY_SRC(dcb, cfh, func, free)	internal_DCB_register_cfh_src((dcb), (cfh), NULL, (func), DC_COPY, (free))
+#define DCB_register_src(dcb, cfh, rf, cf, free, type)  internal_DCB_register_cfh_src((dcb), (cfh), (rf), (cf), (type), (free))
 
 unsigned long inline current_command_type(CommandBuffer *buff);
 
@@ -183,6 +191,8 @@ void DCB_get_next_command(CommandBuffer *buffer, DCommand *dc);
 
 void DCB_truncate(CommandBuffer *buffer, unsigned long len);
 
+void DCB_add_overlay(CommandBuffer *buffer, off_u32 src_pos, int diff_src_id,
+    unsigned long add_pos, unsigned long len, int add_id);
 void DCB_add_add(CommandBuffer *buffer, off_u64 ver_pos, unsigned long len,
     unsigned char src_id);
 void DCB_add_copy(CommandBuffer *buffer, off_u64 src_pos, off_u64 ver_pos,
