@@ -186,8 +186,8 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
     unsigned long match_orig = matches;
     if(size1==0) {
 	v0printf("size1 was zero, processing anyways.\n");
-	v0printf("this patch should be incompatible w/ bdelta, although I ");
-	v0printf("have no problems reading it.\n");
+	v0printf("this patch should be incompatible w/ bdelta,\n");
+	v0printf("although I have no problems reading it.\n");
     }
     while(matches--){
 	v2printf("handling match(%lu)\n", match_orig - matches);
