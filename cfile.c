@@ -56,7 +56,7 @@ copen_child_cfh(cfile *cfh, cfile *parent, unsigned long fh_start,
     cfh->state_flags = CFILE_CHILD_CFH;
     cfh->lseek_info.last_ptr = &parent->lseek_info.parent.last;
     parent->lseek_info.parent.handle_count++;
-    v0printf("setting child id=%lu\n", parent->lseek_info.parent.handle_count);
+    dcprintf("setting child id=%lu\n", parent->lseek_info.parent.handle_count);
     cfh->cfh_id = parent->lseek_info.parent.handle_count;
     if(parent->compressor_type != NO_COMPRESSOR) {
 	if(compressor_type != NO_COMPRESSOR) {
@@ -308,7 +308,7 @@ cclose(cfile *cfh)
     if(cfh->access_flags & CFILE_WONLY) {
 	cflush(cfh);
     }
-    v0printf("data_size=%lu, raw_size=%lu, id(%u)\n", cfh->data.size, cfh->raw.size, cfh->cfh_id);
+    dcprintf("data_size=%lu, raw_size=%lu, id(%u)\n", cfh->data.size, cfh->raw.size, cfh->cfh_id);
     if(cfh->data.buff)
 	free(cfh->data.buff);
     if(cfh->raw.buff)
@@ -467,7 +467,7 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 	    }
 	    if(cfh->data_fh_offset) {
 		while(cfh->data.offset + cfh->data.end < cfh->data_fh_offset) {
-		    if(crefill(cfh)==0) {
+		    if(crefill(cfh)<=0) {
 			return EOF_ERROR;
 		    }
 		}
@@ -479,7 +479,7 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 	    }
 	}
 	while(cfh->data.offset + cfh->data.end < data_offset) {
-	    if(crefill(cfh)==0) {
+	    if(crefill(cfh)<=0) {
 		return EOF_ERROR;
 	    }
 	}
@@ -512,7 +512,7 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 	    }
 	    if(cfh->data_fh_offset) {
 		while(cfh->data.offset + cfh->data.end < cfh->data_fh_offset) {
-		    if(crefill(cfh)==0) {
+		    if(crefill(cfh)<=0) {
 			return EOF_ERROR;
 		    }
 		}
@@ -524,7 +524,7 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 	    }
 	}
 	while(cfh->data.offset + cfh->data.end < data_offset) {
-	    if(crefill(cfh)==0) {
+	    if(crefill(cfh)<=0) {
 		return EOF_ERROR;
 	    }
 	}

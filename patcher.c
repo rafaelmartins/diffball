@@ -116,7 +116,8 @@ main(int argc, char **argv)
     }
     v1printf("src_fh size=%lu\n", (unsigned long)src_stat.st_size);
     v1printf("patch_fh size=%lu\n", (unsigned long)patch_stat.st_size);
-    copen(&src_cfh, src_fh, 0, src_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
+    copen(&src_cfh, src_fh, 0, src_stat.st_size, AUTODETECT_COMPRESSOR, 
+	CFILE_RONLY);
     copen(&patch_cfh, patch_fh, 0, patch_stat.st_size, 
 	AUTODETECT_COMPRESSOR, CFILE_RONLY);
     if(patch_format==NULL) {
