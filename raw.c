@@ -61,8 +61,7 @@ rawEncodeDCBuffer(CommandBuffer *buffer, unsigned int offset_type,
 	command_count++;
     while(count--) {
     	if(buffer->lb_tail->len!=0) {
-	    if ((*buffer->cb_tail & (1 << buffer->cb_tail_bit))==DC_ADD) {
-//	    if (GET_CURRENT_COMMAND_TYPE(buffer)==DC_ADD) {
+	    if (get_current_command_type(buffer)==DC_ADD) {
     		total_add_len += buffer->lb_tail->len;
 		last_com = DC_ADD;
 	    } else {
@@ -86,9 +85,7 @@ rawEncodeDCBuffer(CommandBuffer *buffer, unsigned int offset_type,
     count = buffer->buffer_count;
     while(count--) {
 	if(((*buffer->cb_tail & (1 << buffer->cb_tail_bit))==DC_ADD) &&
-//	if(GET_CURRENT_COMMAND_TYPE(buffer)==DC_ADD && 
 	    buffer->lb_tail->len!=0) {
-//	if (GET_CURRENT_COMMAND_TYPE(buffer)==DC_ADD && 
     		cseek(ver_cfh, buffer->lb_tail->offset, CSEEK_ABS);
 		    bytes_wrote=0;
 		    while(buffer->lb_tail->len - bytes_wrote > 0) {
@@ -121,8 +118,7 @@ rawEncodeDCBuffer(CommandBuffer *buffer, unsigned int offset_type,
     dc_pos=0;
     while(command_count--){
 	if(buffer->lb_tail->len > 0) {
-	    if((*buffer->cb_tail & (1 << buffer->cb_tail_bit))==DC_ADD){
-//	    if(GET_CURRENT_COMMAND_TYPE(buffer)==DC_ADD) {
+	    if(DC_ADD == get_current_command_type(buffer) ) {
 		    adds_in_buff++;
 		    min_add_len = MIN(min_add_len, buffer->lb_tail->len);
 		    max_add_len = MAX(max_add_len, buffer->lb_tail->len);

@@ -57,6 +57,7 @@ void DCBufferDecr(CommandBuffer *buffer);
 void DCBufferCollapseAdds(CommandBuffer *buffer);
 void DCBufferAddCmd(CommandBuffer *buffer, int type, unsigned long offset, unsigned long len);
 void DCBufferTruncate(CommandBuffer *buffer, unsigned long len);
-void DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size);
-
+void DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
+    unsigned long src_size, unsigned long ver_size);
+unsigned long DCBufferReset(CommandBuffer *buffer);
 #endif

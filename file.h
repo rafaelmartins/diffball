@@ -15,14 +15,10 @@
   along with this program; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, US 
 */
-#ifndef _HEADER_BDELTA
-#define _HEADER_BDELTA 1
-#include "cfile.h"
+#ifndef _HEADER_FILE
+#define _HEADER_FILE 1
 
-signed int bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, 
-    	cfile *ver_cfh, cfile *out_fh);
-signed int bdeltaReconstructDCBuff(cfile *patchf, 
-	CommandBuffer *dcbuff);
-
+unsigned long copy_cfile_block(cfile *out_cfh, cfile *in_cfh, 
+    unsigned long in_offset, unsigned long len);
 
 #endif

@@ -33,6 +33,7 @@
 #include "switching.h"
 #include "raw.h"
 #include "bdiff.h"
+#include "bdelta.h"
 
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -279,7 +280,8 @@ int main(int argc, char **argv)
 	//	target_matches[x] = '0';
     
     copen(&ref_full, src_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
-    DCBufferInit(&dcbuff, 20000000);
+    DCBufferInit(&dcbuff, 20000000, (unsigned long)ref_stat.st_size, 
+	(unsigned long)ver_stat.st_size);
     init_RefHash(&rhash_full, &ref_full, 16, 1, ref_full.byte_len);
     printf("looking for matching filenames in the archives...\n");
     for(x=0; x< target_count; x++) {
@@ -366,8 +368,8 @@ int main(int argc, char **argv)
     }
     free(target);
     free(source);
-    printf("collapsing adds.\n");
-    DCBufferCollapseAdds(&dcbuff);
+//    printf("collapsing adds.\n");
+//    DCBufferCollapseAdds(&dcbuff);
     printf("outputing patch...\n");
     copen(&ver_full, trg_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     offset_type= ENCODING_OFFSET_DC_POS;
@@ -375,7 +377,8 @@ int main(int argc, char **argv)
 //    rawEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
 //    switchingEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
 //    gdiffEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
-    bdiffEncodeDCBuffer(&dcbuff, &ver_full, &out_cfh);
+//    bdiffEncodeDCBuffer(&dcbuff, &ver_full, &out_cfh);
+    bdeltaEncodeDCBuffer(&dcbuff, &ver_full, &out_cfh);
     cclose(&ver_full);
     cclose(&out_cfh);
     close(src_fh);

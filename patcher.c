@@ -77,7 +77,7 @@ int main(int argc, char **argv)
     printf("here goes...\n");
     offset_type = ENCODING_OFFSET_START;
 //    offset_type = ENCODING_OFFSET_DC_POS;
-	DCBufferInit(&dcbuff, 2000000);
+	DCBufferInit(&dcbuff, 2000000, 0, 0);
 //	switchingReconstructDCBuff(&delta_cfh, &dcbuff, offset_type);
 //   	gdiffReconstructDCBuff(&delta_cfh, &dcbuff, offset_type, 4);
 //	rawReconstructDCBuff(&delta_cfh, &dcbuff, offset_type);

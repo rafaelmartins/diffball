@@ -148,9 +148,21 @@ void DCBufferCollapseAdds(CommandBuffer *buffer)
 	}
 }
 
-void DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size)
+unsigned long 
+DCBufferReset(CommandBuffer *buffer)
+{
+    buffer->lb_tail = buffer->lb_start;
+    buffer->cb_tail = buffer->cb_head;
+    buffer->cb_tail_bit = buffer->cb_head_bit;
+    return buffer->buffer_count;
+}
+
+void DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size, 
+    unsigned long src_size, unsigned long ver_size)
 {
     buffer->buffer_count=0;
+    buffer->src_size = src_size;
+    buffer->ver_size = ver_size;
     buffer_size = (buffer_size > 0 ? (buffer_size/8) : 0) + 1;
     buffer->buffer_size = buffer_size * 8;
     if((buffer->cb_start = (char *)malloc(buffer_size))==NULL){
