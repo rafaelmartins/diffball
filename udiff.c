@@ -65,6 +65,9 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 	    assert(newline_complaint);
 	    DCBufferTruncate(dcbuff,1);
 	    continue;
+	} else if ('B'==buff[0]) {
+	    /* handle the "Binary file x and y differ" by puking. */
+	    abort();
 	}
 	assert(0==memcmp(buff, "@@ -",4));
 	s_line = getUDec(patchf);
