@@ -7,8 +7,8 @@
 #define GDIFF_VER6 6
 #define GDIFF_VER_LEN 1
 #include "delta.h"
-#include "pdbuff.h"
-
+//#include "pdbuff.h"
+#include "cfile.h"
 /* gdiff format
     EOF 0
     data 1 => 1 ubyte follows
@@ -36,6 +36,7 @@
 signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer, 
     unsigned int offset_type, unsigned char *ver, int fh);
 signed int gdiffReconstructFile(int src_fh, int out_fh,
-    struct PatchDeltaBuffer *PDBuff, unsigned int offset_type,
+    /*struct PatchDeltaBuffer *PDBuff,*/ struct cfile *patchf, 
+    unsigned int offset_type,
     unsigned int gdiff_version);
 #endif

@@ -1,0 +1,19 @@
+#!/usr/bin/perl
+open(my $fh, $ARGV[0]) or die("Couldn't open $ARGV[0]!\n");
+my $nolimit = $ARGV[1] eq '' ? 1 : 0;
+my $limitcount = $ARGV[1] eq '' ? 0 : $ARGV[1];
+my $count=0;
+my $char;
+if($ARGV[2] ne '') {
+	sysseek($fh, $ARGV[2], SEEK_SET);
+}
+for($x=0; sysread($fh, $char, 1) && ($x < $limitcount || $nolimit); $x++) {
+	#sysread($fh, $char, 1);
+	if($count==8) {
+		$count=0;
+		print "\n";
+	}
+	printf(" %02x=%03.3s ", ord($char), ord($char)); 
+	$count++;
+}
+print "\n";

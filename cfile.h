@@ -17,6 +17,7 @@ struct cfile {
     unsigned int raw_buff_size;
     unsigned int raw_buff_filled;
     unsigned int raw_buff_pos;
+    unsigned long raw_buff_fh_pos;
 };
 
 void initcfile(struct cfile *cfile, int fh, unsigned long fh_start,
