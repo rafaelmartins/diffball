@@ -43,9 +43,9 @@ struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, 
 
 struct tar_entry {
     unsigned char       *name;
-    unsigned int        mode;
-    unsigned int        uid;
-    unsigned int        gid;
+    unsigned long int   mode;
+    unsigned long int   uid;
+    unsigned long int   gid;
     unsigned long       size;
     /*unsigned long     mtime;*/
     unsigned char       mtime[12];
@@ -56,8 +56,8 @@ struct tar_entry {
     unsigned char       version[2];
     unsigned char       *uname;
     unsigned char       *gname;
-    unsigned int        devmajor;
-    unsigned int        devminor;
+    unsigned long int   devmajor;
+    unsigned long int   devminor;
     unsigned char       prefix_len;
     unsigned long	file_loc;
     unsigned int        entry_num;
