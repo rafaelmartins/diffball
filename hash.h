@@ -29,6 +29,9 @@
 #define RH_CMOD_HASH	(0x4)
 #define RH_SORT_HASH	(0x8)
 #define RH_RSORT_HASH	(0x10)
+#define RH_BUCKET_HASH  (0x20)
+
+#define RH_BUCKET_MIN_ALLOC (4)
 
 #define RH_FINALIZED	(0x1)
 #define RH_SORTED	(0x2)
@@ -38,6 +41,12 @@ typedef struct {
     off_u64		offset;
 } chksum_ent;
 
+typedef struct ll_chksum_ent ll_chksum_ent;
+struct ll_chksum_ent {
+    chksum_ent ent;
+    ll_chksum_ent *next;
+};
+
 typedef struct {
     unsigned int seed_len;
     unsigned long hr_size;
@@ -46,15 +55,17 @@ typedef struct {
     union {
 	unsigned long	*mod;
         chksum_ent	*chk;
-//	match_ent 	*ment;
+	struct {
+	    unsigned char	*depth;
+	    unsigned short	**chksum;
+	    off_u64		**offset;
+	    unsigned short	max_depth;
+	} bucket;
     } hash;
     unsigned int  sample_rate;
     cfile *ref_cfh;
     unsigned long inserts;
     unsigned long duplicates;
-#ifdef DEBUG_HASH
-    unsigned long bad_duplicates;
-#endif
 } RefHash;
 
 inline unsigned long hash_it(RefHash *rhash, ADLER32_SEED_CTX *ads);

@@ -33,11 +33,33 @@ cmp_chksum_ent(const void *ce1, const void *ce2)
 	c1->chksum < c2->chksum ? -1 : 1);
 }
 
+/* ripped straight out of K&R C manual.  great book btw. */
+signed long
+RH_bucket_find_chksum(unsigned short chksum, unsigned short array[], 
+    unsigned short count)
+{
+    signed long low,high,mid;
+    assert(count);
+    low = 0;
+    high = count - 1;
+    while(low <= high) {
+	mid = (low+high) /2;
+	if(chksum < array[mid])
+	    high = mid -1;
+	else if (chksum > array[mid]) 
+	    low = mid + 1;
+	else
+	    return mid;
+     }
+     return -1;
+}
+
 inline unsigned long
 lookup_offset(RefHash *rhash, ADLER32_SEED_CTX *ads)
 {
     chksum_ent ent;
     unsigned long chksum, index;
+    signed long pos;
     void *p;
     chksum = get_checksum(ads);
     if(rhash->type & RH_MOD_HASH) {
@@ -53,12 +75,23 @@ lookup_offset(RefHash *rhash, ADLER32_SEED_CTX *ads)
 	if(p==NULL)
 	    return 0;
 	return ((chksum_ent*)p)->offset;
-    }
+    } else if(rhash->type & RH_BUCKET_HASH) {
+	index = chksum & 0xffff;
+	if(rhash->hash.bucket.depth[index]==0) {
+	    return 0;
+	}
+	chksum = ((chksum >> 16) & 0xffff);
+	pos = RH_bucket_find_chksum(chksum, rhash->hash.bucket.chksum[index], 
+	    rhash->hash.bucket.depth[index]);
+	if(pos >= 0)
+	    return rhash->hash.bucket.offset[index][pos];
+    }	
     return 0;
 }
 
 /* this is kind of stupid I realize, but certain hashing methods return 
-   different dependant on the hash state. */
+   different dependant on the hash state. 
+   DEPRECATED also, this is disapearing shortly.  */
 inline unsigned long
 get_offset(RefHash *rhash, unsigned long index)
 {
@@ -80,6 +113,8 @@ get_offset(RefHash *rhash, unsigned long index)
     return 0;
 }
 
+
+/* this is on it's way out, have it gone prior to stable 0.4 */
 inline unsigned long 
 hash_it(RefHash *rhash, ADLER32_SEED_CTX *ads)
 {
@@ -94,13 +129,32 @@ hash_it(RefHash *rhash, ADLER32_SEED_CTX *ads)
 signed int 
 free_RefHash(RefHash *rhash)
 {
+    unsigned long x;
     v2printf("free_RefHash\n");
-    if((rhash->type & RH_MOD_HASH) && (rhash->hash.mod != NULL))
+    if((rhash->type & RH_MOD_HASH) && (rhash->hash.mod != NULL)) {
 	free(rhash->hash.mod);
-    else if((rhash->type & (RH_SORT_HASH | RH_RSORT_HASH | RH_RMOD_HASH | 
-	RH_CMOD_HASH)) && 
-	(rhash->hash.chk != NULL))
+    } else if((rhash->type & (RH_SORT_HASH | RH_RSORT_HASH | 
+	RH_RMOD_HASH | RH_CMOD_HASH)) && (rhash->hash.chk != NULL)) {
 	free(rhash->hash.chk);
+    } else if(rhash->type & RH_BUCKET_HASH) {
+	for(x=0; x < rhash->hr_size; x++) {
+//	    if(rhash->hash.bucket.depth[x]) {
+
+	    if(rhash->hash.bucket.chksum[x]!= NULL) {
+		free(rhash->hash.bucket.chksum[x]);
+		free(rhash->hash.bucket.offset[x]);
+	    } else {
+		assert(rhash->hash.bucket.depth[x]==0);
+	    }
+	}
+	free(rhash->hash.bucket.chksum);
+	free(rhash->hash.bucket.offset);
+	free(rhash->hash.bucket.depth);
+	rhash->hash.bucket.chksum = NULL;
+	rhash->hash.bucket.offset = NULL;
+	rhash->hash.bucket.depth = NULL;
+	rhash->hash.bucket.max_depth = 0;
+    }
     rhash->ref_cfh = NULL;
     rhash->seed_len = rhash->hr_size = rhash->sample_rate = 
 	rhash->inserts = rhash->type = rhash->flags = rhash->duplicates = 0;
@@ -117,16 +171,18 @@ init_RefHash(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len,
     rhash->flags = 0;
     rhash->type = hash_type;
     v2printf("init_RefHash\n");
-    init_primes(&pctx);
-    rhash->hr_size = get_nearest_prime(&pctx, hr_size);
-    free_primes(&pctx);
+    if(rhash->type & RH_BUCKET_HASH) {
+	rhash->hr_size = 0x10000;
+	rhash->hash.bucket.max_depth = 255;
+    } else {
+	init_primes(&pctx);
+	rhash->hr_size = get_nearest_prime(&pctx, hr_size);
+	free_primes(&pctx);
+    }
     rhash->sample_rate = sample_rate;
     rhash->ref_cfh = ref_cfh;
     rhash->seed_len = seed_len;
     rhash->inserts = rhash->duplicates = 0;
-#ifdef DEBUG_HASH
-    rhash->bad_duplicates=0;
-#endif
     if(rhash->type & RH_MOD_HASH) {
 	if((rhash->hash.mod=(unsigned long*)malloc(sizeof(unsigned long) * 
 	    (rhash->hr_size)))==NULL) {
@@ -161,8 +217,48 @@ init_RefHash(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len,
 	    perror("couldn't alloc needed memory for ref hash\n");
 	    exit(EXIT_FAILURE);
 	}
+    } else if(rhash->type & RH_BUCKET_HASH) {
+	if((rhash->hash.bucket.depth = (unsigned char *)malloc(
+	    rhash->hr_size)) == NULL || 
+	    (rhash->hash.bucket.chksum = (unsigned short **)malloc(
+	    rhash->hr_size * sizeof(unsigned short *)))==NULL ||
+	    (rhash->hash.bucket.offset = (off_u64 **)malloc(
+	    rhash->hr_size * sizeof(off_u64 *)))==NULL) {
+	    perror("shite, couldn't alloc needed memory for ref hash\n");
+	    exit(EXIT_FAILURE);
+	}
+	for(x=0; x < rhash->hr_size; x++) {
+	    rhash->hash.bucket.offset[x] = NULL;
+	    rhash->hash.bucket.chksum[x] = NULL;
+	    rhash->hash.bucket.depth[x] = 0;
+	}
     }
     return 0;
+}
+
+signed int
+RH_bucket_resize(RefHash *rhash, unsigned short index, unsigned short size)
+{
+    assert(rhash->hash.bucket.depth[index]==0 || 
+	rhash->hash.bucket.depth[index]==4 || 
+	rhash->hash.bucket.depth[index]==8 || 
+	rhash->hash.bucket.depth[index]==16 ||
+	rhash->hash.bucket.depth[index]==32 ||
+	rhash->hash.bucket.depth[index]==64 ||
+	rhash->hash.bucket.depth[index]==128);
+    if(rhash->hash.bucket.depth[index]==0) {
+	return((rhash->hash.bucket.chksum[index] = (unsigned short *)malloc(
+	    size * sizeof(unsigned short)))==NULL || 
+	    (rhash->hash.bucket.offset[index] = (off_u64 *)malloc(size * 
+	    sizeof(off_u64)))==NULL);
+    }
+    return((rhash->hash.bucket.chksum[index] = (unsigned short *)realloc(
+	rhash->hash.bucket.chksum[index], 
+	size * sizeof(unsigned short))) ==
+	NULL || 
+	(rhash->hash.bucket.offset[index] = (off_u64 *)realloc(
+	rhash->hash.bucket.offset[index], 
+	size * sizeof(off_u64)))==NULL);
 }
 
 signed int
@@ -170,8 +266,9 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
     off_u64 ref_end)
 {
     ADLER32_SEED_CTX ads;
-    off_u64 hash_offset = 0;
-    unsigned long index, skip=0;
+    unsigned long index, skip=0, chksum;
+    signed long low, mid, high;
+    unsigned char worth_continuing;
     cfile_window *cfw;
     unsigned int missed;
 
@@ -184,8 +281,9 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 
     update_adler32_seed(&ads, cfw->buff + cfw->pos, rhash->seed_len);
     missed=0;
-
-    for(cfw->pos += rhash->seed_len; cfw->offset + cfw->pos < ref_end; 
+    worth_continuing=1;
+    for(cfw->pos += rhash->seed_len; cfw->offset + cfw->pos < ref_end && 
+	worth_continuing; 
 	cfw->pos++) {
 	if(cfw->pos >= cfw->end) {
 	    cfw = next_page(ref_cfh);
@@ -196,8 +294,7 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 
 	if(rhash->type & RH_MOD_HASH) {
 	    index=hash_it(rhash, &ads);
-	    hash_offset = get_offset(rhash, index);
-	    if(hash_offset==0) {
+	    if(get_offset(rhash,index)==0) {
 		rhash->inserts++;
 		rhash->hash.mod[index] = cfw->offset + cfw->pos - 
 		    rhash->seed_len;
@@ -210,10 +307,11 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 		missed++;
 	    }
 	} else if(rhash->type & (RH_RMOD_HASH | RH_CMOD_HASH)) {
-	    index = hash_it(rhash, &ads);
+	    chksum = get_checksum(&ads);
+	    index = chksum % rhash->hr_size;
 	    if(rhash->hash.chk[index].chksum==0) {
+		rhash->hash.chk[index].chksum = chksum;
 		rhash->inserts++;
-		rhash->hash.chk[index].chksum = get_checksum(&ads);
 		if(rhash->type & RH_CMOD_HASH)
 		    rhash->hash.chk[index].offset = cfw->offset + cfw->pos -
 			rhash->seed_len;
@@ -224,6 +322,98 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 	    } else {
 		rhash->duplicates++;
 		missed++;
+	    }
+	} else if(rhash->type & RH_BUCKET_HASH) {
+	    chksum = get_checksum(&ads);
+	    index = chksum & 0xffff;
+	    chksum = ((chksum >> 16) & 0xffff);
+
+	    if(rhash->hash.bucket.depth[index]==0) {
+//		v0printf("initing bucket at index(%u)\n", index);
+		if(RH_bucket_resize(rhash, index, RH_BUCKET_MIN_ALLOC)) {
+		    perror("shite, malloc bucket failed.\n");
+		    abort();
+		}
+		rhash->hash.bucket.chksum[index][0] = chksum;
+		rhash->hash.bucket.offset[index][0] = cfw->offset + cfw->pos -
+		    rhash->seed_len;
+		rhash->hash.bucket.depth[index]++;
+		rhash->inserts++;
+		if(rhash->sample_rate > 1) 
+		    skip = rhash->sample_rate;
+	    } else if(rhash->hash.bucket.depth[index] < 
+		rhash->hash.bucket.max_depth) {
+		low = 0;
+		high = rhash->hash.bucket.depth[index] - 1;
+		while(low < high) {
+		    mid = (low+high) /2;
+		    if(chksum < rhash->hash.bucket.chksum[index][mid])
+			high = mid -1;
+		    else if (chksum > rhash->hash.bucket.offset[index][mid]) 
+			low = mid + 1;
+		    else {
+			low = mid;
+			break;
+		    }
+		}
+
+		if(rhash->hash.bucket.chksum[index][low] != chksum) {
+		    /* expand bucket if needed */
+#define NEED_RESIZE(x)							\
+    ((x)==128 || (x)==64 || (x)==32 || (x)==16 || (x)==8 || (x)==4)
+		    if(NEED_RESIZE(rhash->hash.bucket.depth[index])) {
+			if (RH_bucket_resize(rhash, index, 
+			    MIN(rhash->hash.bucket.max_depth, 
+			    (rhash->hash.bucket.depth[index] << 1)))) {
+			    perror("shite, realloc bucket failed.\n");
+			    abort();
+			}
+		    }
+		    if(rhash->hash.bucket.chksum[index][low] < chksum) {
+			/* shift low 1 element to the right */
+			memmove(rhash->hash.bucket.chksum[index] + low + 1, 
+			    rhash->hash.bucket.chksum[index] + low, 
+			    (rhash->hash.bucket.depth[index] - low) * 
+			    sizeof(unsigned short));
+			memmove(rhash->hash.bucket.offset[index] + low + 1, 
+			    rhash->hash.bucket.offset[index] + low , 
+			    (rhash->hash.bucket.depth[index] - low) * 
+			    sizeof(off_u64));
+			rhash->hash.bucket.chksum[index][low] = chksum;
+			rhash->hash.bucket.offset[index][low] = cfw->offset +
+			    cfw->pos - rhash->seed_len;
+		    } else if(low == rhash->hash.bucket.depth[index] -1) {
+			rhash->hash.bucket.chksum[index][
+			    rhash->hash.bucket.depth[index]] = chksum;
+			rhash->hash.bucket.chksum[index][
+			    rhash->hash.bucket.depth[index]] = cfw->offset +
+			    cfw->pos - rhash->seed_len;
+		    } else {
+			memmove(rhash->hash.bucket.offset[index] + low + 2, 
+			    rhash->hash.bucket.offset[index] + low +1 , 
+			    (rhash->hash.bucket.depth[index] - low - 1) * 
+			    sizeof(off_u64));
+			memmove(rhash->hash.bucket.chksum[index] + low + 2, 
+			    rhash->hash.bucket.chksum[index] + low +1 , 
+			    (rhash->hash.bucket.depth[index] - low - 1) * 
+			    sizeof(unsigned short));
+			rhash->hash.bucket.chksum[index][low] = chksum;
+			rhash->hash.bucket.offset[index][low] = cfw->offset +
+			    cfw->pos - rhash->seed_len;
+		    }
+		    rhash->inserts++;
+		    if(rhash->inserts == (rhash->hr_size * 
+			rhash->hash.bucket.max_depth)) {
+			worth_continuing=0;
+		    }
+		    rhash->hash.bucket.depth[index]++;
+		    if(rhash->sample_rate > 1)
+			skip = rhash->sample_rate;
+		} else {
+		    rhash->duplicates++;
+		}
+	    } else {
+		rhash->duplicates++;
 	    }
 	} else if (rhash->type & RH_SORT_HASH) {
 	    if(rhash->hr_size == rhash->inserts) {
@@ -259,7 +449,7 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 	    if(rhash->sample_rate > 1)
 		skip = rhash->sample_rate;
 	}
-	if(skip) {
+	if(skip && worth_continuing) {
 //	    v1printf("asked to skip %lu\n", skip);
 	    if(cfw->pos + cfw->offset + skip>= ref_end) {
 		cfw->pos += skip;
@@ -337,6 +527,7 @@ RHash_find_matches(RefHash *rhash, cfile *ref_cfh)
     }
     return 0;
 }
+
 signed int
 RHash_sort(RefHash *rhash)
 {
@@ -405,8 +596,8 @@ RHash_cleanse(RefHash *rhash)
 {
     unsigned long x=0, hash_offset=0;
     assert(rhash->inserts);
-    assert(rhash->flags & RH_SORTED);
     if(rhash->type & RH_SORT_HASH) {
+	assert(rhash->flags & RH_SORTED);
 	v1printf("inserts=%lu, hr_size=%lu\n", rhash->inserts, rhash->hr_size);
 //	qsort(rhash->hash.chk, rhash->inserts, sizeof(chksum_ent), 
 //	    cmp_chksum_ent);
@@ -442,6 +633,7 @@ RHash_cleanse(RefHash *rhash)
 	}
 	rhash->hr_size = rhash->inserts;
     } else if(rhash->type & RH_RSORT_HASH) {
+	assert(rhash->flags & RH_SORTED);
 	v1printf("inserts=%lu, hr_size=%lu\n", rhash->inserts, rhash->hr_size);
 	qsort(rhash->hash.chk, rhash->inserts, sizeof(chksum_ent), 
 	    cmp_chksum_ent);
@@ -477,6 +669,21 @@ RHash_cleanse(RefHash *rhash)
 	    rhash->hash.chk = NULL;
 	}
 	rhash->hr_size = rhash->inserts;
+    } else if (rhash->type & RH_BUCKET_HASH) {
+	for(x=0; x < rhash->hr_size; x++) {
+	    if(rhash->hash.bucket.depth[x] > 0 && 
+		rhash->hash.bucket.depth[x] < rhash->hash.bucket.max_depth) {
+		if((rhash->hash.bucket.chksum[x] = (unsigned short *) realloc(
+		    rhash->hash.bucket.chksum[x], sizeof(unsigned short) * 
+		    rhash->hash.bucket.depth[x])) == NULL || 
+		    (rhash->hash.bucket.offset[x] = (off_u64 *) realloc(
+		    rhash->hash.bucket.offset[x], sizeof(off_u64) * 
+		    rhash->hash.bucket.depth[x])) == NULL) {
+		    perror("shite, realloc failed.\n");
+		    abort();
+		}
+	    }
+	}
     }
     rhash->flags |= RH_FINALIZED;
     return 0;
@@ -506,5 +713,6 @@ print_RefHash_stats(RefHash *rhash) {
 	v1printf("hash stats: matched entries(%lu), percentage(%f%%)\n", 
 	    matched, ((float)matched/rhash->inserts)*100);
     }
-    v1printf("hash stats: seed_len(%u)\n", rhash->seed_len);
+    v1printf("hash stats: seed_len(%u), sample_rate(%u)\n", rhash->seed_len,
+	rhash->sample_rate);
 }
