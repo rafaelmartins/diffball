@@ -104,42 +104,41 @@ void
 DCBufferAddCmd(CommandBuffer *buffer, int type, unsigned long offset, 
     unsigned long len)
 {
-    if(buffer->DCBtype==DCBUFFER_FULL_TYPE) {
-	if(buffer->DCB.full.lb_tail == buffer->DCB.full.lb_end) {
-	    v1printf("resizing command buffer from %lu to %lu\n", 
-		buffer->DCB.full.buffer_size, buffer->DCB.full.buffer_size * 2);
-	    if((buffer->DCB.full.cb_start = (char *)realloc(
-		buffer->DCB.full.cb_start, buffer->DCB.full.buffer_size /4 ))
-		==NULL) {
+    assert(DCBUFFER_FULL_TYPE == buffer->DCBtype);
+    if(buffer->DCB.full.lb_tail == buffer->DCB.full.lb_end) {
+	DCB_resize_full(buffer);
+    }
+    buffer->DCB.full.lb_tail->offset = offset;
+    buffer->DCB.full.lb_tail->len = len;
+    if (type==DC_ADD)
+	*buffer->DCB.full.cb_tail &= ~(1 << buffer->DCB.full.cb_tail_bit);
+    else
+	*buffer->DCB.full.cb_tail |= (1 << buffer->DCB.full.cb_tail_bit);
+    buffer->DCB.full.buffer_count++;
+    DCBufferIncr(buffer);
+}
 
-		v0printf("resizing command buffer failed, exiting\n");
-		exit(EXIT_FAILURE);
-	    } else if((buffer->DCB.full.lb_start = 
-		(DCLoc *)realloc(buffer->DCB.full.lb_start, 
-		buffer->DCB.full.buffer_size * 2 * sizeof(DCLoc)) )==NULL) {
-		v0printf("resizing command buffer failed, exiting\n");
-		exit(EXIT_FAILURE);
-	    }
-	    buffer->DCB.full.buffer_size *= 2;
-	    buffer->DCB.full.cb_head = buffer->DCB.full.cb_start;
-	    buffer->DCB.full.lb_head = buffer->DCB.full.lb_start;
-	    buffer->DCB.full.lb_tail = buffer->DCB.full.lb_start + 
-		buffer->DCB.full.buffer_count;
-	    buffer->DCB.full.cb_tail = buffer->DCB.full.cb_start + 
-		(buffer->DCB.full.buffer_count/8);
-	    buffer->DCB.full.lb_end = buffer->DCB.full.lb_start + 
-		buffer->DCB.full.buffer_size -1;
-	    buffer->DCB.full.cb_end = buffer->DCB.full.cb_start + 
-		(buffer->DCB.full.buffer_size/8) -1;
-	}
-	buffer->DCB.full.lb_tail->offset = offset;
-	buffer->DCB.full.lb_tail->len = len;
-	if (type==DC_ADD)
-	    *buffer->DCB.full.cb_tail &= ~(1 << buffer->DCB.full.cb_tail_bit);
-	else
-	    *buffer->DCB.full.cb_tail |= (1 << buffer->DCB.full.cb_tail_bit);
-	buffer->DCB.full.buffer_count++;
-	DCBufferIncr(buffer);
+void 
+DCB_get_add(CommandBuffer *buffer, DCLoc *dloc)
+{
+//    if(DCBUFFER_FULL_TYPE == buffer->DCBtype) {
+	
+
+}
+
+void
+DCB_add_copy(CommandBuffer *buffer, unsigned long src_pos, 
+    unsigned long ver_pos, unsigned long len)
+{
+    assert(DCBUFFER_MATCHES_TYPE == buffer->DCBtype);	
+    if(DCBUFFER_MATCHES_TYPE == buffer->DCBtype) {
+	if(buffer->DCB.matches.buff_count == buffer->DCB.matches.buff_size)
+	    DCB_resize_matches(buffer);
+
+	buffer->DCB.matches.buff->src_pos = src_pos;
+	buffer->DCB.matches.buff->ver_pos = ver_pos;
+	buffer->DCB.matches.buff->len = len;
+	buffer->DCB.matches.buff_count++;
     }
 }
 
@@ -230,3 +229,47 @@ void DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
     }
 }
 
+void
+DCB_resize_matches(CommandBuffer *buffer)
+{
+    assert(DCBUFFER_MATCHES_TYPE == buffer->DCBtype);
+    if((buffer->DCB.matches.buff = (DCLoc_match *)realloc(
+	buffer->DCB.matches.buff, buffer->DCB.matches.buff_size * 2))
+	== NULL) {
+	v0printf("buffer resize failed\n");
+	exit(1);
+    }
+    buffer->DCB.matches.buff_size *= 2;
+}
+
+void
+DCB_resize_full(CommandBuffer *buffer)
+{
+    assert(DCBUFFER_FULL_TYPE == buffer->DCBtype);
+    v1printf("resizing command buffer from %lu to %lu\n", 
+	buffer->DCB.full.buffer_size, buffer->DCB.full.buffer_size * 2);
+    if((buffer->DCB.full.cb_start = (char *)realloc(
+	buffer->DCB.full.cb_start, buffer->DCB.full.buffer_size /4 ))
+	==NULL) {
+
+	v0printf("resizing command buffer failed, exiting\n");
+	exit(EXIT_FAILURE);
+    } else if((buffer->DCB.full.lb_start = 
+	(DCLoc *)realloc(buffer->DCB.full.lb_start, 
+	buffer->DCB.full.buffer_size * 2 * sizeof(DCLoc)) )==NULL) {
+	v0printf("resizing command buffer failed, exiting\n");
+	exit(EXIT_FAILURE);
+    }
+    buffer->DCB.full.buffer_size *= 2;
+    buffer->DCB.full.cb_head = buffer->DCB.full.cb_start;
+    buffer->DCB.full.lb_head = buffer->DCB.full.lb_start;
+    buffer->DCB.full.lb_tail = buffer->DCB.full.lb_start + 
+	buffer->DCB.full.buffer_count;
+    buffer->DCB.full.cb_tail = buffer->DCB.full.cb_start + 
+	(buffer->DCB.full.buffer_count/8);
+    buffer->DCB.full.lb_end = buffer->DCB.full.lb_start + 
+	buffer->DCB.full.buffer_size -1;
+    buffer->DCB.full.cb_end = buffer->DCB.full.cb_start + 
+	(buffer->DCB.full.buffer_size/8) -1;
+
+}

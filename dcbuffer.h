@@ -27,7 +27,12 @@ extern unsigned int global_use_md5;
 #define ENCODING_OFFSET_START		0x0
 #define ENCODING_OFFSET_VERS_POS	0x1
 #define ENCODING_OFFSET_DC_POS		0x2
+
+/* type for CommandBuffer.DCBtype */
 #define DCBUFFER_FULL_TYPE		0x1
+#define DCBUFFER_MATCHES_TYPE		0x2
+#define DCBUFFER_PASSES_TYPE		0x3
+
 #define ADD_CFH_FREE_FLAG		0x1
 
 typedef struct {
@@ -36,24 +41,18 @@ typedef struct {
 } DCLoc;
 
 typedef struct {
-    unsigned long src_offset;
-    unsigned long ver_offset;
+    unsigned long src_pos;
+    unsigned long ver_pos;
     unsigned long len;
 } DCLoc_match;
 
 
 
 typedef struct {
-//    unsigned long flush_count;
-//    unsigned long buffer_count;
-//    unsigned long buffer_size;
     unsigned long src_size;
     unsigned long ver_size;
     unsigned long reconstruct_pos;
     unsigned char DCBtype;
-//	    unsigned char *cb_start, *cb_end, *cb_head, *cb_tail;
-//	    unsigned char cb_tail_bit, cb_head_bit;
-//	    DCLoc *lb_start, *lb_end, *lb_head, *lb_tail;
     union {
 	struct {
 	    unsigned long buffer_count;
@@ -63,10 +62,16 @@ typedef struct {
 	    DCLoc *lb_start, *lb_end, *lb_head, *lb_tail;
 	} full;
 	struct {
+	    unsigned long buff_pos;
+	    unsigned long buff_count;
+	    unsigned long buff_size;
+	    DCLoc_match *buff;
+	} matches;
+	struct {
 	    DCLoc_match **buff;
 	    unsigned long pass_count;
 	    unsigned long *buff_count;
-	} matches;
+	} multipass;
     } DCB;
     cfile *add_cfh;
     unsigned long flags;
@@ -91,4 +96,7 @@ void DCBufferFree(CommandBuffer *buffer);
 void DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
     unsigned long src_size, unsigned long ver_size, unsigned char type);
 unsigned long DCBufferReset(CommandBuffer *buffer);
+
+void DCB_resize_full(CommandBuffer *buffer);
+void DCB_resize_matches(CommandBuffer *buffer);
 #endif
