@@ -161,6 +161,7 @@ int main(int argc, char **argv)
     } else if(BDIFF_FORMAT == patch_id) {
 	encode_result = bdiffEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
     } else if(SWITCHING_FORMAT == patch_id) {
+	DCBufferCollapseAdds(&buffer);
 	encode_result = switchingEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
     } else if (BDELTA_FORMAT == patch_id) {
 	encode_result = bdeltaEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);

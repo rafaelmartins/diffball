@@ -48,7 +48,7 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *ver_cfh,
     unsigned char buff[16];
     cwrite(patchf, BDELTA_MAGIC, BDELTA_MAGIC_LEN);
     writeUBytesLE(buff, BDELTA_VERSION, BDELTA_VERSION_LEN);
-    cwrite(patchf, buff, BDELTA_VERSION);
+    cwrite(patchf, buff, BDELTA_VERSION_LEN);
     count = DCBufferReset(dcbuff);
     /* since this will be collapsing all adds... */
     current = DC_COPY;
@@ -62,18 +62,18 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *ver_cfh,
 	DCBufferIncr(dcbuff);
     }
     maxnum = MAX(matches, MAX(dcbuff->src_size, dcbuff->ver_size) );
-    if(maxnum <= 0x7f)
+/*    if(maxnum <= 0x7f)
 	intsize=1;
     else if(maxnum <= 0x7fff)
 	intsize=2;
     else if(maxnum <= 0x7fffff)
 	intsize=3;
-    else
+    else*/
 	intsize=4;
     v2printf("size1=%lu, size2=%lu, matches=%lu, intsize=%u\n", dcbuff->src_size, 
 	dcbuff->ver_size, matches, intsize);
-    buff[5] = intsize;
-    cwrite(patchf, buff, 6);
+    buff[0] = intsize;
+    cwrite(patchf, buff, 1);
     writeUBytesLE(buff, dcbuff->src_size, intsize);
     writeUBytesLE(buff + intsize, dcbuff->ver_size, intsize);
     writeUBytesLE(buff + (2 * intsize), matches, intsize);
@@ -164,6 +164,8 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
     cread(patchf, buff, 3 * int_size);
     size1 = readUBytesLE(buff, int_size);
     size2 = readUBytesLE(buff + int_size, int_size);
+    dcbuff->src_size = size1;
+    dcbuff->ver_size = size2;
     matches = readUBytesLE(buff + (2 * int_size), int_size);
     v2printf("size1=%lu, size2=%lu\nmatches=%lu\n", size1, size2, matches);
     /* add_pos = header info, 3 int_size's (size(1|2), num_match) */

@@ -63,5 +63,5 @@ identify_format(cfile *patchf)
     if(format==0) {
 	return 0;
     }
-    return ((format << 16) | format);
+    return ((format << 16) | val);
 }

@@ -126,7 +126,7 @@ main(int argc, char **argv)
 	if(patch_id==0) {
 	    fprintf(stderr, "Couldn't identify the patch format, aborting\n");
 	    exit(EXIT_FAILURE);
-	} else if((patch_id >> 16)==1) {
+	} else if((patch_id & 0xffff)==1) {
 	    fprintf(stderr, "Unsupported format version\n");
 	    exit(EXIT_FAILURE);
 	}
@@ -160,6 +160,18 @@ main(int argc, char **argv)
     v1printf("reconstruction return=%ld\n", recon_val);
     v1printf("reconstructing target file based off of dcbuff commands...\n");
     reconstructFile(&dcbuff, &src_cfh, &patch_cfh, &out_cfh);
+    if(BDELTA_FORMAT==patch_id) {
+	if(ctell(&out_cfh, CSEEK_ABS) < dcbuff.ver_size) {
+	    unsigned char buff[512];
+	    unsigned long to_write;
+	    to_write = dcbuff.ver_size - ctell(&out_cfh, CSEEK_ABS);
+	    memset(buff, 0, 512);
+	    while(to_write > 0) {
+		cwrite(&out_cfh, buff, MIN(to_write, 512));
+		to_write -= MIN(to_write, 512);
+	    }	    
+	}
+    }
     v1printf("reconstruction done.\n");
     DCBufferFree(&dcbuff);
     cclose(&out_cfh);

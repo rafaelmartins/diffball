@@ -89,10 +89,11 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
     cwrite(out_cfh, SWITCHING_MAGIC, SWITCHING_MAGIC_LEN);
     writeUBytesBE(out_buff, SWITCHING_VERSION, SWITCHING_VERSION_LEN);
     cwrite(out_cfh, out_buff, SWITCHING_VERSION_LEN);
+    delta_pos += SWITCHING_MAGIC_LEN + SWITCHING_VERSION_LEN;
     total_add_len=0;
     while(count--) {
 	if(DC_ADD==current_command_type(buffer))
-    		total_add_len += buffer->lb_tail->len;
+    	    total_add_len += buffer->lb_tail->len;
     	DCBufferIncr(buffer);
     }
     writeUBytesBE(out_buff, total_add_len, 4);
