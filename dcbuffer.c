@@ -57,7 +57,6 @@ internal_DCB_register_dcb_src(CommandBuffer *dcb, CommandBuffer *dcb_src,
     dcb->src_type[dcb->src_count] = ((type & 0x1) | DCB_DCB_SRC);
     dcb->src_read_func[dcb->src_count] = (read_func == NULL ? default_dcb_src_read_func : read_func);
     dcb->src_copy_func[dcb->src_count] = (copy_func == NULL ? default_dcb_src_copy_func : copy_func);
-    dcb->src_count;
     return dcb->src_count - 1;
 }
 
@@ -93,8 +92,12 @@ internal_DCB_resize_srcs(CommandBuffer *dcb)
     } else if((dcb->src_copy_func = (dcb_src_copy_func *)realloc(dcb->src_copy_func, 
 	sizeof(dcb_src_copy_func) * dcb->src_array_size * 2))==NULL) {
 	return MEM_ERROR;
+    } else if((dcb->extra_offsets = (DCLoc **)realloc(dcb->extra_offsets,
+	sizeof(DCLoc *) * dcb->src_array_size * 2))==NULL) {
+	return MEM_ERROR;
     }
     dcb->src_array_size *= 2;
+    return 0;
 }
 
 unsigned long 
@@ -612,15 +615,17 @@ DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
 #ifdef DEBUG_DCBUFFER
     buffer->total_copy_len = 0;
 #endif
-    if((buffer->srcs = (dcb_src *)malloc(sizeof(dcb_src) * 4))==NULL) {
+    buffer->src_array_size = 4;
+    if((buffer->srcs = (dcb_src *)malloc(sizeof(dcb_src) * buffer->src_array_size))==NULL) {
 	return MEM_ERROR;
-    } else if ((buffer->src_read_func = (dcb_src_read_func *)malloc(sizeof(dcb_src_read_func) * 4))==NULL) {
+    } else if((buffer->extra_offsets = (DCLoc **)malloc(sizeof(DCLoc *) * buffer->src_array_size))==NULL) {
 	return MEM_ERROR;
-    } else if ((buffer->src_copy_func = (dcb_src_copy_func *)malloc(sizeof(dcb_src_copy_func) * 4))==NULL) {
+    } else if ((buffer->src_read_func = (dcb_src_read_func *)malloc(sizeof(dcb_src_read_func) * buffer->src_array_size))==NULL) {
+	return MEM_ERROR;
+    } else if ((buffer->src_copy_func = (dcb_src_copy_func *)malloc(sizeof(dcb_src_copy_func) * buffer->src_array_size))==NULL) {
 	return MEM_ERROR;
     }
     buffer->src_count = 0;
-    buffer->src_array_size = 4;
     if(type == DCBUFFER_FULL_TYPE) {
 	buffer->DCB.full.buffer_count = 0;
 	buffer->DCB.full.buffer_size = buffer_size;

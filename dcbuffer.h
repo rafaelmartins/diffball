@@ -42,10 +42,6 @@ extern unsigned int global_use_md5;
 #define DCB_FREE_SRC_CFH		(char)0x1
 #define DCB_OVERLAY_SRC			(char)0x80
 
-/* internal DCB src types */
-#define DCB_CFH_SRC			(char)0x80
-#define DCB_DCB_SRC			(char)0x00
-
 /* essentially dcb->src_type is thus- upper 2 bits 
    the actual type of the src (eg, cfile, another command
    buffer), and the lower bit for if it's an add or copy src.
@@ -53,6 +49,10 @@ extern unsigned int global_use_md5;
    add/copy determination depending on what the desired end result
    is.
 */
+
+/* internal DCB src types */
+#define DCB_CFH_SRC			(char)0x80
+#define DCB_DCB_SRC			(char)0x00
 
 // internal dcbuffer macros.
 #define LLM_VEND(l)  ((l)->ver_pos + (l)->len)
@@ -125,6 +125,7 @@ typedef struct _CommandBuffer {
 	} llm;
     } DCB;
     dcb_src *srcs;
+    DCLoc **extra_offsets;
     dcb_src_read_func *src_read_func;
     dcb_src_copy_func *src_copy_func;
     unsigned int src_array_size, src_count;
