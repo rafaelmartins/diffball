@@ -19,6 +19,9 @@
 #define _HEADER_DEFS 1
 #include "config.h"
 
+#define PATCH_TRUNCATED	0x1
+#define PATCH_CORRUPT	0x2
+
 #ifdef DEV_VERSION
 #include <assert.h>
 #else

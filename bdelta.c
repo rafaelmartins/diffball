@@ -133,8 +133,10 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
     unsigned long size1, size2, or_mask=0, neg_mask;
     unsigned long ver_pos = 0, add_pos;
     unsigned long add_start;
-    assert(3==cseek(patchf, 3, CSEEK_FSTART));
-    assert(2==cread(patchf, buff, 2));
+    if(3!=cseek(patchf, 3, CSEEK_FSTART))
+	goto truncated_patch;
+    if(2!=cread(patchf, buff, 2))
+	goto truncated_patch;
     ver = readUBytesLE(buff, 2);
     dfprintf("ver=%u\n", ver);
     cread(patchf, buff, 1);
@@ -195,5 +197,8 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
     dfprintf("finished reading.  ver_pos=%lu, add_pos=%lu\n",
 	ver_pos, add_pos);
     return 0;
+
+    truncated_patch:
+    return PATCH_TRUNCATED;
 }
 
