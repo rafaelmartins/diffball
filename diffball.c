@@ -172,10 +172,17 @@ int main(int argc, char **argv)
     /* alg to basically figure out the common dir prefix... eg, if everything is in dir 
     	debianutils-1.16.3*/
     /*note, we want the slash, hence +1 */
-    src_common_len=(char *)rindex(
-        (const char *)source[0]->fullname, '/') - (char *)source[0]->fullname+1;
-    strncpy((char *)src_common, (char *)source[0]->fullname,src_common_len);
+    p = rindex(source[0]->fullname, '/');
+    if(p!=NULL) {
+	src_common_len = ((char *)p - (char *)source[0]->fullname) + 1;
+	strncpy((char *)src_common, (char *)source[0]->fullname, 
+	    src_common_len);
+    } else {
+	src_common_len = source[0]->fullname_len -1;
+	strncpy(src_common, source[0]->fullname, src_common_len);
+    }
     src_common[src_common_len] = '\0';  /*null delimit it */
+
     for (x=0; x < source_count; x++) {
         if (strncmp((const char *)src_common, (const char *)source[x]->fullname, src_common_len) !=0) {
             char *p;
@@ -191,13 +198,23 @@ int main(int argc, char **argv)
         }
     }
     v1printf("final src_common='%.*s'\n", src_common_len, src_common);
-    trg_common_len=(char *)rindex(
-        (const char *)target[0]->fullname, '/') - (char *)target[0]->fullname+1;
-    strncpy((char *)trg_common, (char *)target[0]->fullname,trg_common_len);
+    p = rindex(target[0]->fullname, '/');
+    if(p!=NULL) {
+	trg_common_len = ((char *)p - (char *)target[0]->fullname) + 1;
+	strncpy((char *)trg_common, (char *)target[0]->fullname, 
+	    trg_common_len);
+    } else {
+	trg_common_len = target[0]->fullname_len -1;
+	strncpy(trg_common, target[0]->fullname, trg_common_len);
+    }
     trg_common[trg_common_len] = '\0';  /* null delimit it */
+
     for (x=0; x < target_count; x++) {
-        if (strncmp((const char *)trg_common, (const char *)target[x]->fullname, trg_common_len) !=0) {
-            v1printf("found a breaker(%s) at pos(%lu), loc(%lu)\n", target[x]->fullname, x, target[x]->file_loc);
+        if (strncmp((const char *)trg_common, (const char *)target[x]->fullname, 
+	    trg_common_len) !=0) {
+            v1printf("found a breaker(%s) at pos(%lu), loc(%lu)\n", 
+		target[x]->fullname, x, target[x]->file_loc);
+
             /* null the / at trg_common_len-1, and attempt rindex again. */
             trg_common[trg_common_len -1]='\0';
             if((p = rindex(trg_common, '/'))==NULL){
