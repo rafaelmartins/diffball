@@ -201,7 +201,7 @@ ctell(cfile *cfh, unsigned int tell_type)
 	return cfh->data.offset + cfh->data.pos;
     else if (CSEEK_END==tell_type)
 	return cfh->data_total_len - 
-	    (cfh->data_fh_offset + cfh->data.offset + cfh->data.pos);
+	    (cfh->data.offset + cfh->data.pos);
     return 0;
 }
 
@@ -231,7 +231,7 @@ crefill(cfile *cfh)
 	x = read(cfh->raw_fh, cfh->data.buff, cfh->data.size);
 	cfh->data.offset += cfh->data.end;
 	cfh->data.end = x;
-	cfh->data.pos=0;
+	cfh->data.pos = 0;
 	break;
     }
     if(cfh->state_flags & CFILE_COMPUTE_MD5 && 
@@ -282,11 +282,13 @@ cfile_finalize_md5(cfile *cfh, unsigned char *buff)
 {
     unsigned int md5len;
     /* check to see if someone is being a bad monkey... */
-    if(!(cfh->state_flags & CFILE_COMPUTE_MD5))
-	return 1;
+    assert(cfh->state_flags & CFILE_COMPUTE_MD5);
     if(ctell(cfh, CSEEK_FSTART)!=cfh->data_md5_pos) 
 	cseek(cfh, cfh->data_md5_pos, CSEEK_FSTART);
-    /* basically read in all data needed. */
+
+    /* basically read in all data needed. 
+	since commiting of md5 data is done by crefill, call it till tis empty
+	*/
     while(cfh->data_md5_pos != cfh->data_total_len) 
 	crefill(cfh);
     EVP_DigestFinal(cfh->data_md5_ctx, buff, &md5len);

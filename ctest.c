@@ -42,8 +42,10 @@ int main(int argc, char **argv){
     assert(cseek(cfh, 1, CSEEK_ABS)==1);
     assert(ctell(cfh, CSEEK_FSTART)==0);
     assert(ctell(cfh, CSEEK_ABS)==1);
-    assert(ctell(cfh, CSEEK_END)==6);
     assert(cfile_len(cfh)==7);
+    assert(ctell(cfh, CSEEK_END)==7);
+    assert(7==cread(cfh, buff, 100));
+    assert(0==ctell(cfh, CSEEK_END));
     printf("beginning intrusive tests\n");
     cclose(cfh);
     copen(cfh, fh, 0, fstat.st_size, NO_COMPRESSOR, CFILE_RONLY);
