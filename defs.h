@@ -42,17 +42,21 @@ typedef signed  long  off_s64;
 #define EOF_ERROR		(-4)
 #define MEM_ERROR		(-5)
 #define FORMAT_ERROR		(-6)
+#define DATA_ERROR		(-7)
 
 #define v0printf(expr...) fprintf(stderr, expr);
 
+
 #ifdef DEV_VERSION
 #include <assert.h>
+#define eprintf(expr...)   abort(); fprintf(stderr, expr);
 #define v1printf(expr...)  fprintf(stderr,expr);
 #define v2printf(expr...)  if(global_verbosity>0){fprintf(stderr,expr);}
 #define v3printf(expr...)  if(global_verbosity>1){fprintf(stderr,expr);}
 #define v4printf(expr...)  if(global_verbosity>2){fprintf(stderr,expr);}
 #else
 #define assert(expr) ((void)0)
+#define eprintf(expr...)   fprintf(stderr, expr);
 #define v1printf(expr...)  if(global_verbosity>0){fprintf(stderr,expr);}
 #define v2printf(expr...)  if(global_verbosity>1){fprintf(stderr,expr);}
 #define v3printf(expr...)  if(global_verbosity>2){fprintf(stderr,expr);}
