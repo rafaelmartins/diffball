@@ -62,7 +62,7 @@ xdelta-1.1.0	yes	no	yes
 differ 		general purpose differencing program, 
 diffball 	specific implementation for processing tarball's- usually this
 		results in a smaller delta then differ, w/ a better run-time.
-		Differ does pull ahead for tarballs in some cases, notably 
+		Differ does pull ahead for tarballs in a few oddball cases, notably 
 		the evolution src tarballs.
 patcher		reconstruction program, if a format has read support 
 		patcher can reconstruct the target file.
