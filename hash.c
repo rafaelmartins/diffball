@@ -269,6 +269,8 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
     init_adler32_seed(&ads, rhash->seed_len, 1);
     cseek(ref_cfh, ref_start, CSEEK_FSTART);
     cfw = expose_page(ref_cfh);
+    if(cfw == NULL)
+	return IO_ERROR;
     if(cfw->end==0) {
 	return 0;
     }
@@ -281,8 +283,11 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 	    skip = MIN(cfw->end - cfw->pos, len);
 	    update_adler32_seed(&ads, cfw->buff + cfw->pos, skip);
 	    len -= skip;
-	    cfw = next_page(ref_cfh);
-	    if(cfw->end==0) {
+	    if(len)
+		cfw = next_page(ref_cfh);
+	    else
+		cfw->pos += skip;
+	    if(cfw == NULL || cfw->end==0) {
 		return EOF_ERROR;
 	    }
 	}
@@ -294,7 +299,7 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 	cfw->pos++) {
 	if(cfw->pos >= cfw->end) {
 	    cfw = next_page(ref_cfh);
-	    if(cfw->end==0) {
+	    if(cfw == NULL || cfw->end==0) {
 		return MEM_ERROR;
 	    }
 	}
@@ -485,6 +490,8 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 		while(cfw->pos + skip - rhash->seed_len >= cfw->end) {
 		    skip -= (cfw->end - cfw->pos);
 		    cfw = next_page(ref_cfh);
+		    if(cfw == NULL) 
+			return IO_ERROR;
 		}
 		cfw->pos += skip - rhash->seed_len;
 		skip = rhash->seed_len;
@@ -496,6 +503,8 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 	    skip -= index;
 	    if(skip) {
 		cfw = next_page(ref_cfh);
+		if(cfw==NULL)
+		    return IO_ERROR;
 		update_adler32_seed(&ads, cfw->buff, skip);
 		cfw->pos += skip;
 		skip = 0;
@@ -515,21 +524,54 @@ RHash_find_matches(RefHash *rhash, cfile *ref_cfh)
     cfile_window *cfw;
     ADLER32_SEED_CTX ads;
     chksum_ent *me, m_ent;
-    unsigned long chksum, index;
+    unsigned long chksum, index, len, skip;
     signed long pos;
     if(!(rhash->type & (RH_RSORT_HASH | RH_RMOD_HASH | RH_RBUCKET_HASH))) {
 	return 0;
     }
     if(!(RH_SORTED & rhash->flags))
 	RHash_sort(rhash);
-    cseek(ref_cfh, 0, CSEEK_FSTART);
+    if(cseek(ref_cfh, 0, CSEEK_FSTART)!=0) {
+	eprintf("lseek failed, likely a bug\n");
+	return IO_ERROR;
+    }
     cfw = expose_page(ref_cfh);
+    if(cfw == NULL) {
+	eprintf("unexpected eof/io issue\n");
+	return IO_ERROR;
+    }
     init_adler32_seed(&ads, rhash->seed_len, 1);
-    update_adler32_seed(&ads, cfw->buff, rhash->seed_len);
-    cfw->pos += rhash->seed_len;
+    if(cfw->pos + rhash->seed_len < cfw->end) {
+	update_adler32_seed(&ads, cfw->buff + cfw->pos, rhash->seed_len);
+	cfw->pos += rhash->seed_len;
+    } else {
+	len = rhash->seed_len;
+	while(len) {
+	    skip = MIN(cfw->end - cfw->pos, len);
+	    update_adler32_seed(&ads, cfw->buff + cfw->pos, skip);
+	    len -= skip;
+	    if(len) 
+		cfw = next_page(ref_cfh);
+	    else
+		cfw->pos+=skip;
+	    if(cfw == NULL || cfw->end==0) {
+		return EOF_ERROR;
+	    }
+	}
+    }
+
     while(cfw->end) {
 	if(cfw->end == cfw->pos) {
 	    cfw = next_page(ref_cfh);
+	    if(cfw == NULL) {
+		if(ref_cfh->state_flags & CFILE_EOF) {
+		    v1printf("eof encountered\n");
+		    return 0;
+		} else {
+		    eprintf("unexpected eof/io issue\n");
+		    return IO_ERROR;
+		}
+	    }
 	    continue;
 	}
 	if(rhash->type & RH_RSORT_HASH) {
