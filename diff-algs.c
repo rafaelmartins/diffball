@@ -130,30 +130,30 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
     vbuff_start = cseek(ver_cfh, 0, CSEEK_FSTART);
     //vbuff_start=0;
     vbuff_end=cread(ver_cfh, vbuff, MIN(vbuff_size, ver_len));
-	v2printf("vbuff_start(%lu), vbuff_end(%lu)\n", vbuff_start, vbuff_end);
+	v3printf("vbuff_start(%lu), vbuff_end(%lu)\n", vbuff_start, vbuff_end);
 	while(vc + rhash->seed_len < ver_len) {
 		if(vc + rhash->seed_len > vbuff_start + vbuff_end) {
-			v2printf("full refresh of vbuff at vbuff_start(%lu), vc(%lu), fstart(%lu), abs(%lu)\n", 
+			v3printf("full refresh of vbuff at vbuff_start(%lu), vc(%lu), fstart(%lu), abs(%lu)\n", 
 				vbuff_start, vc, 
 				ctell(ver_cfh, CSEEK_FSTART),
 				ctell(ver_cfh, CSEEK_ABS));
 			//if(vc > vbuff_start + vbuff_end) {
 				vbuff_start = cseek(ver_cfh, vc, CSEEK_FSTART);
 				vbuff_end = cread(ver_cfh, vbuff, MIN(ver_len - vbuff_start,vbuff_size));
-				v2printf("setting vbuff_start(%lu), vbuff_end(%lu), fstart(%lu)\n", 
+				v3printf("setting vbuff_start(%lu), vbuff_end(%lu), fstart(%lu)\n", 
 				vbuff_start, vbuff_end, ctell(ver_cfh, CSEEK_FSTART));
 			/*} else {
 				x = vbuff_size - (vc - vbuff_start);
 				memmove(vbuff, vbuff + vbuff_size -x, x);
 			}*/	
 		} else if (vc < vbuff_start) {
-			v2printf("partial refresh of vbuff at vbuff_start(%lu), vc(%lu), fstart(%lu), abs(%lu)\n", 
+			v3printf("partial refresh of vbuff at vbuff_start(%lu), vc(%lu), fstart(%lu), abs(%lu)\n", 
 				vbuff_start, vc,
 				ctell(ver_cfh, CSEEK_FSTART),
 				ctell(ver_cfh, CSEEK_ABS));
 			vbuff_start = cseek(ver_cfh, vc, CSEEK_FSTART);
 			vbuff_end = cread(ver_cfh, vbuff, MIN(ver_len - vbuff_start, vbuff_size));
-			v2printf("setting vbuff_start(%lu), vbuff_end(%lu), fstart(%lu)\n", 
+			v3printf("setting vbuff_start(%lu), vbuff_end(%lu), fstart(%lu)\n", 
 				vbuff_start, vbuff_end, ctell(ver_cfh, CSEEK_FSTART));
 		}
 		//assert(ctell(ver_cfh, CSEEK_FSTART)==vbuff_start + vbuff_end);
@@ -167,7 +167,7 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 		if(rhash->hash[index]>0) {	
 			if(rhash->hash[index] != cseek(rhash->ref_cfh, rhash->hash[index], CSEEK_FSTART)) {
 				perror("cseek error for ref\n");
-				v2printf("ctell(%lu), wanted(%lu)\n", ctell(rhash->ref_cfh, CSEEK_FSTART), 
+				v3printf("ctell(%lu), wanted(%lu)\n", ctell(rhash->ref_cfh, CSEEK_FSTART), 
 					rhash->hash[index]);
 				abort();
 			} else {
@@ -190,7 +190,7 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 		   			(vbuff_size > vbuff_start ? 0 : vbuff_start - vbuff_size),
 		   			CSEEK_FSTART);
 		   		vbuff_end=cread(ver_cfh, vbuff, vbuff_size);
-		   		v2printf("back match moved vbuff to start(%lu), end(%lu)\n",
+		   		v3printf("back match moved vbuff to start(%lu), end(%lu)\n",
 		    			vbuff_start, vbuff_end);
 		   	}
 		   	if(rm-rbuff_start==0) {
@@ -199,7 +199,7 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 		  			(rbuff_size > rbuff_start ? 0 : rbuff_start - rbuff_size),
 		  			CSEEK_FSTART);
 		  		rbuff_end=cread(rhash->ref_cfh, rbuff, rbuff_size);
-		  		v2printf("back match moved rbuff to start(%lu), end(%lu)\n",
+		  		v3printf("back match moved rbuff to start(%lu), end(%lu)\n",
 		    			rbuff_start, rbuff_end);
 			}
 		    while(vm > 0 && rm > 0 && 
@@ -211,7 +211,7 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 		    			cseek(ver_cfh, (vbuff_size > vbuff_start ? 0 :
 		    			vbuff_start - vbuff_size), CSEEK_FSTART);
 		    		vbuff_end=cread(ver_cfh, vbuff, vbuff_size);
-		    		v2printf("back match moved vbuff to start(%lu), end(%lu)\n",
+		    		v3printf("back match moved vbuff to start(%lu), end(%lu)\n",
 		    			vbuff_start, vbuff_end);
 		    	}
 		    	if(rm-rbuff_start==0) {
@@ -219,7 +219,7 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 		    			cseek(rhash->ref_cfh, (rbuff_size > rbuff_start ? 0 :
 		    			rbuff_start - rbuff_size), CSEEK_FSTART);
 		    		rbuff_end=cread(rhash->ref_cfh, rbuff, rbuff_size);
-		    		v2printf("back match moved rbuff to start(%lu), end(%lu)\n",
+		    		v3printf("back match moved rbuff to start(%lu), end(%lu)\n",
 		    			rbuff_start, rbuff_end);
 		    	}
 		    }
@@ -229,14 +229,14 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 		    	vbuff_start=cseek(ver_cfh, vm+len , CSEEK_FSTART);
 		    	vbuff_end=cread(ver_cfh, vbuff,
 		    		MIN(vbuff_size, ver_len - vbuff_start));
-		    	v2printf("forw match moved vbuff to start(%lu), end(%lu)\n",
+		    	v3printf("forw match moved vbuff to start(%lu), end(%lu)\n",
 		    		vbuff_start, vbuff_end);
 		    }
 		    if( rm + len >= rbuff_start + rbuff_size) {
 		    	rbuff_start=cseek(rhash->ref_cfh, rm + len, CSEEK_FSTART);
 		    	rbuff_end=cread(rhash->ref_cfh, rbuff,
 		    		MIN(rbuff_size, ref_len - rbuff_start));
-		    		v2printf("forw match moved rbuff to start(%lu), end(%lu)\n",
+		    		v3printf("forw match moved rbuff to start(%lu), end(%lu)\n",
 		    			rbuff_start, rbuff_end);
 		    }
 		    while(rm + len < ref_len && vm + len < ver_len &&
@@ -247,14 +247,14 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 		    		vbuff_start += vbuff_end;
 		    		vbuff_end=cread(ver_cfh, vbuff,
 		    			MIN(vbuff_size, ver_len -vbuff_start));
-		    		v2printf("forw match moved rbuff to start(%lu), end(%lu)\n",
+		    		v3printf("forw match moved rbuff to start(%lu), end(%lu)\n",
 		    			vbuff_start, vbuff_end);
 		    	}
 		    	if(rm + len -rbuff_start==rbuff_size) {
 		    		rbuff_start += rbuff_end;
 		    		rbuff_end=cread(rhash->ref_cfh, rbuff,
 		    			MIN(rbuff_size, ref_len -rbuff_start));
-		    		v2printf("forw match moved rbuff to start(%lu), end(%lu)\n",
+		    		v3printf("forw match moved rbuff to start(%lu), end(%lu)\n",
 		    			rbuff_start, rbuff_end);
 		    	}
 		    }

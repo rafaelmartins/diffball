@@ -18,6 +18,8 @@
 #ifndef _HEADER_DIFF_ALGS
 #define _HEADER_DIFF_ALGS 1
 
+#define DEFAULT_SEED_LEN 16
+
 #include "cfile.h"
 #include "dcbuffer.h"
 typedef struct _RefHash {

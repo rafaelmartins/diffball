@@ -69,7 +69,6 @@ struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, 
     unsigned long offset=0, array_size=100000;
     unsigned long count =0;
     unsigned int read_bytes;
-    unsigned int block_is_zero=0;
     unsigned int name_len, prefix_len;
     unsigned int extra_size;
     /* md5 stuff */

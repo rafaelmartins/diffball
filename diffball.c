@@ -34,118 +34,13 @@
 #include "bdiff.h"
 #include "bdelta.h"
 #include "primes.h"
+#include "defs.h"
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
 unsigned int verbosity = 0;
 
 int cmp_tar_entries(const void *te1, const void *te2);
-
-struct long_dllist *init_long_dllist(unsigned long int value) {
-    struct long_dllist *em;
-    if((em = (struct long_dllist *)malloc(sizeof(struct str_dllist)))==NULL){
-        perror("couldn't alloc needed memory...\n");
-        exit(EXIT_FAILURE);
-    }
-    em->data = value;
-    em->count = 0;
-    em->prev = em->next = NULL;
-    return em;
-}
-struct str_dllist *init_str_dllist(char *string, int len) {
-    struct str_dllist *em;
-    if((em = (struct str_dllist *)malloc(sizeof(struct str_dllist)))==NULL){
-        perror("couldn't alloc needed memory...\n");
-        exit(EXIT_FAILURE);
-    } else if((em->data = (char *)malloc(len+1))==NULL) {
-        perror("couldn't alloc needed memory...\n");
-        exit(EXIT_FAILURE);
-    }
-    strncpy((char *)em->data, (char *)string, len);
-    em->data[len] = '\0';
-    em->count=0;
-    em->len=len;
-    em->prev = em->next = NULL;
-    return em;
-}
-
-void update_long_dllist(struct long_dllist **em, unsigned long int value) {
-    struct long_dllist *ptr, *tmp;
-    int x = 0;
-    //printf("\nupdating\n");
-    for (ptr = *em; ptr != NULL; ptr = (struct long_dllist *)ptr->next, x++) {
-        //printf("examining node(%u)\n", x);
-        if(ptr->data == value) {
-    	//printf("match ptr(%lu), data(%lu), current count(%lu)\n", ptr, ptr->data, ptr->count);
-    	ptr->count += 1;
-    	while (ptr->prev != NULL
-    	   && ptr->count > ptr->prev->count) {
-    	    /* I'm sure this could be wrote better. don't feel like screwing with it though. */
-    	    tmp = ptr->prev;
-    	    //printf("moving node, p.count(%u), c.count(%u)\n",ptr->prev->count, ptr->count);
-    	    //printf("  p.p(%lu), p.n(%lu); n.p(%lu), n.n(%lu)\n", tmp->prev, tmp->next, ptr->prev, ptr->next);
-    	    ptr->prev = tmp->prev;
-    	    tmp->next = ptr->next;
-    	    if (tmp->prev != NULL)
-    		tmp->prev->next = ptr;
-    	    tmp->prev = ptr;
-    	    if (ptr->next != NULL)
-    		ptr->next->prev = tmp;
-    	    ptr->next = tmp;
-    	}
-    	if(ptr->prev == NULL)
-    	    *em = ptr;
-    	break;
-        } else if (ptr->next == NULL) {
-    	//printf("adding llist value(%lu)\n", value);
-    	ptr->next = init_long_dllist(value);
-    	ptr->next->prev = ptr;
-    	ptr->next->count += 1;
-    	//printf("  c.p(%lu), c(%lu), c.n(%lu), n.p(%lu), n.n(%lu)\n",ptr->prev, ptr, ptr->next, ptr->next->prev, ptr->next->next);
-    	break;
-        }
-    }
-}
-    
-void update_str_dllist(struct str_dllist **em, char *value, int len) {
-    struct str_dllist *ptr, *tmp;
-    int x = 0;
-    //printf("\nupdating\n");
-    for (ptr = *em; ptr != NULL; ptr = (struct str_dllist *)ptr->next, x++) {
-        //printf("examining node('%u'), '%s'=='%s'\n", x, ptr->data, value);
-        /* this next statement likely could use some tweaking. */
-        if(len == ptr->len && strncmp(ptr->data, value,len) == 0) {
-    	//printf("match ptr(%lu), data('%s'), current count(%lu)\n", ptr, ptr->data, ptr->count);
-    	ptr->count += 1;
-    	while (ptr->prev != NULL
-    	   && ptr->count > ptr->prev->count) {
-    	    /* I'm sure this could be wrote better. don't feel like screwing with it though. */
-    	    tmp = ptr->prev;
-    	    //printf("moving node, p.count(%u), c.count(%u)\n",ptr->prev->count, ptr->count);
-    	    //printf("  p.p(%lu), p.n(%lu); n.p(%lu), n.n(%lu)\n", tmp->prev, tmp->next, ptr->prev, ptr->next);
-    	    ptr->prev = tmp->prev;
-    	    tmp->next = ptr->next;
-    	    if (tmp->prev != NULL)
-    		tmp->prev->next = ptr;
-    	    tmp->prev = ptr;
-    	    if (ptr->next != NULL)
-    		ptr->next->prev = tmp;
-    	    ptr->next = tmp;
-    	}
-    	if(ptr->prev == NULL)
-    	    *em = ptr;
-    	break;
-        } else if (ptr->next == NULL) {
-    	//printf("adding llist value('%s')\n", value);
-    	ptr->next = init_str_dllist(value, len);
-    	ptr->next->prev = ptr;
-    	ptr->next->count += 1;
-    	//printf("  new node data('%s')\n", ptr->data);
-    	//printf("  c.p(%lu), c(%lu), c.n(%lu), n.p(%lu), n.n(%lu)\n",ptr->prev, ptr, ptr->next, ptr->next->prev, ptr->next->next);
-    	break;
-        }
-    }
-}
 
 unsigned int src_common_len=0, trg_common_len=0;
 
@@ -156,15 +51,13 @@ int main(int argc, char **argv)
     struct tar_entry **source, **target, *tar_ptr;
     void *vptr;
     unsigned char source_md5[32], target_md5[32];
-    unsigned long source_count, target_count, halfway;
+    unsigned long source_count, target_count;
     unsigned long x;
     char src_common[512], trg_common[512], *p;  /* common dir's... */
     //unsigned int src_common_len=0, trg_common_len=0;
     unsigned long match_count;
     /*probably should convert these arrays to something more compact, use bit masking. */
     unsigned char *source_matches, *target_matches;
-    struct long_dllist *trg_mode_ll, *trg_uid_ll, *trg_gid_ll, *trg_devmajor_ll, *trg_devminor_ll, *ldll_ptr;
-    struct str_dllist *trg_uname_ll, *trg_gname_ll, *trg_magic_ll, *trg_version_ll, *trg_mtime_ll, *sdll_ptr;
 	
 	cfile ref_full, ref_window, ver_window, ver_full, out_cfh;
 	struct stat ref_stat, ver_stat;
@@ -285,7 +178,7 @@ int main(int argc, char **argv)
     DCBufferInit(&dcbuff, 20000000, (unsigned long)ref_stat.st_size, 
 	(unsigned long)ver_stat.st_size);
     init_RefHash(&rhash_full, &ref_full, 16, 1, cfile_len(&ref_full)/1);
-    printf("looking for matching filenames in the archives...\n");
+    v1printf("looking for matching filenames in the archives...\n");
     for(x=0; x< target_count; x++) {
         //entry=source[x];
 	//printf("checking '%s'\n", source[x]->fullname);
@@ -297,13 +190,13 @@ int main(int argc, char **argv)
         vptr = bsearch((const void **)&target[x], (const void **)source, source_count,
             sizeof(struct tar_entry **), cmp_tar_entries);
         if(vptr == NULL) {
-        	printf("didn't find a match for %.255s\n", target[x]->fullname);
-		printf("target loc(%lu:%lu)\n",
+        	v1printf("didn't find a match for %.255s\n", target[x]->fullname);
+		v2printf("target loc(%lu:%lu)\n",
         		(512 * target[x]->file_loc), 
         		(512 * target[x]->file_loc) + 512 +(target[x]->size==0 ? 0 : 
         			target[x]->size + 512 - (target[x]->size % 512==0 ? 512 : 
         			target[x]->size % 512) ));
-        		printf("file_loc(%u), size(%lu)\n", target[x]->file_loc,
+        	v2printf("file_loc(%lu), size(%lu)\n", target[x]->file_loc,
         			target[x]->size);
         	OneHalfPassCorrecting(&dcbuff, &rhash_full, &ver_window);
 	    	//_matches[x] = '0';
@@ -312,9 +205,9 @@ int main(int argc, char **argv)
             //printf("'%s' not found!\n", source[x]->fullname_ptr);
         } else {
         	tar_ptr = (struct tar_entry *)*((struct tar_entry **)vptr);
-        	printf("found match between %.255s and %.255s\n", target[x]->fullname,
+        	v1printf("found match between %.255s and %.255s\n", target[x]->fullname,
         		tar_ptr->fullname);
-        	printf("differencing src(%lu:%lu) against trg(%lu:%lu)\n",
+        	v2printf("differencing src(%lu:%lu) against trg(%lu:%lu)\n",
         		(512 * tar_ptr->file_loc), 
         		(512 * tar_ptr->file_loc) + 512 + (tar_ptr->size==0 ? 0 :
         			tar_ptr->size + 512 - (tar_ptr->size % 512==0 ? 512: 
@@ -323,7 +216,7 @@ int main(int argc, char **argv)
         		(512 * target[x]->file_loc) + 512 +(target[x]->size==0 ? 0 : 
         			target[x]->size + 512 - (target[x]->size % 512==0 ? 512 : 
         			target[x]->size % 512) ));
-        		printf("file_loc(%u), size(%lu)\n", target[x]->file_loc,
+        		v2printf("file_loc(%lu), size(%lu)\n", target[x]->file_loc,
         			target[x]->size);
         	match_count++;
         	copen(&ref_window, src_fh, (512 * tar_ptr->file_loc), 

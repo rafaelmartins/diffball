@@ -30,15 +30,40 @@
 #include "bdiff.h"
 #include "bdelta.h"
 #include "primes.h"
+#include "cfile.h"
+#include "defs.h"
+#include <popt.h>
 
-unsigned int verbosity = 0;
+unsigned int verbosity=0;
+unsigned long sample_rate=0;
+unsigned long seed_len = 0;
+unsigned long hash_size = 0;
+unsigned int patch_compressor = 0;
+unsigned int patch_to_stdout = 0;
+unsigned int use_md5 = 0;
+char  *patch_format;
 
-unsigned long convertDec(unsigned char *buff, unsigned int len)
-{
-    unsigned long num=0,x=0;
-    while(len > x)
-	num = (num * 10) + (buff[x++] - 48);
-    return num;
+enum {OVERSION=100, OVERBOSE,OFORMAT,OSEED,OSAMPLE,OSTDOUT,OBZIP2,OGZIP};
+
+    /*lname,sname, info, ptr, val, desc, args */
+struct poptOption options[] = {
+    {"version",		'V', POPT_ARG_NONE, 0, OVERSION,0, 0},
+    {"verbose",		'v', POPT_ARG_NONE, 0, OVERBOSE,0, 0},
+    {"format",		'f', POPT_ARG_STRING, &patch_format,  0,0,  0},
+    {"seed-len",		'b', POPT_ARG_INT,  &seed_len, 0,0, 0},
+    {"sample-rate",	's', POPT_ARG_LONG,  &sample_rate, 0,0, 0},
+    {"hash-size",		'a', POPT_ARG_LONG,  &hash_size, 0,0, 0},
+    {"stdout",		'c', POPT_ARG_NONE, &patch_to_stdout, 0,0, 0},
+    {"ignore-md5",	'm', POPT_ARG_NONE, &use_md5, 0,0, 0},
+    {"bzip2-compress",	'j', POPT_ARG_NONE, 0, OBZIP2,0, 0},
+    {"gzip-compress",	'z', POPT_ARG_NONE, 0, OGZIP, 0,0},
+    POPT_TABLEEND
+};
+
+void usage(poptContext p_opt, int exitcode, char *error) {
+    poptPrintUsage(p_opt, stderr, 0);
+    if(error) fprintf(stderr, "%s\n", error);
+    exit(exitcode);
 }
 
 int main(int argc, char **argv)
@@ -49,64 +74,83 @@ int main(int argc, char **argv)
     //char *src, *trg;
     CommandBuffer buffer;
     RefHash rhash;
-    unsigned long seed_len, multi;
     unsigned int offset_type;
-    if(argc <3){
-		printf("pardon, but...\nI need at least 2 args- (source file), (target file), [patch-file]\n");
-		exit(EXIT_FAILURE);
+    poptContext p_opt;
+
+    unsigned long optr;
+    char  *src_file;
+    char  *trg_file;
+    char  *patch_name;
+
+    p_opt = poptGetContext("differ", argc, (const char **)argv, options, 0);
+    while((optr=poptGetNextOpt(p_opt)) != -1) {
+	switch(optr) {
+	case OVERSION:
+	    // print version.
+	    exit(0);
+	case OVERBOSE:
+	    verbosity++;
+	    break;
+	case OBZIP2:
+	    if(patch_compressor) {
+		// bitch at em.
+	    } else
+		patch_compressor = BZIP2_COMPRESSOR;
+	    break;
+	case OGZIP:
+	    if(patch_compressor) {
+		// bitch at em.
+	    } else 
+		patch_compressor = GZIP_COMPRESSOR;
+	    break;
+	}
     }
-    if(stat(argv[1], &ref_stat)) {
-		perror("what the hell, stat failed.  wtf?\n");
-		exit(1);
-    }
-    if(stat(argv[2], &ver_stat)) {
-		perror("what the hell, stat failed.  wtf?\n");
-		exit(1);
-    }
-    //printf("src_fh size=%lu\ntrg_fh size=%lu\n", 
-    //	(unsigned long)src_stat.st_size, (unsigned long)ver_stat.st_size);
-    if ((ref_fh = open(argv[1], O_RDONLY,0)) == -1) {
-		printf("Couldn't open %s, does it exist?\n", argv[1]);
-		exit(EXIT_FAILURE);
-    }
-    if ((ver_fh = open(argv[2], O_RDONLY,0)) == -1) {
-		printf("Couldn't open %s, does it exist?\n", argv[2]);
-		exit(EXIT_FAILURE);
-    }
-/*    if(argc==3) {
-		if((out_fh = dup(0))==-1){
-	    	printf("well crud, couldn't duplicate stdout.  Likely a bug in differ.\n");
-	   		exit(EXIT_FAILURE);
-		}
-    } else */
-    if((out_fh = open(argv[3], O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1) {
-		printf("Couldn't create\truncate patch file.\n");
-		exit(EXIT_FAILURE);
+    if( ((src_file=(char *)poptGetArg(p_opt))==NULL) || (stat(src_file, &ref_stat))) 
+	usage(p_opt, 1, "Must specify an existing source file.");
+    if( ((trg_file=(char *)poptGetArg(p_opt))==NULL) || (stat(trg_file, &ver_stat)) )
+	usage(p_opt, 1, "Must specify an existing target file.");
+    if(patch_to_stdout != 0) {
+	out_fh = 0;
     } else {
-		fprintf(stderr,"storing generated delta in '%s'\n", argv[3]);
+	if((patch_name = poptGetArg(p_opt))==NULL)
+	    usage(p_opt, 1, "Must specify a name for the patch file.");
+	if((out_fh = open(argv[3], O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1) {
+	    fprintf(stderr, "error creating patch file (open failed)\n");
+	    exit(1);
+	}
     }
-    copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
-    if(argc < 5) {
-		seed_len = 16;
-		multi = ref_stat.st_size;
-    } else {	     
-		seed_len = convertDec(argv[4], strlen(argv[4]));
-	if(argc < 6) {
-		    multi = ref_stat.st_size;
-		} else {
-	    	multi = convertDec(argv[5], strlen(argv[5]));
-		}
+    poptFreeContext(p_opt);
+    if ((ref_fh = open(src_file, O_RDONLY,0)) == -1) {
+		fprintf(stderr, "error opening src_file\n");
+		exit(EXIT_FAILURE);
     }
-    printf("using seed_len(%lu), multi(%lu)\n", seed_len, multi);
-    DCBufferInit(&buffer, 1000000, ref_stat.st_size, ver_stat.st_size);
+    if ((ver_fh = open(trg_file, O_RDONLY,0)) == -1) {
+		fprintf(stderr, "error opening trg_file\n");
+		exit(EXIT_FAILURE);
+    }
     copen(&ref_cfh, ref_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
-    init_RefHash(&rhash, &ref_cfh, seed_len, 6, cfile_len(&ref_cfh)/6);
     copen(&ver_cfh, ver_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
-    printf("opened\n");
+    copen(&out_cfh, out_fh, 0, 0, patch_compressor, CFILE_WONLY);
+    if(sample_rate==0) {
+	/* implement a better assessment based on mem and such */
+	sample_rate = 1;
+    }
+    if(hash_size==0) {
+	/* implement a better assessment based on mem and such */
+	hash_size = ref_stat.st_size;
+    }
+v1printf("original seed_len(%lu)\n", seed_len);
+    if(seed_len==0) {
+	seed_len = DEFAULT_SEED_LEN;
+    }
+    v1printf("using seed_len(%lu), sample_rate(%lu), hash_size(%lu)\n", 
+	seed_len, sample_rate, hash_size);
+    v1printf("verbosity level(%u)\n", verbosity);
+    DCBufferInit(&buffer, 1000000, ref_stat.st_size, ver_stat.st_size);
+    init_RefHash(&rhash, &ref_cfh, seed_len, sample_rate, hash_size);
     OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh);
-    cclose(&ref_cfh);
-    printf("outputing patch...\n");
-    printf("there were %lu commands\n", buffer.buffer_count);
+    v1printf("outputing patch...\n");
+    v1printf("there were %lu commands\n", buffer.buffer_count);
     offset_type = ENCODING_OFFSET_START;
 //    offset_type = ENCODING_OFFSET_DC_POS;
 //    bdiffEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
@@ -114,9 +158,10 @@ int main(int argc, char **argv)
 //    switchingEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
 //    rawEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
 //    bdeltaEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
-    printf("exiting\n");
+    v1printf("exiting\n");
     free_RefHash(&rhash);
     DCBufferFree(&buffer);
+    cclose(&ref_cfh);
     cclose(&ver_cfh);
     cclose(&out_cfh);
     return 0;

@@ -10,6 +10,7 @@ AC_PROG_CC
 #AC_DEFINE(DEV_VERSION, 1, Toggle on asserts.)
 
 # Checks for libraries.
+AC_CHECK_LIB(popt, poptGetContext, ,)
 
 # Checks for header files.
 AC_HEADER_STDC

@@ -25,7 +25,7 @@
 //#define CFILE_DEFAULT_BUFFER_SIZE (BUFSIZ)
 #define CFILE_DEFAULT_BUFFER_SIZE (4096)
 #define NO_COMPRESSOR			(0x0)
-#define GZIP_COMRPESSOR			(0x1)
+#define GZIP_COMPRESSOR			(0x1)
 #define BZIP2_COMPRESSOR		(0x2)
 #define CFILE_RONLY			(0x1)
 #define CFILE_WONLY			(0x2)
