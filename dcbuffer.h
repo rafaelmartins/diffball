@@ -108,12 +108,15 @@ typedef struct _CommandBuffer {
 	} llm;
     } DCB;
 
-    cfile **src_cfh;
+    union {
+	cfile	**cfh;
+	DCB_ptr *dcb;
+    } srcs;
     dcb_src_read_func *src_read_func;
     dcb_src_copy_func *src_copy_func;
     unsigned int src_array_size, src_count;
     unsigned char src_type[16];
-    unsigned char src_cfh_flags[256];
+    unsigned char src_flags[256];
 
     /* this is a hack, and not a particularly good one either.
 	things need to be expanded to eliminate the need for this- check the 

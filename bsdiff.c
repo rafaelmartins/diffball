@@ -40,8 +40,8 @@ bsdiff_overlay_copy(DCommand *dc,
     unsigned int x;
     dcb = dc->src_dcb;
 
-    src_cfh = dcb->src_cfh[dc->src_id - 1];
-    diff_cfh = dcb->src_cfh[dc->src_id];
+    src_cfh = dcb->srcs.cfh[dc->src_id - 1];
+    diff_cfh = dcb->srcs.cfh[dc->src_id];
     len = dc->data.len;
 
     assert(src_cfh != NULL);

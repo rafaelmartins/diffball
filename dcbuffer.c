@@ -51,7 +51,7 @@ internal_DCB_register_src(CommandBuffer *dcb, cfile *cfh,
 {
     v3printf("registering cfh_id(%u), as buffer id(%u)\n", cfh->cfh_id, dcb->src_count);
     if(dcb->src_count == dcb->src_array_size) {
-	if((dcb->src_cfh = (cfile **)realloc(dcb->src_cfh, sizeof(cfile *) 
+	if((dcb->srcs.cfh = (cfile **)realloc(dcb->srcs.cfh, sizeof(cfile *) 
 	    * dcb->src_array_size * 2))==NULL) {
 	    return MEM_ERROR;
 	} else if((dcb->src_read_func = (dcb_src_read_func *)realloc(dcb->src_read_func, 
@@ -64,8 +64,8 @@ internal_DCB_register_src(CommandBuffer *dcb, cfile *cfh,
 	dcb->src_array_size *= 2;
     }
     v2printf("registering %u src\n", dcb->src_count);
-    dcb->src_cfh[dcb->src_count] = cfh;
-    dcb->src_cfh_flags[dcb->src_count] = flags;
+    dcb->srcs.cfh[dcb->src_count] = cfh;
+    dcb->src_flags[dcb->src_count] = flags;
     dcb->src_type[dcb->src_count / 8] |= ((type & 0x1) << (dcb->src_count % 8));
     dcb->src_read_func[dcb->src_count] = (read_func == NULL ? default_dcb_src_read_func : read_func);
     dcb->src_copy_func[dcb->src_count] = (copy_func == NULL ? default_dcb_src_copy_func : copy_func);
@@ -157,7 +157,7 @@ DCB_get_next_command(CommandBuffer *buff, DCommand *dc)
 {
     do {
 	internal_DCB_get_next_command(buff, dc);
-    } while (buff->src_cfh_flags[dc->src_id] & DCB_OVERLAY_SRC);
+    } while (buff->src_flags[dc->src_id] & DCB_OVERLAY_SRC);
 }
 
 
@@ -556,20 +556,20 @@ DCBufferFree(CommandBuffer *buffer)
 	buffer->DCB.llm.free = NULL;
     }
     for(x=0; x < buffer->src_count; x++) {
-	if(buffer->src_cfh_flags[x] & DCB_FREE_SRC_CFH) {
+	if(buffer->src_flags[x] & DCB_FREE_SRC_CFH) {
 	    v2printf("cclosing src_cfh(%lu)\n", x);
-	    cclose(buffer->src_cfh[x]);
+	    cclose(buffer->srcs.cfh[x]);
 	    v2printf("freeing  src_cfh(%lu)\n", x);
-	    free(buffer->src_cfh[x]);
+	    free(buffer->srcs.cfh[x]);
 	}
     }
     for(x=0; x < 256; x++)
-	buffer->src_cfh_flags[x] = 0;
+	buffer->src_flags[x] = 0;
     for(x=0; x < 16; x++)
 	buffer->src_type[x] = 0;
 
     free(buffer->src_read_func);
-    free(buffer->src_cfh);
+    free(buffer->srcs.cfh);
     buffer->src_count = buffer->src_array_size = 0;
 }
 
@@ -582,12 +582,12 @@ DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
     buffer->ver_size = ver_size;
     buffer->reconstruct_pos = 0;
     buffer->DCBtype = type;
-    memset(buffer->src_cfh_flags, 0, 256);
+    memset(buffer->src_flags, 0, 256);
     memset(buffer->src_type, 0, 16);
 #ifdef DEBUG_DCBUFFER
     buffer->total_copy_len = 0;
 #endif
-    if((buffer->src_cfh = (cfile **)malloc(sizeof(cfile *) * 4))==NULL) {
+    if((buffer->srcs.cfh = (cfile **)malloc(sizeof(cfile *) * 4))==NULL) {
 	return MEM_ERROR;
     } else if ((buffer->src_read_func = (dcb_src_read_func *)malloc(sizeof(dcb_src_read_func) * 4))==NULL) {
 	return MEM_ERROR;

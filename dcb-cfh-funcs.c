@@ -22,17 +22,17 @@ unsigned long
 default_dcb_src_read_func(DCommand *dc, unsigned long src_pos, 
     unsigned char buf, unsigned len)
 {
-    if(src_pos != cseek(dc->src_dcb->src_cfh[dc->src_id], src_pos, 
+    if(src_pos != cseek(dc->src_dcb->srcs.cfh[dc->src_id], src_pos, 
 	CSEEK_FSTART)) {
 	return 0;
     }
-    return cread(dc->src_dcb->src_cfh[dc->src_id], buf, len);
+    return cread(dc->src_dcb->srcs.cfh[dc->src_id], buf, len);
 }
 
 unsigned long 
 default_dcb_src_copy_func(DCommand *dc, cfile *out_cfh)
 {
-    return copy_cfile_block(out_cfh, dc->src_dcb->src_cfh[dc->src_id], 
+    return copy_cfile_block(out_cfh, dc->src_dcb->srcs.cfh[dc->src_id], 
 	(unsigned long)dc->data.src_pos, dc->data.len);
 }
 

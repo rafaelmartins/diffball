@@ -132,7 +132,7 @@ read_seq_write_rand(CommandBuffer *dcb, DCommand *dc_array, unsigned long array_
 	    if(pos == max_pos) {
 		continue;
 	    }
-	    cfh = dcb->src_cfh[dc_array[start].src_id];
+	    cfh = dcb->srcs.cfh[dc_array[start].src_id];
 	    if(pos != cseek(cfh, pos, CSEEK_FSTART)) {
 		v0printf("bailing, io_error 1\n");
 		return IO_ERROR;
