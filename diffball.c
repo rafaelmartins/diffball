@@ -228,19 +228,30 @@ int main(int argc, char **argv)
     for (x=0; x < target_count; x++) {
         target[x]->fullname_ptr = (char *)target[x]->fullname + trg_common_len;
 	target[x]->fullname_ptr_len = target[x]->fullname_len - trg_common_len;
-	update_long_dllist(&trg_mode_ll, target[x]->mode);
-	update_long_dllist(&trg_uid_ll, target[x]->uid);
-	update_long_dllist(&trg_gid_ll, target[x]->gid);
-	update_long_dllist(&trg_devminor_ll, target[x]->devminor);
-	update_long_dllist(&trg_devmajor_ll, target[x]->devminor);
-	//struct str_dllist *trg_uname_ll, *trg_gname_ll, *trg_magic_ll, *trg_version_ll, *trg_mtime_ll, *sdll_ptr;
-	update_str_dllist(&trg_uname_ll, target[x]->uname, target[x]->uname_len);
-	update_str_dllist(&trg_gname_ll, target[x]->gname, target[x]->gname_len);
-	update_str_dllist(&trg_magic_ll, target[x]->magic, TAR_MAGIC_LEN);
-	update_str_dllist(&trg_version_ll, target[x]->version, TAR_VERSION_LEN);
-	update_str_dllist(&trg_mtime_ll, target[x]->mtime, TAR_MTIME_LEN);
     }
-    x=0;
+    unsigned int halfway = (target_count+1)/2; // give it a +1 for those odd numbers, ensure it's 50%
+    for (x=0; x < target_count && halfway > trg_mode_ll->count; x++)
+	update_long_dllist(&trg_mode_ll, target[x]->mode);
+    for (x=0; x < target_count && halfway > trg_uid_ll->count; x++)
+	update_long_dllist(&trg_uid_ll, target[x]->uid);
+    for (x=0; x < target_count && halfway > trg_gid_ll->count; x++)
+	update_long_dllist(&trg_gid_ll, target[x]->gid);
+    for (x=0; x < target_count && halfway > trg_devminor_ll->count; x++)
+	update_long_dllist(&trg_devminor_ll, target[x]->devminor);
+    for (x=0; x < target_count && halfway > trg_devmajor_ll->count; x++)
+	update_long_dllist(&trg_devmajor_ll, target[x]->devminor);
+    for (x=0; x < target_count && halfway > trg_uname_ll->count; x++)
+	update_str_dllist(&trg_uname_ll, target[x]->uname, target[x]->uname_len);
+    for (x=0; x < target_count && halfway > trg_gname_ll->count; x++)
+	update_str_dllist(&trg_gname_ll, target[x]->gname, target[x]->gname_len);
+    for (x=0; x < target_count && halfway > trg_magic_ll->count; x++)
+	update_str_dllist(&trg_magic_ll, target[x]->magic, TAR_MAGIC_LEN);
+    for (x=0; x < target_count && halfway > trg_version_ll->count; x++)
+	update_str_dllist(&trg_version_ll, target[x]->version, TAR_VERSION_LEN);
+    for (x=0; x < target_count && halfway > trg_mtime_ll->count; x++)
+	update_str_dllist(&trg_mtime_ll, target[x]->mtime, TAR_MTIME_LEN);
+    
+    printf("target has %lu files, halfway=%lu\n", target_count, halfway);
     printf("\ndumping mode\n");
     for(ldll_ptr = trg_mode_ll, x=0; ldll_ptr != NULL; ldll_ptr = ldll_ptr->next, x++) 
 	printf("node (%lu), value=%lu, count=%lu\n", x, ldll_ptr->data, ldll_ptr->count);
