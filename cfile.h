@@ -23,10 +23,7 @@
 #include <bzlib.h>
 #include <zlib.h>
 
-//#define CFILE_RAW_BUFF_SIZE   (4096)
-//#define CFILE_TRANS_BUFF_SIZE (4096)
-//#define CFILE_DEFAULT_BUFFER_SIZE (BUFSIZ)
-#define CFILE_DEFAULT_BUFFER_SIZE (4096)
+#define CFILE_DEFAULT_BUFFER_SIZE 	(4096)
 #define NO_COMPRESSOR			(0x0)
 #define GZIP_COMPRESSOR			(0x1)
 #define BZIP2_COMPRESSOR		(0x2)
@@ -42,11 +39,16 @@
 #define CFILE_MD5_FINALIZED		(0x10)
 #define CFILE_BUFFER_ALL		(0x20)
 #define CFILE_MEM_ALIAS			(0x40)
-#define CFILE_SEEK_NEEDED		(0x80)
+#define CFILE_CHILD_CFH			(0x80)
 #define CFILE_EOF			(0x100)
+#define CFILE_DATA_SEEK_NEEDED		(0x200)
 
 #define BZIP2_DEFAULT_COMPRESS_LEVEL	9
+#ifdef DEBUG_CFILE
+#define BZIP2_VERBOSITY_LEVEL		4
+#else
 #define BZIP2_VERBOSITY_LEVEL		0
+#endif
 #define BZIP2_DEFAULT_WORK_LEVEL	30
 
 /*lseek type stuff
@@ -74,11 +76,19 @@ typedef struct {
 } cfile_window;
 
 typedef struct {
+    unsigned short cfh_id;
     int			raw_fh;
     unsigned long	raw_fh_len;
     unsigned int	compressor_type;
     unsigned int	access_flags;
     unsigned long	state_flags;
+    union {
+	struct {
+	    unsigned short last;
+	    unsigned short handle_count;
+	} parent;
+	unsigned short *last_ptr;
+    } lseek_info;
 
     unsigned long	data_fh_offset;
     unsigned long	data_total_len;
@@ -90,6 +100,7 @@ typedef struct {
 
     /* compression crap */
     bz_stream		*bzs;
+    z_stream		*zs;
     gzFile		gz_handle;
 
     /* other fun stuff, md5 related. */
@@ -99,18 +110,46 @@ typedef struct {
     unsigned char	*data_md5;
 } cfile;
 
-unsigned int  copen(cfile *cfh, int fh, unsigned long fh_start,
+#define CFH_IS_CHILD(cfh)	((cfh)->state_flags & CFILE_CHILD_CFH)
+
+#define LAST_LSEEKER(cfh) (CFH_IS_CHILD(cfh) ?				\
+    *((cfh)->lseek_info.last_ptr) : (cfh)->lseek_info.parent.last)
+
+#define FLAG_LSEEK_NEEDED(cfh)						\
+    (LAST_LSEEKER(cfh) = (LAST_LSEEKER(cfh)==(cfh)->cfh_id ? 0 : 	\
+    LAST_LSEEKER(cfh)))
+	
+#define SET_LAST_LSEEKER(cfh)						\
+    (LAST_LSEEKER(cfh) = (cfh)->cfh_id)
+
+#define ENSURE_LSEEK_POSITION(cfh)					\
+    (LAST_LSEEKER(cfh) == (cfh)->cfh_id ? 0 : raw_cseek(cfh))
+
+/*#define NEEDS_RAW_CSEEK(cfh)						\
+    (( ((cfh)->state_flags & CFILE_CHILD_CFH) ?				\
+	(*(cfh)->lseek_info.last_ptr)  :				\
+	(cfh)->lseek_info.parent.last) != (cfh)->cfh_id)
+*/
+
+unsigned int internal_copen(cfile *cfh, int fh, unsigned long fh_start,
     unsigned long fh_end, unsigned int compressor_type, 
     unsigned int access_flags);
-unsigned int  cmemopen(cfile *cfh, unsigned char *buff_start, 
-    unsigned long buff_len, unsigned long fh_offset, 
+
+unsigned int copen(cfile *cfh, int fh, unsigned long fh_start,
+    unsigned long fh_end, unsigned int compressor_type, 
     unsigned int access_flags);
+
+unsigned int copen_child_cfh(cfile *cfh, cfile *parent, unsigned long fh_start,
+    unsigned long fh_end, unsigned int compressor_type, unsigned int
+    access_flags);
+
 unsigned int  cclose(cfile *cfh);
 unsigned long cread(cfile *cfh, unsigned char *out_buff, unsigned long len);
 unsigned long cwrite(cfile *cfh, unsigned char *in_buff, unsigned long len);
 unsigned long crefill(cfile *cfh);
 unsigned long cflush(cfile *cfh);
 unsigned long ctell(cfile *cfh, unsigned int tell_type);
+unsigned long raw_cseek(cfile *cfh);
 unsigned long cseek(cfile *cfh, signed long offset, int offset_type);
 unsigned long copy_cfile_block(cfile *out_cfh, cfile *in_cfh, 
     unsigned long in_offset, unsigned long len);
