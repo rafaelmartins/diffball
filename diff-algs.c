@@ -32,16 +32,16 @@
 //#define LOOKBACK_SIZE 100000
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
-#define hash_it(ads, tbl_size) (( ((ads.s2) << 16) | ((ads.s1) & 0xffff)) % tbl_size)
+#define hash_it(ads, tbl_size) (get_checksum(&ads) % tbl_size)
 
 
 signed int OneHalfPassCorrecting(unsigned int encoding_type,
     unsigned int offset_type, struct cfile *ref_cfh, 
     struct cfile *ver_cfh, struct cfile *out_cfh,
-    unsigned int seed_len, unsigned int multi)
+    unsigned int seed_len, unsigned long hr_size)
 {
     unsigned long *hr; //reference hash table.
-    unsigned long hr_size;
+//    unsigned long hr_size;
     unsigned long x, index, len;
     //unsigned long s1, s2;
 //    unsigned long empties=0, good_collisions=0, bad_collisions=0;
@@ -62,7 +62,7 @@ signed int OneHalfPassCorrecting(unsigned int encoding_type,
 
     ref_len = ref_cfh->byte_len;
     ver_len = ver_cfh->byte_len;
-    hr_size = ref_len - seed_len;
+//    hr_size = ref_len - seed_len;
     printf("ref(%lu), ver(%lu), hr(%lu)\n", ref_len, ver_len, hr_size);
     if((hr=(unsigned long*)malloc(sizeof(unsigned long)*(hr_size)))==NULL) {
 		perror("Shite.  couldn't allocate needed memory for reference hash table.\n");
@@ -76,7 +76,7 @@ signed int OneHalfPassCorrecting(unsigned int encoding_type,
     for(x=0; x < hr_size; x++) {
 		hr[x] = 0;
 	}
-	init_adler32_seed(&ads, seed_len, multi);
+	init_adler32_seed(&ads, seed_len, 1);
 	//s1=s2=0;
     rbuff_end=cread(ref_cfh, rbuff, rbuff_size);
     assert(ctell(ref_cfh,CSEEK_ABS)==rbuff_start+rbuff_size);

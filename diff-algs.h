@@ -23,7 +23,7 @@
 signed int OneHalfPassCorrecting(unsigned int encoding_type,
     unsigned int offset_type, struct cfile *ref_cfh, 
     struct cfile *ver_cfh, struct cfile *out_cfh,
-    unsigned int seed_len, unsigned int multi);
+    unsigned int seed_len, unsigned long hr_size);
 
 
 #endif

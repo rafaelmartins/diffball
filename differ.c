@@ -97,11 +97,11 @@ int main(int argc, char **argv)
 	printf("opened\n");
     if(argc < 5) {
 		seed_len = 16;
-		multi = 1;
+		multi = ver_stat.st_size;
     } else {	     
 		seed_len = convertDec(argv[4], strlen(argv[4]));
 	if(argc < 6) {
-		    multi = 1;
+		    multi = src_stat.st_size;
 		} else {
 	    	multi = convertDec(argv[5], strlen(argv[5]));
 		}
@@ -114,7 +114,8 @@ int main(int argc, char **argv)
     unsigned int offset_type, struct cfile *ref_cfh, 
     struct cfile *ver_cfh, unsigned int seed_len);*/
     printf("calling one half\n");
-    OneHalfPassCorrecting(USE_GDIFF_ENCODING, ENCODING_OFFSET_START, &src_cfile,
+    OneHalfPassCorrecting(USE_GDIFF_ENCODING, ENCODING_OFFSET_DC_POS, 
+&src_cfile,
     	&ver_cfile, &out_cfile, (unsigned int)seed_len, (unsigned int)multi);
     printf("exiting\n");
     cclose(&out_cfile);
