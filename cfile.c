@@ -409,6 +409,7 @@ cseek(cfile *cfh, signed long offset, int offset_type)
     assert(data_offset >= 0);
 
     if(cfh->access_flags & CFILE_WONLY) {
+	dcprintf("flushing cfile prior to cseek\n");
 	if(cflush(cfh)) {
 	    return IO_ERROR;
 	}
@@ -538,13 +539,15 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 	/* note bzip2 doens't use the normal return */
 	return (CSEEK_ABS==offset_type ? data_offset + cfh->data_fh_offset : data_offset);
     }
+    cfh->data.offset = data_offset;
+    cfh->data.pos = cfh->data.end = 0;
     if(cfh->access_flags & CFILE_WONLY) {
-	if(ENSURE_LSEEK_POSITION(cfh)) {
+	if(raw_cseek(cfh)) {
+//	if(ENSURE_LSEEK_POSITION(cfh)) {
+	    dcprintf("raw_cseek on WONLY cfile failed\n");
 	    return IO_ERROR;
 	}
     }
-    cfh->data.offset = data_offset;
-    cfh->data.pos = cfh->data.end = 0;
     return (CSEEK_ABS==offset_type ? data_offset + cfh->data_fh_offset : 
 	data_offset);
 }
