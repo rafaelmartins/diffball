@@ -216,7 +216,7 @@ signed int gdiffReconstructDCBuff(struct cfile *patchf, struct CommandBuffer *dc
 		printf("wtf, unknown offset_type for reconstruction(%u)\n",offset_type);
 		exit(1);
     }
-
+    cseek(patchf, 5, CSEEK_CUR);
     while(cread(patchf, buff, 1)==1 && *buff != 0) {
     //printf("adding command num(%lu)\n", dcbuff->count+1);
 	    if(*buff > 0 && *buff <= 248) {

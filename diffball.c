@@ -29,6 +29,8 @@
 #include "cfile.h"
 #include "dcbuffer.h"
 #include "diff-algs.h"
+#include "gdiff.h"
+#include "switching.h"
 
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -367,9 +369,14 @@ int main(int argc, char **argv)
     }
     free(target);
     free(source);
+    printf("collapsing adds.\n");
+    DCBufferCollapseAdds(&dcbuff);
     printf("outputing patch...\n");
     copen(&ver_full, trg_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     offset_type= ENCODING_OFFSET_DC_POS;
+//    offset_type= ENCODING_OFFSET_START;
+//    rawEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
+//    switchingEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
     gdiffEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
     cclose(&ver_full);
     cclose(&out_cfh);

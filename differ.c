@@ -102,8 +102,8 @@ int main(int argc, char **argv)
     cclose(&ref_cfh);
     printf("outputing patch...\n");
     offset_type = ENCODING_OFFSET_DC_POS;
-    gdiffEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
-    //switchingEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
+    //gdiffEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
+    switchingEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
     printf("exiting\n");
     cclose(&ver_cfh);
     cclose(&out_cfh);
