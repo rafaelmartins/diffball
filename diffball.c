@@ -62,13 +62,14 @@ main(int argc, char **argv)
     tar_entry *tar_ptr = NULL;
     void *vptr;
     unsigned long source_count, target_count;
-    unsigned long x, patch_format_id, encode_result;
+    signed long encode_result;
+    unsigned long x, patch_format_id;
     char src_common[512], trg_common[512], *p;  /* common dir's... */
     unsigned long match_count;
 	
     cfile ref_full, ref_window, ver_window, ver_full, out_cfh;
     struct stat ref_stat, ver_stat;
-    RefHash rhash_full, rhash_win;
+    RefHash rhash_win;
     CommandBuffer dcbuff;
     poptContext p_opt;
 
@@ -339,7 +340,7 @@ main(int argc, char **argv)
     } else if (BDELTA_FORMAT == patch_format_id) {
         encode_result = bdeltaEncodeDCBuffer(&dcbuff, &out_cfh);
     }
-    v1printf("encoding result was %u\n", encode_result);
+    v1printf("encoding result was %ld\n", encode_result);
     DCBufferFree(&dcbuff);
     cclose(&ver_full);
     cclose(&out_cfh);

@@ -52,6 +52,14 @@ struct ll_chksum_ent {
 };
 
 typedef struct {
+    unsigned char	*depth;
+    unsigned short	**chksum;
+    off_u64		**offset;
+    unsigned short	max_depth;
+} buckets;
+
+
+typedef struct {
     unsigned int seed_len;
     unsigned long hr_size;
     unsigned char type;
@@ -59,12 +67,15 @@ typedef struct {
     union {
 	unsigned long	*mod;
         chksum_ent	*chk;
-	struct {
-	    unsigned char	*depth;
-	    unsigned short	**chksum;
-	    off_u64		**offset;
-	    unsigned short	max_depth;
-	} bucket;
+	buckets		bucket;
+//	struct {
+//	    unsigned char	*depth;
+//	    unsigned short	**chksum;
+//	    off_u64		**offset;
+//	    unsigned short	max_depth;
+//	} bucket;
+
+
     } hash;
     unsigned int  sample_rate;
     cfile *ref_cfh;

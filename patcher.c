@@ -47,7 +47,7 @@ main(int argc, char **argv)
     struct stat src_stat, patch_stat;
     int src_fh, patch_fh, out_fh;
     cfile src_cfh, patch_cfh, out_cfh;
-    unsigned long patch_compressor_type;
+//    unsigned long patch_compressor_type;
     CommandBuffer dcbuff;
     poptContext p_opt;
 

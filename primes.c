@@ -22,7 +22,7 @@
 
 #define sqr(x) ((x) * (x))
 
-void 
+int
 init_primes(PRIME_CTX *ctx)
 {
 	/* heh... the first 1,000 primes... */
@@ -97,6 +97,7 @@ init_primes(PRIME_CTX *ctx)
     ctx->array_size = 1000;
     for(x=0; x < ctx->prime_count; x++)
 	ctx->base_primes[x] = primes[x];
+    return 0L;
 }
 
 void 
@@ -106,7 +107,7 @@ free_primes(PRIME_CTX *ctx)
     ctx->prime_count = ctx->array_size = 0;
 }
 
-void 
+int
 find_next_prime(PRIME_CTX *ctx)
 {
     unsigned long prime, upper, x;
@@ -133,6 +134,7 @@ find_next_prime(PRIME_CTX *ctx)
     }
     ctx->base_primes[ctx->prime_count] = prime;
     ctx->prime_count++;
+    return 0L;
 }
 
 unsigned long 
@@ -165,7 +167,9 @@ get_nearest_prime(PRIME_CTX *ctx, unsigned long near)
     if(sqr(ctx->base_primes[ctx->prime_count -1]) < near) {
 	while(sqr(ctx->base_primes[ctx->prime_count -1]) < near &&
 	    ctx->base_primes[ctx->prime_count -1] != 65521) {
-	    find_next_prime(ctx);
+	    if(find_next_prime(ctx)) {
+		return MEM_ERROR;
+	    }
 	}
 	div=ctx->prime_count -1;
      } else {

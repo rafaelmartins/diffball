@@ -52,10 +52,9 @@ int main(int argc, char **argv)
 {
     struct stat ref_stat, ver_stat;
     cfile out_cfh, ref_cfh, ver_cfh;
-    int ref_fh, ver_fh, out_fh, err;
+    int ref_fh, ver_fh, out_fh;
     //char *src, *trg;
     CommandBuffer buffer;
-    RefHash rhash;
     poptContext p_opt;
 
     signed long optr;

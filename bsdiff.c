@@ -91,12 +91,16 @@ signed int
 bsdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 {
     cfile ctrl_cfh, *diff_cfh, *extra_cfh;
-    cfile_window *cfw;
-    unsigned char ver, processing_add;
+//  following variables are related to allowing conversion of bsdiff formats, 
+//  once a reference file option is added to convert_delta (if ever)
+/*    cfile_window *cfw;
+    unsigned char processing_add;
+    off_u32 add_start;
+*/
+    unsigned char ver;
     unsigned char buff[32];
     off_u32 len1, len2, diff_offset, extra_offset;
     off_s32 seek;
-    off_u32 add_start;
     off_u32 *src_offsets;
     unsigned long src_offset_size = 1000, src_offset_count=0;
     off_u32 diff_len, ctrl_len;

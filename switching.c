@@ -74,7 +74,7 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
     unsigned long delta_pos=0, dc_pos=0;
     unsigned int lb, ob;
     unsigned char out_buff[256];
-    unsigned long count, temp_len;
+    unsigned long temp_len;
     DCommand dc;
     unsigned long total_add_len=0;
     unsigned int last_com, temp;
