@@ -71,7 +71,7 @@ signed int init_RefHash(struct ref_hash *rhash, struct cfile *ref_cfh,
 		rhash->hash[x] = 0;
     }
     init_adler32_seed(&ads, seed_len, 1);
-    //rbuff_start = cseek(ref_cfh, 0, CSEEK_FSTART);
+    rbuff_start = cseek(ref_cfh, 0, CSEEK_FSTART);
     rbuff_end=cread(ref_cfh, rbuff, rbuff_size);
     printf("inited hash start(%lu), end(%lu), requested(%u)\n", rbuff_start, rbuff_end,
     	rbuff_size);

@@ -39,12 +39,11 @@ unsigned long convertDec(unsigned char *buff, unsigned int len)
 int main(int argc, char **argv)
 {
     struct stat ref_stat, ver_stat;
-    struct cfile out_cfh, ref_cfh, ver_cfh, ver_cfh2;
+    struct cfile out_cfh, ref_cfh, ver_cfh;
     int ref_fh, ver_fh, out_fh;
     //char *src, *trg;
     struct CommandBuffer buffer;
     struct ref_hash rhash;
-    unsigned char *ref;
     unsigned long seed_len, multi;
     unsigned int offset_type;
     if(argc <3){
@@ -82,10 +81,6 @@ int main(int argc, char **argv)
 		fprintf(stderr,"storing generated delta in '%s'\n", argv[3]);
     }
     copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
-    printf("allocing %lu\n", ref_stat.st_size);
-	ref=(unsigned char *)malloc(ref_stat.st_size);
-	printf("alloced\n");
-	//ver=(unsigned char *)malloc(ver_stat.st_size);
     if(argc < 5) {
 		seed_len = 16;
 		multi = ref_stat.st_size;
@@ -99,39 +94,18 @@ int main(int argc, char **argv)
     }
     printf("using seed_len(%lu), multi(%lu)\n", seed_len, multi);
     DCBufferInit(&buffer, 1000000);
-	printf("reading\n");
-	read(ref_fh, ref, ref_stat.st_size);
-	printf("read\n");
-	//read(trg_fh, trg, trg_stat.st_size);
-	printf("cmemopening\n");
-//	cmemopen(&ref_cfh, ref, 0, 102400, NO_COMPRESSOR);
-//	cmemopen(&ref_cfh, ref, 0 ,51200, NO_COMPRESSOR);
-	cmemopen(&ref_cfh, ref + 51200, 51200, 102400, NO_COMPRESSOR);
-	printf("openned, len(%lu)\n", ref_cfh.byte_len);
-        init_RefHash(&rhash, &ref_cfh, seed_len, ref_cfh.byte_len);
-//	printf("opened\n");
-	printf("copening ver_cfh\n");
-	copen(&ver_cfh, ver_fh, 0, 102400, NO_COMPRESSOR, CFILE_RONLY);
-//	copen(&ver_cfh, ver_fh, 0, 102400, NO_COMPRESSOR, CFILE_RONLY);
-	printf("opened\n");
+    copen(&ref_cfh, ref_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
+    init_RefHash(&rhash, &ref_cfh, seed_len, ref_cfh.byte_len);
+    copen(&ver_cfh, ver_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
+    printf("opened\n");
     OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh);
-//	cclose(&ver_cfh);
-//	cclose(&ref_cfh);
-//	printf("closed ver_cfh, starting second run\n");
-//	copen(&ver_cfh, ver_fh, 51200, 102400, NO_COMPRESSOR, CFILE_RONLY);
-//	cmemopen(&ref_cfh, ref, 51200, 102400, NO_COMPRESSOR);
-//	init_RefHash(&rhash, &ref_cfh, seed_len, ref_cfh.byte_len);
-//    OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh);
-//    cclose(&ref_cfh);
-//    printf("beginning round 2...\n");
-//    cmemopen(&ref_cfh, ref, 51200, ref_stat.st_size, NO_COMPRESSOR);
-//    init_RefHash(&rhash, &ref_cfh, seed_len, ref_cfh.byte_len);
-//    OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh);
+    cclose(&ref_cfh);
     printf("outputing patch...\n");
     offset_type = ENCODING_OFFSET_START;
     gdiffEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
     //switchingEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
     printf("exiting\n");
+    cclose(&ver_cfh);
     cclose(&out_cfh);
     return 0;
 }
