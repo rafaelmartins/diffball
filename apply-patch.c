@@ -40,7 +40,7 @@ cmp_dcloc_match(const void *vd1, const void *vd2)
 }
 
 int 
-reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh, int reorder_for_seq_access)
+reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh, int reorder_for_seq_access, unsigned long max_buff_size)
 {
     DCommand *dc = NULL;
     assert(DCBUFFER_FULL_TYPE == dcbuff->DCBtype);
@@ -77,7 +77,7 @@ reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh, int reorder_for_seq_acces
 	    v1printf("processing src %u: %lu commands.\n", norm_cl[x] - cl, norm_cl[x]->com_count);
 	    if(norm_cl[x]->com_count) {
 		qsort(norm_cl[x]->full_command, norm_cl[x]->com_count, sizeof(DCLoc_match), cmp_dcloc_match);
-	    	if(read_seq_write_rand(norm_cl[x], dcbuff->srcs + (norm_cl[x] - cl), 0, out_cfh))
+	    	if(read_seq_write_rand(norm_cl[x], dcbuff->srcs + (norm_cl[x] - cl), 0, out_cfh, max_buff_size))
 	    	    return IO_ERROR;
 	    }
 	    CL_free(norm_cl[x]);
@@ -87,7 +87,7 @@ reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh, int reorder_for_seq_acces
 	    v1printf("processing overlay src %u: %lu commands.\n", ov_cl[x] - cl, ov_cl[x]->com_count);
 	    if(ov_cl[x]->com_count) {
 		qsort(ov_cl[x]->full_command, ov_cl[x]->com_count, sizeof(DCLoc_match), cmp_dcloc_match);
-	    	if(read_seq_write_rand(ov_cl[x], dcbuff->srcs + (ov_cl[x] - cl), 1, out_cfh))
+	    	if(read_seq_write_rand(ov_cl[x], dcbuff->srcs + (ov_cl[x] - cl), 1, out_cfh, max_buff_size))
 	    	    return IO_ERROR;
 	    }
 	    CL_free(ov_cl[x]);
@@ -113,10 +113,9 @@ reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh, int reorder_for_seq_acces
 }
 
 int
-read_seq_write_rand(command_list *cl, DCB_registered_src *r_src, unsigned char is_overlay, cfile *out_cfh)
+read_seq_write_rand(command_list *cl, DCB_registered_src *r_src, unsigned char is_overlay, cfile *out_cfh, unsigned long buf_size)
 {
-    #define buf_size 0x10000
-    unsigned char buf[buf_size];
+    unsigned char *buf;
     unsigned char *p;
     unsigned long x, start=0, end=0, len=0;
     unsigned long max_pos = 0, pos = 0;
@@ -142,7 +141,14 @@ read_seq_write_rand(command_list *cl, DCB_registered_src *r_src, unsigned char i
 	ap_printf("cseeked failed: bailing, io_error 0\n");
 	return IO_ERROR;
     }
-	
+
+    if((buf = (unsigned char *)malloc(buf_size)) == NULL) {
+	return MEM_ERROR;
+    }
+
+    // we should *never* go backwards
+    u_src.cfh->state_flags |= CFILE_FLAG_BACKWARD_SEEKS;	
+
     while(start < cl->com_count) {
 	if(pos < cl->full_command[start].src_pos) {
 	    pos = cl->full_command[start].src_pos;
@@ -169,9 +175,12 @@ read_seq_write_rand(command_list *cl, DCB_registered_src *r_src, unsigned char i
 	while(pos < max_pos) {
 	    len = MIN(max_pos - pos, buf_size);
 	    x = read_func(u_src, pos, buf, len);
+//	    if(len < max_pos - pos)
+//		v0printf("buffered %lu, max was %lu\n", len, max_pos - pos);
 	    if(len != x){
 		ap_printf("x=%lu, pos=%lu, len=%lu\n", x, pos, len);
 		ap_printf("bailing, io_error 2\n");
+		free(buf);
 		return IO_ERROR;
 	    }
 	    for(x=start; x < end; x++) {
@@ -183,6 +192,7 @@ read_seq_write_rand(command_list *cl, DCB_registered_src *r_src, unsigned char i
 			cseek(out_cfh, cl->full_command[x].ver_pos + (offset - cl->full_command[x].src_pos),
 			CSEEK_FSTART)) {
 			ap_printf("bailing, io_error 3\n");
+			free(buf);
 			return IO_ERROR;
 		    }
 		    if(is_overlay) {
@@ -197,6 +207,7 @@ read_seq_write_rand(command_list *cl, DCB_registered_src *r_src, unsigned char i
 			        cfw = next_page(out_cfh);
 			        if(cfw->end == 0) {
 			    	    ap_printf("bailing from applying overlay mask in read_seq_writ_rand\n");
+				    free(buf);
 			    	    return IO_ERROR;
 			    	}
 			    }
@@ -208,6 +219,7 @@ read_seq_write_rand(command_list *cl, DCB_registered_src *r_src, unsigned char i
 		    } else {
 			if(tmp_len != cwrite(out_cfh, buf + offset - pos, tmp_len)) {
 			    ap_printf("bailing, io_error 4\n");
+			    free(buf);
 			    return IO_ERROR;
 			}
 		    }
@@ -216,6 +228,8 @@ read_seq_write_rand(command_list *cl, DCB_registered_src *r_src, unsigned char i
 	    pos += len;
 	}
     }
+    u_src.cfh->state_flags &= ~CFILE_FLAG_BACKWARD_SEEKS;
+    free(buf);
     return 0;
 }
 

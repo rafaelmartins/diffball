@@ -49,7 +49,7 @@ patcher_LDADD	=	${DIFF_LIBS}
 patcher_SOURCES = 	patcher.c	\
 			apply-patch.c	\
 			options.c	\
-			errors.c
+			errors.c	${DIFF_EXTRAS}
 
 diffball_LDADD	= 	${DIFF_LIBS} 
 diffball_SOURCES = 	diffball.c	\

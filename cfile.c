@@ -442,6 +442,10 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 
     assert(data_offset >= 0 || NO_COMPRESSOR != cfh->compressor_type);
 
+    if((cfh->state_flags & CFILE_FLAG_BACKWARD_SEEKS) && (data_offset < cfh->data.offset))
+	v0printf("%i seek backwards, desired %ld, cur base %lu, cur end %lu\n", cfh->cfh_id, data_offset, cfh->data.offset, 
+	cfh->data.offset + cfh->data.pos);
+
     if(cfh->access_flags & CFILE_WRITEABLE) {
 	dcprintf("%u: flushing cfile prior to cseek\n", cfh->cfh_id);
 	if(cflush(cfh)) {

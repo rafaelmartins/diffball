@@ -35,19 +35,21 @@ unsigned int global_verbosity = 0;
 static struct option long_opts[] = {
     STD_LONG_OPTIONS,
     FORMAT_LONG_OPTION("patch-format", 'f'),
+    FORMAT_LONG_OPTION("max-buffer", 'b'),
     END_LONG_OPTS
 };
 
 static struct usage_options help_opts[] = {
     STD_HELP_OPTIONS,
     FORMAT_HELP_OPTION("patch-format", 'f', "Override patch auto-identification"),
+    FORMAT_HELP_OPTION("max-buffer", 'b', "Override the default 128KB buffer max"),
     USAGE_FLUFF("Normal usage is patcher src-file patch(s) reconstructed-file\n"
     "if you need to override the auto-identification (eg, you hit a bug), use -f.  Note this settings\n"
     "affects -all- used patches, so it's use should be limited to applying a single patch"),
     END_HELP_OPTS
 };
 
-static char short_opts[] = STD_SHORT_OPTIONS "f:";
+static char short_opts[] = STD_SHORT_OPTIONS "f:b:";
 
 
 int
@@ -75,6 +77,7 @@ main(int argc, char **argv)
     unsigned int global_use_md5 = 0;
     char  *patch_format = NULL;
     int optr = 0;
+    unsigned long reconst_size = 0xffff;
     
     #define DUMP_USAGE(exit_code) \
 	print_usage("patcher", "src_file patch(es) [trg_file|or to stdout]", help_opts, exit_code);
@@ -104,6 +107,18 @@ main(int argc, char **argv)
 	    } else 
 		out_compressor = GZIP_COMPRESSOR;
 	    break;
+	case 'b':
+	    reconst_size = atol(optarg);
+	    if(reconst_size > 0x4000000 || reconst_size == 0) {
+		v0printf("requested buffer size %lu isn't sane.  Must be greater then 0, and less then %lu\n", 
+		     reconst_size,  0x4000000L);
+		exit(EXIT_USAGE);
+	    }
+	    break;
+	default:
+	    v0printf("unknown option %s\n", argv[optind]);
+	    DUMP_USAGE(EXIT_USAGE);
+	
 	}
     }
     if( ((src_name=(char *)get_next_arg(argc, argv))==NULL) || 
@@ -303,7 +318,7 @@ main(int argc, char **argv)
 
     	v1printf("reordering commands? %u\n", reorder_commands);
     	v1printf("reconstructing target file based off of dcbuff commands...\n");
-    	err = reconstructFile(&dcbuff[(patch_count - 1) % 2], &out_cfh,reorder_commands);
+    	err = reconstructFile(&dcbuff[(patch_count - 1) % 2], &out_cfh,reorder_commands, reconst_size);
 	check_return(err, "reconstructFile", "error detected while reconstructing file, quitting");
     	
     	v1printf("reconstruction completed successfully\n");
