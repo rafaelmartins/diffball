@@ -38,7 +38,6 @@ signed long
 RH_bucket_find_chksum(unsigned short chksum, unsigned short array[], 
     unsigned short count)
 {
-    assert(rhash->type & (RH_BUCKET_HASH | RH_RBUCKET_HASH));
     signed long low,high,mid;
     assert(count);
     low = 0;
