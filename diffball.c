@@ -242,7 +242,7 @@ int main(int argc, char **argv)
 	CFILE_OPEN_FH);
     DCBufferInit(&dcbuff, 4096, (unsigned long)ref_stat.st_size, 
 	(unsigned long)ver_stat.st_size);
-    v1printf("initing backup full hash\n");
+    v1printf("initing fallback full reference hash\n");
     init_RefHash(&rhash_full, &ref_full, seed_len, sample_rate, 
 	hash_size);
     print_RefHash_stats(&rhash_full);
@@ -265,7 +265,7 @@ int main(int argc, char **argv)
         		(512 * target[x]->file_loc) + 512 +(target[x]->size==0 ? 0 : 
         			target[x]->size + 512 - (target[x]->size % 512==0 ? 512 : 
         			target[x]->size % 512) ));
-        	v2printf("file_loc(%lu), size(%lu)\n", target[x]->file_loc,
+        	v1printf("file_loc(%lu), size(%lu)\n", target[x]->file_loc,
         			target[x]->size);
         	OneHalfPassCorrecting(&dcbuff, &rhash_full, &ver_window);
 	    	//_matches[x] = '0';
