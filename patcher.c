@@ -43,8 +43,8 @@ int main(int argc, char **argv)
     struct stat src_stat, delta_stat;
     int src_fh, delta_fh, out_fh;
     unsigned int offset_type;
-    struct cfile src_cfh, delta_cfh, out_cfh;
-    struct CommandBuffer dcbuff;
+    cfile src_cfh, delta_cfh, out_cfh;
+    CommandBuffer dcbuff;
     if(argc <4){
 		printf("pardon, but...\nI need at least 3 args- (reference file), patch-file, target file\n");
 		exit(EXIT_FAILURE);

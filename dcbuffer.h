@@ -25,48 +25,38 @@
 #define USE_GDIFF_ENCODING 0
 #define LOOKBACK_SIZE 100000
 
-struct DCLoc {
+typedef struct {
     unsigned long offset;
     unsigned long len;
-};
+} DCLoc;
 
-struct CommandBuffer {
-    unsigned long count;
-    unsigned long max_commands;
+typedef struct {
+    unsigned long flush_count;
+    unsigned long buffer_count;
+    unsigned long buffer_size;
+    unsigned long src_size;
+    unsigned long ver_size;
+    unsigned long reconstruct_pos;
     unsigned char *cb_start, *cb_end, *cb_head, *cb_tail;
     unsigned char cb_tail_bit, cb_head_bit;
-    struct DCLoc *lb_start, *lb_end, *lb_head, *lb_tail;
-};
+    DCLoc *lb_start, *lb_end, *lb_head, *lb_tail;
+} CommandBuffer;
 
-struct DCStats {
+typedef struct {
     unsigned long copy_count;
     unsigned long add_count;
-    /*unsigned long offset_max;
-    unsigned long offset_min;
-    unsigned long add_len_max;
-    unsigned long add_len_min;
-    unsigned long copy_len_max;
-    unsigned long copy_len_min;
-    signed long   neg_offset_max;
-    signed long   neg_offset_min;
-    signed long   pos_offset_max;
-    signed long   pos_offset_min;
-    unsigned long adjacent_offset_max;
-    unsigned long adjacent_offset_min;*/
-    /*unsigned long copy_pos_offsets_bytes[5];
-    unsigned long copy_neg_offsets_bytes[5];*/
     unsigned long copy_pos_offset_bytes[5];
     unsigned long copy_rel_offset_bytes[5];
     unsigned long copy_len_bytes[5];
-};
+} DCStats;
 
-unsigned long inline get_current_command_type(struct CommandBuffer *buff);
-void updateDCCopyStats(struct DCStats *stats, signed long pos_offset, signed long dc_offset, unsigned long len);
-void DCBufferIncr(struct CommandBuffer *buffer);
-void DCBufferDecr(struct CommandBuffer *buffer);
-void DCBufferCollapseAdds(struct CommandBuffer *buffer);
-void DCBufferAddCmd(struct CommandBuffer *buffer, int type, unsigned long offset, unsigned long len);
-void DCBufferTruncate(struct CommandBuffer *buffer, unsigned long len);
-void DCBufferInit(struct CommandBuffer *buffer, unsigned long max_commands);
+unsigned long inline get_current_command_type(CommandBuffer *buff);
+void updateDCCopyStats(DCStats *stats, signed long pos_offset, signed long dc_offset, unsigned long len);
+void DCBufferIncr(CommandBuffer *buffer);
+void DCBufferDecr(CommandBuffer *buffer);
+void DCBufferCollapseAdds(CommandBuffer *buffer);
+void DCBufferAddCmd(CommandBuffer *buffer, int type, unsigned long offset, unsigned long len);
+void DCBufferTruncate(CommandBuffer *buffer, unsigned long len);
+void DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size);
 
 #endif

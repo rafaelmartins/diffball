@@ -50,10 +50,8 @@
     version is one byte.
     */
 
-signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer, 
-    unsigned int offset_type, /*unsigned char *ver */
-    struct cfile *ver_cfh, /*int fh*/ struct cfile *out_fh);
-signed int gdiffReconstructDCBuff(struct cfile *patchf, struct CommandBuffer *dcbuff, 
-    unsigned int offset_type,
-    unsigned int gdiff_version);
+signed int gdiffEncodeDCBuffer(CommandBuffer *buffer, 
+    unsigned int offset_type, cfile *ver_cfh, cfile *out_cfh);
+signed int gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff, 
+    unsigned int offset_type, unsigned int gdiff_version);
 #endif

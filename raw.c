@@ -26,15 +26,9 @@
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
-/*unsigned int GET_CURRENT_COMMAND_TYPE(struct CommandBuffer *buff) {
-	return (*buff->cb_tail & (1 << buff->cb_tail_bit));
-}*/
-#define GET_CURRENT_COMMAND_TYPE(buff) \
-	((*buff->cb_tail >> buff->cb_tail_bit) & 0x01)
-
-signed int rawEncodeDCBuffer(struct CommandBuffer *buffer, 
-    unsigned int offset_type, /*unsigned char *ver */
-    struct cfile *ver_cfh, /*int fh*/ struct cfile *out_fh)
+signed int 
+rawEncodeDCBuffer(CommandBuffer *buffer, unsigned int offset_type, 
+    cfile *ver_cfh, cfile *out_fh)
 {
     unsigned char clen;
     unsigned long fh_pos=0;
@@ -56,13 +50,12 @@ signed int rawEncodeDCBuffer(struct CommandBuffer *buffer,
     unsigned int is_neg = 0;
     unsigned long command_count = 0;
 
-//    printf("commands in buffer(%lu)\n", buffer->count);
     buffer->lb_tail = buffer->lb_start;
     buffer->cb_tail = buffer->cb_head;
     buffer->cb_tail_bit = buffer->cb_head_bit;
     total_add_len=0;
     command_count=0;
-    count = buffer->count;
+    count = buffer->buffer_count;
     last_com=DC_COPY;
     if(*buffer->cb_tail & (1 << buffer->cb_tail_bit))
 	command_count++;
@@ -82,7 +75,7 @@ signed int rawEncodeDCBuffer(struct CommandBuffer *buffer,
 	}
     	DCBufferIncr(buffer);
     }
-    printf("count=%lu, command_count=%lu\n", buffer->count, command_count);
+    printf("count=%lu, command_count=%lu\n", buffer->buffer_count, command_count);
     writeUBytesBE(out_buff, command_count, 4);
     writeUBytesBE(out_buff + 4, total_add_len, 4);
     cwrite(out_fh, out_buff, 8);
@@ -90,7 +83,7 @@ signed int rawEncodeDCBuffer(struct CommandBuffer *buffer,
     buffer->lb_tail = buffer->lb_start;
     buffer->cb_tail = buffer->cb_head;
     buffer->cb_tail_bit = buffer->cb_head_bit;
-    count = buffer->count;
+    count = buffer->buffer_count;
     while(count--) {
 	if(((*buffer->cb_tail & (1 << buffer->cb_tail_bit))==DC_ADD) &&
 //	if(GET_CURRENT_COMMAND_TYPE(buffer)==DC_ADD && 
@@ -123,7 +116,7 @@ signed int rawEncodeDCBuffer(struct CommandBuffer *buffer,
     buffer->lb_tail = buffer->lb_start;
     buffer->cb_tail = buffer->cb_head;
     buffer->cb_tail_bit = buffer->cb_head_bit;
-    count = buffer->count;
+    count = buffer->buffer_count;
     last_com = DC_COPY;
     dc_pos=0;
     while(command_count--){
@@ -190,8 +183,10 @@ signed int rawEncodeDCBuffer(struct CommandBuffer *buffer,
     return 0;
 }
 
-signed int rawReconstructDCBuff(struct cfile *patchf, struct CommandBuffer *dcbuff, 
-    unsigned int offset_type) {
+signed int 
+rawReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff, 
+    unsigned int offset_type) 
+{
     const unsigned int buff_size = 8;
     unsigned char buff[buff_size];
     unsigned long int len;

@@ -22,9 +22,9 @@
 #define XD_INDEX_COPY 1
 #define XD_INDEX_ADD 0
 
-signed int xdelta1EncodeDCBuffer(struct CommandBuffer *buffer, 
-    unsigned int version, struct cfile *ver_cfh, struct cfile *out_cfh);
-signed int xdelta1ReconstructDCBuff(struct cfile *patchf, struct CommandBuffer *dcbuff, 
+signed int xdelta1EncodeDCBuffer(CommandBuffer *buffer, 
+    unsigned int version, cfile *ver_cfh, cfile *out_cfh);
+signed int xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff, 
     unsigned int version);
 
 

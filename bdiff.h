@@ -24,8 +24,7 @@
 #include "diff-algs.h"
 #include "cfile.h"
 
-signed int bdiffEncodeDCBuffer(struct CommandBuffer *buffer, 
-    struct cfile *ver_cfh, struct cfile *out_cfh);
-signed int bdiffReconstructDCBuff(struct cfile *patchf, 
-    struct CommandBuffer *dcbuff);
+signed int bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh, 
+	cfile *out_cfh);
+signed int bdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff);
 #endif

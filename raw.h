@@ -19,10 +19,9 @@
 #define _HEADER_RAW 1
 #include "cfile.h"
 
-signed int rawEncodeDCBuffer(struct CommandBuffer *buffer, 
-    unsigned int offset_type, /*unsigned char *ver */
-    struct cfile *ver_cfh, /*int fh*/ struct cfile *out_fh);
-signed int rawReconstructDCBuff(struct cfile *patchf, struct CommandBuffer *dcbuff, 
+signed int rawEncodeDCBuffer(CommandBuffer *buffer, 
+    unsigned int offset_type, cfile *ver_cfh, cfile *out_fh);
+signed int rawReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff, 
     unsigned int offset_type);
 
 

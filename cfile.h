@@ -47,7 +47,7 @@ SEEK_END
 
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
-struct cfile {
+typedef struct {
 	//raw_fh stuff
 	int raw_fh;
 	unsigned long byte_len;
@@ -71,17 +71,17 @@ struct cfile {
 	//misc state info
 	unsigned long state_flags;
 
-};
+} cfile;
 
-signed int copen(struct cfile *cfile, int fh, unsigned long fh_start,
+signed int copen(cfile *cfh, int fh, unsigned long fh_start,
    unsigned long fh_end, unsigned int compressor_type, unsigned int access_flags);
-signed int cmemopen(struct cfile *cfile, unsigned char *buff, 
+signed int cmemopen(cfile *cfh, unsigned char *buff, 
 	unsigned long fh_start, unsigned long fh_end, unsigned int compressor_type);
-signed int cclose(struct cfile *cfile);
-unsigned long cread(struct cfile *cfile, unsigned char *out_buff, unsigned long len);
-unsigned long cwrite(struct cfile *cfile, unsigned char *in_buff, unsigned long len);
-inline void crefresh(struct cfile *cfile);
-unsigned long ctell(struct cfile *cfile, unsigned int tell_type);
-unsigned long cseek(struct cfile *cfile, signed long offset, int offset_type);
+signed int cclose(cfile *cfh);
+unsigned long cread(cfile *cfh, unsigned char *out_buff, unsigned long len);
+unsigned long cwrite(cfile *cfh, unsigned char *in_buff, unsigned long len);
+inline void crefresh(cfile *cfh);
+unsigned long ctell(cfile *cfh, unsigned int tell_type);
+unsigned long cseek(cfile *cfh, signed long offset, int offset_type);
 
 #endif

@@ -19,10 +19,10 @@
 #define _HEADER_BDELTA 1
 #include "cfile.h"
 
-signed int bdeltaEncodeDCBuffer(struct CommandBuffer *buffer, 
-    struct cfile *ver_cfh, /*int fh*/ struct cfile *out_fh);
-signed int bdeltaReconstructDCBuff(struct cfile *patchf, 
-	struct CommandBuffer *dcbuff);
+signed int bdeltaEncodeDCBuffer(CommandBuffer *buffer, 
+    	cfile *ver_cfh, cfile *out_fh);
+signed int bdeltaReconstructDCBuff(cfile *patchf, 
+	CommandBuffer *dcbuff);
 
 
 #endif

@@ -43,8 +43,10 @@ static unsigned int PRIMES[] = {1583,113,919,719,1373,659,503,373,653,1759,1289,
 
 /* ========================================================================= */
 
-void init_adler32_seed(struct adler32_seed *ads, unsigned int seed_len,
-	unsigned int multi) {
+void 
+init_adler32_seed(ADLER32_SEED_CTX *ads, unsigned int seed_len, 
+    unsigned int multi) 
+{
 	unsigned int x;
 	ads->s1 = ads->s2 = ads->tail = 0;
 	ads->seed_len = seed_len;
@@ -72,8 +74,10 @@ void init_adler32_seed(struct adler32_seed *ads, unsigned int seed_len,
 	}
 }
 
-void update_adler32_seed(struct adler32_seed *ads, unsigned char *buff, unsigned int len) {
-	unsigned int x;
+void 
+update_adler32_seed(ADLER32_SEED_CTX *ads, unsigned char *buff, 
+    unsigned int len) 
+{	unsigned int x;
 	signed long int parity;
 	if(len==ads->seed_len) {
 		//printf("computing seed fully\n");
@@ -108,7 +112,9 @@ void update_adler32_seed(struct adler32_seed *ads, unsigned char *buff, unsigned
 	}
 }
 
-unsigned long get_checksum(struct adler32_seed *ads) {
+unsigned long 
+get_checksum(ADLER32_SEED_CTX *ads)
+{
 	unsigned long chksum;
 	unsigned int parity=0, x=0;
 /*	for(x=0; x < ads->seed_len; x++) {
@@ -119,7 +125,9 @@ unsigned long get_checksum(struct adler32_seed *ads) {
 	//return (unsigned long)((ads->s2 << 16) | (ads->s1 & 0xffff));
 }
 
-signed int free_adler32_seed(struct adler32_seed *ads) {
+signed int 
+free_adler32_seed(ADLER32_SEED_CTX *ads)
+{
 	printf("free_adler32_seed\n");
 	free(ads->last_seed);
 	free(ads->seed_chars);

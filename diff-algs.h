@@ -17,24 +17,25 @@
 */
 #ifndef _HEADER_DIFF_ALGS
 #define _HEADER_DIFF_ALGS 1
+
 #include "cfile.h"
 #include "dcbuffer.h"
-struct ref_hash {
+typedef struct _RefHash {
 	unsigned int seed_len;
 	unsigned long hr_size;
 	unsigned long *hash;
 	unsigned int  sample_rate;
-	struct cfile *ref_cfh;
+	cfile *ref_cfh;
 	unsigned long inserts;
 	unsigned long duplicates;
-};
+} RefHash;
 
-signed int init_RefHash(struct ref_hash *rhash, struct cfile *ref_cfh, 
+signed int init_RefHash(RefHash *rhash, cfile *ref_cfh, 
 	unsigned int seed_len, unsigned int sample_rate, 
 	unsigned long hr_size);
 	
-signed int OneHalfPassCorrecting(struct CommandBuffer *buffer, 
-	struct ref_hash *rhash, struct cfile *ver_cfh);
+signed int OneHalfPassCorrecting(CommandBuffer *buffer, 
+	RefHash *rhash, cfile *ver_cfh);
 
 #endif
 

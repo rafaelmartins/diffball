@@ -18,13 +18,13 @@
 #ifndef _HEADER_PRIMES
 #define _HEADER_PRIMES 1
 
-struct prime_ctx {
+typedef struct _PRIME_CTX {
 	unsigned int *base_primes;
 	unsigned long prime_count;
 	unsigned long array_size;
-};
+} PRIME_CTX;
 
-void init_primes(struct prime_ctx *ctx);
-void free_primes(struct prime_ctx *ctx);
-unsigned long get_nearest_prime(struct prime_ctx *ctx, unsigned long near);
+void init_primes(PRIME_CTX *ctx);
+void free_primes(PRIME_CTX *ctx);
+unsigned long get_nearest_prime(PRIME_CTX *ctx, unsigned long near);
 #endif

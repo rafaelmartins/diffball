@@ -21,7 +21,9 @@
 
 #define sqr(x) ((x) * (x))
 
-void init_primes(struct prime_ctx *ctx) {
+void 
+init_primes(PRIME_CTX *ctx)
+{
 	/* heh... the first 1,000 primes... */
 	unsigned int primes[] = 
 {3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,
@@ -96,13 +98,17 @@ void init_primes(struct prime_ctx *ctx) {
 		ctx->base_primes[x] = primes[x];
 }
 
-void free_primes(struct prime_ctx *ctx) {
+void 
+free_primes(PRIME_CTX *ctx)
+{
 	printf("free_primes\n");
 	free(ctx->base_primes);
 	ctx->prime_count = ctx->array_size = 0;
 }
 
-void find_next_prime(struct prime_ctx *ctx) {
+void 
+find_next_prime(PRIME_CTX *ctx)
+{
 	unsigned long prime, upper, x;
 	int is_prime=0;
 	if(ctx->prime_count == ctx->array_size) {
@@ -130,7 +136,9 @@ void find_next_prime(struct prime_ctx *ctx) {
 	ctx->prime_count++;
 }
 
-unsigned long get_nearest_prime(struct prime_ctx *ctx, unsigned long near) {
+unsigned long 
+get_nearest_prime(PRIME_CTX *ctx, unsigned long near)
+{
 	unsigned long x, y, div, prime;
 	int is_prime;
 	if(near < ctx->base_primes[ctx->prime_count -1]) {

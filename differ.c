@@ -40,11 +40,11 @@ unsigned long convertDec(unsigned char *buff, unsigned int len)
 int main(int argc, char **argv)
 {
     struct stat ref_stat, ver_stat;
-    struct cfile out_cfh, ref_cfh, ver_cfh;
+    cfile out_cfh, ref_cfh, ver_cfh;
     int ref_fh, ver_fh, out_fh;
     //char *src, *trg;
-    struct CommandBuffer buffer;
-    struct ref_hash rhash;
+    CommandBuffer buffer;
+    RefHash rhash;
     unsigned long seed_len, multi;
     unsigned int offset_type;
     if(argc <3){

@@ -29,12 +29,14 @@
 #include "raw.h"
 #include "bdiff.h"
 
-int main(int argc, char **argv) {
+int 
+main(int argc, char **argv)
+{
     int din_fh, dout_fh, dout2_fh;
     struct stat din_stat;
     unsigned int offset_type;
-    struct CommandBuffer dcbuff;
-    struct cfile din_cfh, dout_cfh, dout2_cfh;
+    CommandBuffer dcbuff;
+    cfile din_cfh, dout_cfh, dout2_cfh;
     if(argc < 3) {
 	printf("pardon, but I need at least 2 args- source file, new file...\n");
 	exit(EXIT_FAILURE);

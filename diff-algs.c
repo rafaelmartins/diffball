@@ -36,7 +36,8 @@
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 #define hash_it(ads, tbl_size) (get_checksum(&ads) % tbl_size)
 
-signed int free_RefHash(struct ref_hash *rhash)
+signed int 
+free_RefHash(RefHash *rhash)
 {
 	printf("free_RefHash\n");
 	free(rhash->hash);
@@ -45,9 +46,9 @@ signed int free_RefHash(struct ref_hash *rhash)
 	return 0;
 }
 
-signed int init_RefHash(struct ref_hash *rhash, struct cfile *ref_cfh, 
-	unsigned int seed_len, unsigned int sample_rate, 
-	unsigned long hr_size)
+signed int 
+init_RefHash(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len, 
+    unsigned int sample_rate, unsigned long hr_size)
 {
 	unsigned long x, index;
     //unsigned long inserts=0, duplicates=0;
@@ -57,19 +58,13 @@ signed int init_RefHash(struct ref_hash *rhash, struct cfile *ref_cfh,
     unsigned long ref_len;
     unsigned int missed;
 
-    struct adler32_seed ads;
+    ADLER32_SEED_CTX ads;
     //unsigned long copies=0, adds=0, truncations=0;
     //unsigned long min_offset_dist = 0, max_offset_dist = 0;
-	struct prime_ctx pctx;
+    PRIME_CTX pctx;
     printf("init_RefHash\n");
-
-	/*if((buffer=(struct CommandBuffer *)malloc(sizeof(struct CommandBuffer)))==NULL) {
-		perror("shite, couldn't alloc needed memory.\n");
-		exit(EXIT_FAILURE);
-	}*/
-	init_primes(&pctx);
+    init_primes(&pctx);
 	rhash->hr_size = get_nearest_prime(&pctx, hr_size);
-//	printf("given hr_size(%lu), using(%lu)\n", hr_size, rhash->hr_size);
 	rhash->ref_cfh = ref_cfh;
 	rhash->seed_len = seed_len;
 	ref_len = ref_cfh->byte_len;
@@ -118,8 +113,8 @@ signed int init_RefHash(struct ref_hash *rhash, struct cfile *ref_cfh,
     return 0;
 }
 
-signed int OneHalfPassCorrecting(struct CommandBuffer *buffer, 
-	struct ref_hash *rhash, struct cfile *ver_cfh)
+signed int 
+OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 {
     unsigned long ver_len, ref_len;
     unsigned long x, index, len;
@@ -128,7 +123,7 @@ signed int OneHalfPassCorrecting(struct CommandBuffer *buffer,
     unsigned int const rbuff_size = 4096, vbuff_size = 4096;
     unsigned char rbuff[rbuff_size], vbuff[vbuff_size];
     unsigned long rbuff_start=0, vbuff_start=0, rbuff_end=0, vbuff_end=0;
-    struct adler32_seed ads;
+    ADLER32_SEED_CTX ads;
 
 	init_adler32_seed(&ads, rhash->seed_len, 1);
 	ref_len = rhash->ref_cfh->byte_len;    

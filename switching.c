@@ -48,9 +48,9 @@ const unsigned long copy_soff_start[] = {
     0x80 + 0x8000,
     0x80 + 0x8000 + 0x800000};
 
-signed int switchingEncodeDCBuffer(struct CommandBuffer *buffer, 
-    unsigned int offset_type, /*unsigned char *ver */
-    struct cfile *ver_cfh, /*int fh*/ struct cfile *out_fh)
+signed 
+int switchingEncodeDCBuffer(CommandBuffer *buffer, 
+    unsigned int offset_type, cfile *ver_cfh, cfile *out_fh)
 {
     unsigned char clen;
     unsigned long fh_pos=0;
@@ -77,8 +77,7 @@ signed int switchingEncodeDCBuffer(struct CommandBuffer *buffer,
     } else {
 	copy_off_array = copy_off_start;
     }
-//    printf("commands in buffer(%lu)\n", buffer->count);
-    count = buffer->count;
+    count = buffer->buffer_count;
     buffer->lb_tail = buffer->lb_start;
     buffer->cb_tail = buffer->cb_head;
     buffer->cb_tail_bit = buffer->cb_head_bit;
@@ -93,7 +92,7 @@ signed int switchingEncodeDCBuffer(struct CommandBuffer *buffer,
 //    convertUBytesChar(out_buff, total_add_len, 4);
     cwrite(out_fh, out_buff, 4);
     delta_pos += 4;
-    count = buffer->count;
+    count = buffer->buffer_count;
     buffer->lb_tail = buffer->lb_start;
     buffer->cb_tail = buffer->cb_head;
     buffer->cb_tail_bit = buffer->cb_head_bit;
@@ -128,7 +127,7 @@ signed int switchingEncodeDCBuffer(struct CommandBuffer *buffer,
     buffer->cb_tail_bit = buffer->cb_head_bit;
     last_com = DC_COPY;
     dc_pos=0;
-    count = buffer->count;
+    count = buffer->buffer_count;
     while(count--){
 		if(buffer->lb_tail->len==0) {
 		    DCBufferIncr(buffer);
@@ -282,7 +281,7 @@ signed int switchingEncodeDCBuffer(struct CommandBuffer *buffer,
     return 0;
 }
 
-signed int switchingReconstructDCBuff(struct cfile *patchf, struct CommandBuffer *dcbuff, 
+signed int switchingReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff, 
     unsigned int offset_type) {
     //unsigned char *cptr;
 	const unsigned int buff_size = 4096;

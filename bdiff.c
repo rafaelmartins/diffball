@@ -23,15 +23,15 @@
 //#include "cfile.h"
 #include "bit-functions.h"
 
-signed int bdiffEncodeDCBuffer(struct CommandBuffer *buffer, 
-    struct cfile *ver_cfh, struct cfile *out_cfh)
+signed int 
+bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh, cfile *out_cfh)
 {
 #define BUFFER_SIZE 1024
     unsigned char src_md5[16], ver_md5[16];
     unsigned char buff[BUFFER_SIZE];
     unsigned long count, len, delta_pos, fh_pos;
     unsigned int lb;
-    count = buffer->count;
+    count = buffer->buffer_count;
     buffer->lb_tail = buffer->lb_start;
     buffer->cb_tail = buffer->cb_head;
     buffer->cb_tail_bit = buffer->cb_head_bit;
@@ -99,8 +99,8 @@ signed int bdiffEncodeDCBuffer(struct CommandBuffer *buffer,
     return 0;
 }
 
-signed int bdiffReconstructDCBuff(struct cfile *patchf, 
-    struct CommandBuffer *dcbuff)
+signed int 
+bdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 {
     unsigned char src_md5[16], ver_md5[16], buff[17];
     unsigned long len, offset, maxlength;

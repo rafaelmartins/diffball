@@ -27,165 +27,24 @@
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
-signed int bdeltaEncodeDCBuffer(struct CommandBuffer *buffer, 
-    struct cfile *ver_cfh, /*int fh*/ struct cfile *out_fh)
+signed int 
+bdeltaEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh, 
+    struct cfile *patchf)
 {
-/*    unsigned char clen;
-    unsigned long fh_pos=0;
-    signed long s_off;
-    unsigned long u_off;
-    unsigned long delta_pos=0, dc_pos=0;
-    unsigned long copies=0, adds_in_buff=0, adds_in_file=0;
-    unsigned int lb, ob;
-    unsigned char type, out_buff[256];
-    unsigned int  add_buff_size=512;
-    unsigned char add_buff[add_buff_size];
-    unsigned int  bytes_read=0, temp=0;
-    unsigned long  bytes_wrote=0;
-    unsigned long count, temp_len;
-    unsigned long total_add_len=0, total_copy_len=0;
-    unsigned long max_add_len=0, max_copy_len=0;
-    unsigned long min_add_len=0xffffffff, min_copy_len=0xffffffff;
-    unsigned int last_com;
-    unsigned int is_neg = 0;
-    unsigned long command_count = 0;
-
-//    printf("commands in buffer(%lu)\n", buffer->count);
-    buffer->lb_tail = buffer->lb_start;
-    buffer->cb_tail = buffer->cb_head;
-    buffer->cb_tail_bit = buffer->cb_head_bit;
-    total_add_len=0;
-    command_count=0;
-    count = buffer->count;
-    last_com=DC_COPY;
-    if(*buffer->cb_tail & (1 << buffer->cb_tail_bit))
-	command_count++;
-    while(count--) {
-    	if(buffer->lb_tail->len!=0) {
-	    if ((*buffer->cb_tail & (1 << buffer->cb_tail_bit))==DC_ADD) {
-//	    if (GET_CURRENT_COMMAND_TYPE(buffer)==DC_ADD) {
-    		total_add_len += buffer->lb_tail->len;
-		last_com = DC_ADD;
-	    } else {
-		if(last_com==DC_COPY) {
-		    command_count++;
-		}
-		last_com = DC_COPY;
-	    }
-	    command_count++;
-	}
-    	DCBufferIncr(buffer);
-    }
-    printf("count=%lu, command_count=%lu\n", buffer->count, command_count);
-    convertUBytesChar(out_buff, command_count, 4);
-    convertUBytesChar(out_buff + 4, total_add_len, 4);
-    cwrite(out_fh, out_buff, 8);
-    delta_pos += 8;
-    buffer->lb_tail = buffer->lb_start;
-    buffer->cb_tail = buffer->cb_head;
-    buffer->cb_tail_bit = buffer->cb_head_bit;
-    count = buffer->count;
-    while(count--) {
-	if(((*buffer->cb_tail & (1 << buffer->cb_tail_bit))==DC_ADD) &&
-//	if(GET_CURRENT_COMMAND_TYPE(buffer)==DC_ADD && 
-	    buffer->lb_tail->len!=0) {
-//	if (GET_CURRENT_COMMAND_TYPE(buffer)==DC_ADD && 
-    		cseek(ver_cfh, buffer->lb_tail->offset, CSEEK_ABS);
-		    bytes_wrote=0;
-		    while(buffer->lb_tail->len - bytes_wrote > 0) {
-		    	//printf("len(%lu), bytes_wrote(%lu), left(%lu)\n", 
-		    	//buffer->lb_tail->len, bytes_wrote, buffer->lb_tail->len - bytes_wrote);
-		    	temp = MIN(buffer->lb_tail->len - bytes_wrote, add_buff_size);
-			    if((bytes_read=cread(ver_cfh, add_buff, temp))!=temp) {
-			    	printf("add failure, offset(%lu), len(%lu)\n", 
-			    	buffer->lb_tail->offset, buffer->lb_tail->len);
-			    	printf("requested (%u) bytes, got (%u) bytes\n", temp, bytes_read);
-			    	printf("shite, problem reading from versionned file.\n");
-			    	exit(1);
-			    }
-			    cwrite(out_fh, add_buff, bytes_read);
-			    bytes_wrote += bytes_read;
-			}
-		    delta_pos += buffer->lb_tail->len;
-    	}
-    	DCBufferIncr(buffer);
-    }
-    printf("output add block, len(%lu)\n", delta_pos);
-    //convertUBytesChar(out_buff, 0, 1);
-    //cwrite(out_fh, out_buff, 1);
-    //delta_pos++;
-    buffer->lb_tail = buffer->lb_start;
-    buffer->cb_tail = buffer->cb_head;
-    buffer->cb_tail_bit = buffer->cb_head_bit;
-    count = buffer->count;
-    last_com = DC_COPY;
-    dc_pos=0;
-    while(command_count--){
-	if(buffer->lb_tail->len > 0) {
-	    if((*buffer->cb_tail & (1 << buffer->cb_tail_bit))==DC_ADD){
-//	    if(GET_CURRENT_COMMAND_TYPE(buffer)==DC_ADD) {
-		    adds_in_buff++;
-		    min_add_len = MIN(min_add_len, buffer->lb_tail->len);
-		    max_add_len = MAX(max_add_len, buffer->lb_tail->len);
-		    convertUBytesChar(out_buff, buffer->lb_tail->len, 4);
-		    cwrite(out_fh, out_buff, 4);
-		    printf("writing add, pos(%lu), len(%lu)\n", delta_pos, buffer->lb_tail->len);
-		    delta_pos += 4;
-		    fh_pos += buffer->lb_tail->len;
-		    last_com = DC_ADD;
-	    } else {
-		    if(DC_COPY==last_com) {
-			printf("last command was a copy, outputing blank add\n", 
-			    last_com, DC_COPY);
-			convertUBytesChar(out_buff, 0, 4);
-			cwrite(out_fh, out_buff, 4);
-			delta_pos+=4;
-		    }
-		    copies++;//clean this up.
-		    total_copy_len += buffer->lb_tail->len;
-		    min_copy_len = MIN(min_copy_len, buffer->lb_tail->len);
-		    max_copy_len = MAX(max_copy_len, buffer->lb_tail->len);
-		    //yes this is a hack.  but it works.
-		    if(offset_type == ENCODING_OFFSET_DC_POS) {
-			s_off = buffer->lb_tail->offset - dc_pos;
-		    	u_off = abs(s_off);
-		    	printf("off(%lu), dc_pos(%lu), u_off(%lu), s_off(%ld): ", 
-			    buffer->lb_tail->offset, dc_pos, u_off, s_off);
-		    } else {
-			u_off = buffer->lb_tail->offset;
-		    }
-		    convertUBytesChar(out_buff, buffer->lb_tail->len, 4);
-		    if(offset_type==ENCODING_OFFSET_DC_POS) {
-		    	dc_pos += s_off;
-			convertSBytesChar(out_buff + 4, s_off, 4);
-		    } else {
-			convertUBytesChar(out_buff + 4, u_off, 4);
-		    } 
-		    cwrite(out_fh, out_buff, 8);
-		    printf("writing copy delta_pos(%lu), fh_pos(%lu), offset(%ld), len(%lu)\n",
-		    	delta_pos, fh_pos, 
-		    	(offset_type==ENCODING_OFFSET_DC_POS ? s_off : u_off), 
-		    	buffer->lb_tail->len);
-		    fh_pos+=buffer->lb_tail->len;
-		    delta_pos += 8;
-		    last_com=DC_COPY;
-	    }
-	}
-	DCBufferIncr(buffer);
-    }
-    printf("Buffer statistics: copies(%lu), adds(%lu)\n    copy ratio=(%f%%), add ratio(%f%%)\n",
-	copies, adds_in_buff, ((float)copies)/((float)(copies + adds_in_buff))*100,
-	((float)adds_in_buff)/((float)copies + (float)adds_in_buff)*100);
-    printf("Buffer statistics: average copy_len(%f), average add_len(%f)\n",
-    ((float)total_copy_len)/((float)copies), 
-    ((float)total_add_len)/((float)adds_in_buff));
-    printf("Buffer statistics: max_copy(%lu), min_copy(%lu), max_add(%lu), min_add(%lu)\n",
-	max_copy_len, min_copy_len, max_add_len, min_add_len);*/
-    return 0;
+    unsigned char buff[1024];
+    unsigned long dc_pos, matches;
+    buff[0] = 'B';
+    buff[1] = 'D';
+    buff[2] = 'T';
+    writeUBytesLE(buff + 3, 1, 2); //version
+    buff[5] = 4;
+    cwrite(patchf, buff, 6);
+    
 }
 
-signed int bdeltaReconstructDCBuff(struct cfile *patchf, 
-struct CommandBuffer *dcbuff){
+signed int 
+bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
+{
 
     unsigned int int_size;
     #define BUFF_SIZE 12

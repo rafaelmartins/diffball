@@ -37,7 +37,6 @@
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 int cmp_tar_entries(const void *te1, const void *te2);
-int command_pipes(const char *command, const char *args, int *pipes);
 
 struct long_dllist *init_long_dllist(unsigned long int value) {
     struct long_dllist *em;
@@ -164,16 +163,12 @@ int main(int argc, char **argv)
     struct long_dllist *trg_mode_ll, *trg_uid_ll, *trg_gid_ll, *trg_devmajor_ll, *trg_devminor_ll, *ldll_ptr;
     struct str_dllist *trg_uname_ll, *trg_gname_ll, *trg_magic_ll, *trg_version_ll, *trg_mtime_ll, *sdll_ptr;
 	
-	struct cfile ref_full, ref_window, ver_window, ver_full, out_cfh;
+	cfile ref_full, ref_window, ver_window, ver_full, out_cfh;
 	struct stat ref_stat, ver_stat;
-	struct ref_hash rhash_full, rhash_win;
-	struct CommandBuffer dcbuff;
+	RefHash rhash_full, rhash_win;
+	CommandBuffer dcbuff;
 
 
-/*    printf("sizeof struct tar_entry=%u, sizeof *tar_entry=%u, size of **tar_entry=%u\n",
-        sizeof(struct tar_entry), sizeof(struct tar_entry *), sizeof(struct tar_entry**));
-    printf("sizeof *char[6]=%u\n", sizeof(char *[6]));*/
-    
     /*this will require a rewrite at some point to allow for options*/
     if (argc<4) {
 		printf("Sorry, need three files here bub.  Source, Target, file-to-save-the-patch-in\n");
@@ -397,44 +392,4 @@ int cmp_tar_entries(const void *te1, const void *te2)
     	(char *)(p2->working_name)));
 }
 
-int command_pipes(const char *command, const char *args, int *ret_pipes)
-{
-    int parent_write[2];
-    int child_write[2];
-    int fork_result;
-    if (pipe(parent_write)==0 && pipe(child_write)==0){
-        fork_result=fork();
-        switch(fork_result)
-        {
-        case -1:
-            fprintf(stderr, "hmm. fork failure.  eh?\n");
-            return -1;
-        case 0:
-            //child
-            //close(0);
-            dup2(parent_write[0],0);
-            //close(parent_write[0]);
-            close(parent_write[1]);
-            close(parent_write[0]);
-            //close(1);
-            dup2(child_write[1],1);
-            close(child_write[0]);
-            close(child_write[1]);
-            //close(child_write[1]);
-            /* hokay. the child's input comes from parent, output goes to parent now. */
-            /* now to do the execing */
-            execlp(command, command, args, (char *)0);
-            exit(2); /* if this is reached, there are problems. */
-            break;
-        default:
-            close(parent_write[0]);
-            ret_pipes[1]=parent_write[1];
-            close(child_write[1]);
-            ret_pipes[0]=child_write[0];
-            break;
-        }
-    }
-    return 0;
-    
-}
 

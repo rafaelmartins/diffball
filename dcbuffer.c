@@ -25,11 +25,11 @@
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
-unsigned long inline get_current_command_type(struct CommandBuffer *buff) {
+unsigned long inline get_current_command_type(CommandBuffer *buff) {
 	return ((*buff->cb_tail >> buff->cb_tail_bit) & 0x01);
 }
 
-void updateDCCopyStats(struct DCStats *stats, signed long pos_offset, signed long dc_offset, unsigned long len)
+void updateDCCopyStats(DCStats *stats, signed long pos_offset, signed long dc_offset, unsigned long len)
 {
     stats->copy_count++;
     stats->copy_pos_offset_bytes[MAX( MIN(signedBytesNeeded(pos_offset) - 1, 0), 5)]++;
@@ -37,13 +37,13 @@ void updateDCCopyStats(struct DCStats *stats, signed long pos_offset, signed lon
     stats->copy_len_bytes[MAX(MIN(unsignedBytesNeeded(len)-1, 0),5)]++;
 }
 
-void updateDCAddStats(struct DCStats *stats, unsigned long len)
+void updateDCAddStats(DCStats *stats, unsigned long len)
 {
     stats->add_count++;
     
 }
 
-void undoDCCopyStats(struct DCStats *stats, signed long pos_offset, unsigned long len)
+void undoDCCopyStats(DCStats *stats, signed long pos_offset, unsigned long len)
 {
     stats->copy_count++;
     stats->copy_pos_offset_bytes[MAX( MIN(signedBytesNeeded(pos_offset) - 1, 0), 5)]--;
@@ -51,13 +51,13 @@ void undoDCCopyStats(struct DCStats *stats, signed long pos_offset, unsigned lon
     stats->copy_len_bytes[MAX(MIN(unsignedBytesNeeded(len)-1, 0),5)]--;
 }
 
-void undoDCAddStats(struct DCStats *stats, unsigned long len)
+void undoDCAddStats(DCStats *stats, unsigned long len)
 {
     stats->add_count--;
     
 }
 
-void DCBufferTruncate(struct CommandBuffer *buffer, unsigned long len)
+void DCBufferTruncate(CommandBuffer *buffer, unsigned long len)
 {
     //get the tail to an actual node.
     DCBufferDecr(buffer);
@@ -70,7 +70,7 @@ void DCBufferTruncate(struct CommandBuffer *buffer, unsigned long len)
 //			(*buffer->cb_tail & (1 << buffer->cb_tail_bit)) >> buffer->cb_tail_bit, buffer->lb_tail->offset,
 //			buffer->lb_tail->len);
 		    DCBufferDecr(buffer);
-		    buffer->count--;
+		    buffer->buffer_count--;
 		} else {
 //		    printf("    partial adjust of type(%u), offset(%lu), len(%lu) is now len(%lu)\n",
 //			(*buffer->cb_tail & (1 << buffer->cb_tail_bit))>buffer->cb_tail_bit, buffer->lb_tail->offset,
@@ -83,9 +83,10 @@ void DCBufferTruncate(struct CommandBuffer *buffer, unsigned long len)
 }
 
 
-void DCBufferIncr(struct CommandBuffer *buffer)
+void DCBufferIncr(CommandBuffer *buffer)
 {
-    buffer->lb_tail = (buffer->lb_end==buffer->lb_tail) ? buffer->lb_start : buffer->lb_tail + 1;
+    buffer->lb_tail = (buffer->lb_end==buffer->lb_tail) ?
+	 buffer->lb_start : buffer->lb_tail + 1;
     if (buffer->cb_tail_bit >= 7) {
 	buffer->cb_tail_bit = 0;
 	buffer->cb_tail = (buffer->cb_tail == buffer->cb_end) ? buffer->cb_start : buffer->cb_tail + 1;
@@ -94,7 +95,7 @@ void DCBufferIncr(struct CommandBuffer *buffer)
     }
 }
 
-void DCBufferDecr(struct CommandBuffer *buffer)
+void DCBufferDecr(CommandBuffer *buffer)
 {
     buffer->lb_tail--;
     if (buffer->cb_tail_bit != 0) {
@@ -105,9 +106,9 @@ void DCBufferDecr(struct CommandBuffer *buffer)
     }
 }
 
-void DCBufferAddCmd(struct CommandBuffer *buffer, int type, unsigned long offset, unsigned long len)
+void DCBufferAddCmd(CommandBuffer *buffer, int type, unsigned long offset, unsigned long len)
 {
-    if(buffer->count == buffer->max_commands) {
+    if(buffer->buffer_count == buffer->buffer_size) {
 		printf("shite, buffer full.\n");
 		exit(EXIT_FAILURE);
     }
@@ -117,15 +118,15 @@ void DCBufferAddCmd(struct CommandBuffer *buffer, int type, unsigned long offset
 		*buffer->cb_tail &= ~(1 << buffer->cb_tail_bit);
     else
 		*buffer->cb_tail |= (1 << buffer->cb_tail_bit);
-    buffer->count++;
+    buffer->buffer_count++;
     DCBufferIncr(buffer);
 }
 
-void DCBufferCollapseAdds(struct CommandBuffer *buffer)
+void DCBufferCollapseAdds(CommandBuffer *buffer)
 {
 	unsigned long count, *plen;
 	unsigned int continued_add;
-	count = buffer->count;
+	count = buffer->buffer_count;
 	buffer->lb_tail = buffer->lb_start;
 	buffer->cb_tail = buffer->cb_head;
 	buffer->cb_tail_bit = buffer->cb_head_bit;
@@ -147,23 +148,25 @@ void DCBufferCollapseAdds(struct CommandBuffer *buffer)
 	}
 }
 
-void DCBufferInit(struct CommandBuffer *buffer, unsigned long max_commands)
+void DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size)
 {
-    buffer->count=0;
-    buffer->max_commands = max_commands + (max_commands % 8 ? 1 : 0);
-//    printf("asked for size(%lu), using size(%lu)\n", max_commands, buffer->max_commands);
-    if((buffer->cb_start = (char *)malloc(buffer->max_commands/8))==NULL){
+    buffer->buffer_count=0;
+    buffer_size = (buffer_size > 0 ? (buffer_size/8) : 0) + 1;
+    buffer->buffer_size = buffer_size * 8;
+    if((buffer->cb_start = (char *)malloc(buffer_size))==NULL){
 	perror("shite, malloc failed\n");
 	exit(EXIT_FAILURE);
     }
     buffer->cb_head = buffer->cb_tail = buffer->cb_start;
-    buffer->cb_end = buffer->cb_start + (buffer->max_commands/8) -1;
+    buffer->cb_end = buffer->cb_start + buffer_size - 1;
     buffer->cb_head_bit = buffer->cb_tail_bit = 0;
-    if((buffer->lb_start = (struct DCLoc *)malloc(sizeof(struct DCLoc) * buffer->max_commands))==NULL){
+    if((buffer->lb_start = (DCLoc *)malloc(sizeof(DCLoc) * 
+	buffer->buffer_size))==NULL){
+	
 	perror("shite, malloc failed\n");
 	exit(EXIT_FAILURE);
     }
     buffer->lb_head = buffer->lb_tail = buffer->lb_start;
-    buffer->lb_end = buffer->lb_start + buffer->max_commands -1;
+    buffer->lb_end = buffer->lb_start + buffer->buffer_size - 1;
 }
 

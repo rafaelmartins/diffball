@@ -25,8 +25,9 @@
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
 
-void reconstructFile(struct CommandBuffer *dcbuff, struct cfile *src_cfh, 
-	struct cfile *delta_cfh, struct cfile *out_cfh)
+void 
+reconstructFile(CommandBuffer *dcbuff, cfile *src_cfh, cfile *delta_cfh, 
+    cfile *out_cfh)
 {
 	//unsigned long int u_off;
 	unsigned int const buff_size=4096;
@@ -35,7 +36,7 @@ void reconstructFile(struct CommandBuffer *dcbuff, struct cfile *src_cfh,
 	dcbuff->lb_tail = dcbuff->lb_start;
 	dcbuff->cb_tail = dcbuff->cb_head;
 	dcbuff->cb_tail_bit = dcbuff->cb_head_bit;
-	while(dcbuff->count--){
+	while(dcbuff->buffer_count--){
 		if((*dcbuff->cb_tail & (1 << dcbuff->cb_tail_bit))>0) {
 		    //copies++;//clean this up.
 		    printf("copy command, offset(%lu), len(%lu)\n",

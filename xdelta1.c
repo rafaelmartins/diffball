@@ -27,7 +27,9 @@
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
-unsigned long inline readXDInt(struct cfile *patchf, unsigned char *buff) {
+unsigned long inline 
+readXDInt(cfile *patchf, unsigned char *buff)
+{
     unsigned long num=0;
     signed int count=-1;
     do {
@@ -41,15 +43,17 @@ unsigned long inline readXDInt(struct cfile *patchf, unsigned char *buff) {
     return num;
 }
 
-signed int xdelta1EncodeDCBuffer(struct CommandBuffer *buffer, 
-    unsigned int version, 
-    struct cfile *ver_cfh, struct cfile *out_cfh)
+signed int 
+xdelta1EncodeDCBuffer(CommandBuffer *buffer, unsigned int version, 
+    cfile *ver_cfh, cfile *out_cfh)
 {
     return 0;
 }
 
-signed int xdelta1ReconstructDCBuff(struct cfile *patchf, struct CommandBuffer *dcbuff, 
-    unsigned int version) {
+signed int 
+xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff, 
+    unsigned int version)
+{
 
     unsigned long control_offset, add_start, flags;
     unsigned long len, offset, x, count;
