@@ -62,10 +62,14 @@ struct LL_DCLmatch {
 
 typedef struct {
     DCLoc loc;
+    unsigned long src_id;
     unsigned char type;
 } DCommand;
 
-typedef struct {
+typedef struct _CommandBuffer *DCB_ptr;
+typedef unsigned long (*dcb_src_func)(DCB_ptr, DCommand *, cfile *);
+
+typedef struct _CommandBuffer {
     off_u64 src_size;
     off_u64 ver_size;
     off_u64 reconstruct_pos;
@@ -95,12 +99,29 @@ typedef struct {
 	    unsigned long free_size, free_count;
 	} llm;
     } DCB;
-    cfile *add_cfh;
+    cfile *add_src_cfh[2];
+    dcb_src_func add_src_func[2];
+    unsigned short add_src_count;
+    cfile *copy_src_cfh[2];
+    dcb_src_func copy_src_func[2];
+    unsigned short copy_src_count;
     unsigned long flags;
 } CommandBuffer;
 
-#define DCBUFFER_REGISTER_ADD_CFH(buff, handle)				\
-    (buff)->add_cfh = (handle)
+
+#define DCBUFFER_REGISTER_ADD_CFH(buff, handle, func)			\
+    if((buff)->add_src_count >= 2){abort();};				\
+    (buff)->add_src_cfh[(buff)->add_src_count] = (handle);		\
+    (buff)->add_src_func[(buff)->add_src_count] = ((func) == NULL ? 	\
+	&default_dcb_add_func : (func));				\
+    (buff)->add_src_count++
+
+#define DCBUFFER_REGISTER_COPY_CFH(buff, handle, func)			\
+    if((buff)->copy_src_count >= 2) {abort();};				\
+    (buff)->copy_src_cfh[(buff)->copy_src_count] = (handle);		\
+    (buff)->copy_src_func[(buff)->copy_src_count] = ((func) == NULL ? 	\
+	&default_dcb_copy_func : (func);				\
+    (buff)->copy_src_count++
 
 #define DCB_REGISTER_MATCHES_VER_CFH(buff, cfh)				\
     if((buff)->DCBtype==DCBUFFER_MATCHES_TYPE) {			\
@@ -112,6 +133,10 @@ typedef struct {
 #define DCBUFFER_FREE_ADD_CFH_FLAG(buff) (buff)->flags |= ADD_CFH_FREE_FLAG;
 
 unsigned long inline current_command_type(CommandBuffer *buff);
+unsigned long default_dcb_add_func(CommandBuffer *dcb, DCommand *dc, 
+    cfile *out_cfh);
+unsigned long default_dcb_copy_func(CommandBuffer *dcb, DCommand *dc,
+    cfile *out_cfh);
 void DCBufferIncr(CommandBuffer *buffer);
 void DCBufferDecr(CommandBuffer *buffer);
 void DCBufferCollapseAdds(CommandBuffer *buffer);

@@ -468,8 +468,8 @@ DCB_commands_remain(CommandBuffer *buffer)
 void DCBufferFree(CommandBuffer *buffer)
 {
     unsigned long x;
-    if(buffer->flags & ADD_CFH_FREE_FLAG)
-	free(buffer->add_cfh);
+//    if(buffer->flags & ADD_CFH_FREE_FLAG)
+//	free(buffer->add_cfh);
     if(DCBUFFER_FULL_TYPE == buffer->DCBtype) {
 	free(buffer->DCB.full.cb_start);
 	free(buffer->DCB.full.lb_start);
@@ -700,3 +700,19 @@ DCB_llm_init_buff(CommandBuffer *buff, unsigned long buff_size)
     buff->DCB.llm.buff_count = 0;
     buff->flags &= ~DCB_LLM_FINALIZED;
 }
+
+
+unsigned long 
+default_dcb_copy_func(CommandBuffer *dcb, DCommand *dc, cfile *out_cfh)
+{
+    return copy_cfile_block(out_cfh, dcb->copy_src_cfh[dc->src_id], 
+	(unsigned long)dc->loc.offset, dc->loc.len);
+}
+
+unsigned long 
+default_dcb_add_func(CommandBuffer *dcb, DCommand *dc, cfile *out_cfh)
+{
+    return copy_cfile_block(out_cfh, dcb->add_src_cfh[dc->src_id], 
+	(unsigned long)dc->loc.offset, dc->loc.len);
+}
+
