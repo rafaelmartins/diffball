@@ -1,8 +1,4 @@
-The author is Brian Harring, <bdharring@wisc.edu>.
-The variation on the adler32 (which was created by Marc Adler) I haven't seen 
-elsewhere- I introduced the parity/prime array due to the fact I'm hashing 
-only 16 chars, and standard adler32 seems to have problems w/ the limited of 
-a dataset.
+The (sole) author is Brian Harring, <bdharring@wisc.edu>.
 
 As for the differencing alg, Randal Burns and Andrew Tridgell- I pulled the 
 concept's/algorithm out of their papers (Tridgell for background, Burns for 
