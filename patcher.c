@@ -27,6 +27,7 @@
 //#include "pdbuff.h"
 #include "cfile.h"
 #include "gdiff.h"
+#include "switching.h"
 #include "dcbuffer.h"
 #include "apply-patch.h"
 
@@ -67,26 +68,13 @@ int main(int argc, char **argv)
 		printf("Couldn't create\truncate output file.\n");
 		exit(EXIT_FAILURE);
     }
-    /*void initcfile(struct cfile *cfile, int fh, unsigned long fh_start,
-    unsigned int compressor_type);*/
-    /*signed int gdiffReconstructFiles(int src_fh, int out_fh,
-    struct PatchDeltaBuffer *PDBuff, unsigned int offset_type,
-    unsigned int gdiff_version);*/
-    //initPDBuffer(&PDBuff, delta_fh, 5, 4096);
     copen(&src_cfh, src_fh, 0, src_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
-    copen(&delta_cfh, delta_fh, 5, delta_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
+    copen(&delta_cfh, delta_fh, 0, delta_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
     printf("here goes...\n");
-    /*printf("dumping initial buffer\n");
-    printf("initial value(%u)\n", PDBuff.buffer[0]);
-    printf("filled_len(%u), buff(%u)\n", PDBuff.filled_len, PDBuff.buff_size);
-    printf("%*s\n", 5800, PDBuff.buffer);*/
-    printf("patchf->raw_fh_pos(%lu)\n", delta_cfh.raw_fh_pos);
 	DCBufferInit(&dcbuff, 1000000);
-    //gdiffReconstructFile(src_fh, out_fh, &patchfile, ENCODING_OFFSET_START, 4);
-    printf("patchf cposition(%lu)\n", ctell(&delta_cfh,CSEEK_ABS));
-    printf("converting gdiff encoding to a dcbuff...\n");
-   	gdiffReconstructDCBuff(&delta_cfh, &dcbuff, ENCODING_OFFSET_START, 4);
+	switchingReconstructDCBuff(&delta_cfh, &dcbuff, ENCODING_OFFSET_DC_POS);
+//   	gdiffReconstructDCBuff(&delta_cfh, &dcbuff, ENCODING_OFFSET_START, 4);
    	printf("reconstructing target file based off of dcbuff commands...\n");
    	reconstructFile(&dcbuff, &src_cfh, &delta_cfh, &out_cfh);
    	printf("reconstruction done.  calling close.\n");

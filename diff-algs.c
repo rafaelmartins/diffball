@@ -39,8 +39,7 @@
 signed int init_RefHash(struct ref_hash *rhash, struct cfile *ref_cfh, 
 	unsigned int seed_len, unsigned long hr_size)
 {
-unsigned long *hr; //reference hash table.
-    unsigned long x, index, len;
+	unsigned long x, index;
     //unsigned long inserts=0, duplicates=0;
     unsigned int const rbuff_size = 1024;
     unsigned char rbuff[rbuff_size];
@@ -58,7 +57,7 @@ unsigned long *hr; //reference hash table.
 	}*/
 	init_primes(&pctx);
 	rhash->hr_size = get_nearest_prime(&pctx, hr_size);
-	printf("given hr_size(%lu), using(%lu)\n", hr_size, rhash->hr_size);
+//	printf("given hr_size(%lu), using(%lu)\n", hr_size, rhash->hr_size);
 	rhash->ref_cfh = ref_cfh;
 	rhash->seed_len = seed_len;
 	ref_len = ref_cfh->byte_len;
@@ -106,6 +105,7 @@ unsigned long *hr; //reference hash table.
 			rhash->duplicates++;
 	    }
     }
+    return 0;
 }
 
 signed int OneHalfPassCorrecting(struct CommandBuffer *buffer, 
@@ -131,26 +131,24 @@ signed int OneHalfPassCorrecting(struct CommandBuffer *buffer,
     //printf("vc(%lu), rhash->seed_len(%lu), ver_len(%lu)\n", vc, rhash->seed_len, ver_len);
 	while(vc + rhash->seed_len < ver_len) {
 		//printf("handling vc(%lu)\n", vc);
-		if(vc + rhash->seed_len > vbuff_start + vbuff_size) {
-			printf("full refresh of vbuff\n");
-			//if(vc > vbuff_start + vbuff_size) {
+		if(vc + rhash->seed_len > vbuff_start + vbuff_end) {
+			//printf("full refresh of vbuff\n");
+			//if(vc > vbuff_start + vbuff_end) {
 				vbuff_start = cseek(ver_cfh, vc, CSEEK_ABS);
 				vbuff_end = cread(ver_cfh, vbuff, MIN(ver_len - vbuff_start,vbuff_size));
-			//} else {
-			//	x = vbuff_size - (vc - vbuff_start);
-			//	memmove(vbuff, vbuff + vbuff_size -x, x);
-				
+			/*} else {
+				x = vbuff_size - (vc - vbuff_start);
+				memmove(vbuff, vbuff + vbuff_size -x, x);
+			}*/	
 		} else if (vc < vbuff_start) {
-			printf("partial refresh of vbuff\n");
+			//printf("partial refresh of vbuff\n");
 			vbuff_start = cseek(ver_cfh, vc, CSEEK_ABS);
 			vbuff_end = cread(ver_cfh, vbuff, MIN(ver_len - vbuff_start, vbuff_size));
 		}
 		assert(ctell(ver_cfh, CSEEK_ABS)==vbuff_start + vbuff_end);
 		if(va -vc >= rhash->seed_len) {
-			//printf("flushing loc(%lu)\n", vc - vbuff_start);
 			update_adler32_seed(&ads, vbuff + vc - vbuff_start, rhash->seed_len);
 		} else {
-			//printf("rolling (%u)\n", vc + rhash->seed_len -va);
 			update_adler32_seed(&ads, vbuff + (va - vbuff_start), vc + rhash->seed_len -va);
 		}
 		va = vc + rhash->seed_len;
@@ -164,7 +162,6 @@ signed int OneHalfPassCorrecting(struct CommandBuffer *buffer,
 				rbuff_end = cread(rhash->ref_cfh, rbuff, rbuff_size);
 			}	
 			if(memcmp(rbuff, vbuff+vc - vbuff_start, rhash->seed_len)!=0){
-				//printf("bad collision(%lu).\n", vc);
 				bad_match++;
 				vc++;
 				continue;
@@ -180,16 +177,13 @@ signed int OneHalfPassCorrecting(struct CommandBuffer *buffer,
 		   			(vbuff_size > vbuff_start ? 0 : vbuff_start - vbuff_size),
 		   			CSEEK_ABS);
 		   		vbuff_end=cread(ver_cfh, vbuff, vbuff_size);
-		   		//printf("initial ver back cseek(%lu)\n", vbuff_start);
 		   	}
 		   	if(rm-rbuff_start==0) {
-		   		//printf("rm-rbuff_start==0\n");
 		   		rbuff_start=
 		  			cseek(rhash->ref_cfh, 
 		  			(rbuff_size > rbuff_start ? 0 : rbuff_start - rbuff_size),
 		  			CSEEK_ABS);
 		  		rbuff_end=cread(rhash->ref_cfh, rbuff, rbuff_size);
-		  		//printf("initial ref back cseek(%lu)\n", rbuff_start);
 			}
 		    while(vm > 0 && rm > 0 && 
 		    	vbuff[vm -vbuff_start-1]==rbuff[rm -rbuff_start -1]) {
@@ -200,35 +194,25 @@ signed int OneHalfPassCorrecting(struct CommandBuffer *buffer,
 		    			cseek(ver_cfh, (vbuff_size > vbuff_start ? 0 :
 		    			vbuff_start - vbuff_size), CSEEK_ABS);
 		    		vbuff_end=cread(ver_cfh, vbuff, vbuff_size);
-		    		//printf("pushing ver back %u to cseek(%lu)\n", vbuff_size, vbuff_start);
 		    	}
 		    	if(rm-rbuff_start==0) {
 		    		rbuff_start=
 		    			cseek(rhash->ref_cfh, (rbuff_size > rbuff_start ? 0 :
 		    			rbuff_start - rbuff_size), CSEEK_ABS);
 		    		rbuff_end=cread(rhash->ref_cfh, rbuff, rbuff_size);
-		    		//printf("pushing ref back %u to cseek(%lu)\n", vbuff_size, vbuff_start);
 		    	}
 		    }
 		    len=(vc -vm) + rhash->seed_len;
-		    /*printf("stopped back match, v(%u)==r(%u)\n",vbuff[vm-vbuff_start],
-		    rbuff[rm-rbuff_start]);
-		    printf("stopped back match, v(%u)!=r(%u)\n",vbuff[vm-vbuff_start-1],
-		    rbuff[rm-rbuff_start-1]);
-		    printf("vbuff_start(%lu), vm(%lu)\n",vbuff_start, vm,len);
-		    printf("rbuff_start(%lu), rm(%lu)\n",rbuff_start, rm,len);
-		    */
+
 		    if(vm + len >= vbuff_start + vbuff_size) {
 		    	vbuff_start=cseek(ver_cfh, vm+len , CSEEK_ABS);
 		    	vbuff_end=cread(ver_cfh, vbuff,
 		    		MIN(vbuff_size, ver_len - vbuff_start));
-		    	//printf("initial ver forw cseek(%lu)\n", vbuff_start);
 		    }
 		    if( rm + len >= rbuff_start + rbuff_size) {
 		    	rbuff_start=cseek(rhash->ref_cfh, rm + len, CSEEK_ABS);
 		    	rbuff_end=cread(rhash->ref_cfh, rbuff,
 		    		MIN(rbuff_size, ref_len - rbuff_start));
-		    	//printf("initial ref forw cseek(%lu)\n", rbuff_start);
 		    }
 		    while(rm + len < ref_len && vm + len < ver_len &&
 		    	rbuff[rm + len - rbuff_start]
@@ -238,68 +222,37 @@ signed int OneHalfPassCorrecting(struct CommandBuffer *buffer,
 		    		vbuff_start += vbuff_end;
 		    		vbuff_end=cread(ver_cfh, vbuff,
 		    			MIN(vbuff_size, ver_len -vbuff_start));
-		    		//printf("pushing ver forw %u to cseek(%lu)\n", vbuff_size, vbuff_start);
 		    	}
 		    	if(rm + len -rbuff_start==rbuff_size) {
 		    		rbuff_start += rbuff_end;
 		    		rbuff_end=cread(rhash->ref_cfh, rbuff,
 		    			MIN(rbuff_size, ref_len -rbuff_start));
-					//printf("pushing ref forw %u to cseek(%lu)\n", rbuff_size, rbuff_start);
 		    	}
 		    }
-		    //printf("stopped forw match, v(%u)!=r(%u)\n",vbuff[vm-vbuff_start+len],
-		    //rbuff[rm-rbuff_start+len]);
-		    /*printf("ver_len(%lu), vm(%lu)+len(%lu)==(%lu)\n",ver_len,vm,len,vm+len);
-		    printf("ref_len(%lu), rm(%lu)+len(%lu)==(%lu)\n",ref_len,rm,len,rm+len);
-		    printf("vbuff_start(%lu), rbuff_start(%lu)\n", vbuff_start, rbuff_start);
-	    	printf("good collision(%lu):vstart(%lu), rstart(%lu), len(%lu)\n", vc,vm, rm, len);
-	    	*/
+
 	    	if (vs <= vm) {
 				if (vs < vm) {
-		    		printf("    adding vstart(%lu), len(%lu), vend(%lu): (vs < vm)\n",
-						vs, vm-vs, vm);
-		    		//DCBufferAddCmd(&buffer, DC_ADD, vs -ver, vm - vs);
+//		    		printf("    adding vstart(%lu), len(%lu), vend(%lu): (vs < vm)\n",
+//						vs, vm-vs, vm);
 		    		DCBufferAddCmd(buffer, DC_ADD, vs, vm - vs);
-		    		//adds++;
 				}
-				printf("    copying offset(%lu), len(%lu)\n", vm, len);
+//				printf("    copying offset(%lu), len(%lu)\n", vm, len);
 				DCBufferAddCmd(buffer, DC_COPY, rm, len);
 		    } else {
-				printf("    truncating(%lu) bytes: (vm < vs)\n", vs - vm);
+//				printf("    truncating(%lu) bytes: (vm < vs)\n", vs - vm);
 				DCBufferTruncate(buffer, vs - vm);
-				printf("    replacement copy: offset(%lu), len(%lu)\n", rm, len);
-				//DCBufferAddCmd(&buffer, DC_COPY, rm -ref, len);
+//				printf("    replacement copy: offset(%lu), len(%lu)\n", rm, len);
 				DCBufferAddCmd(buffer, DC_COPY, rm, len);
-				//truncations++;
 	    	}
-	    	//copies++;
 	    	vs = vm + len;
 	    	vc = vs -1;
 		} else {
 	    	no_match++;
-	    	//printf("no match(%lu)\n", vc);
 		}
 		vc++;
     }
     if (vs != ver_len) {
     	DCBufferAddCmd(buffer, DC_ADD, vs, ver_len - vs);
     }
-    /*printf("version summary:\n");
-    printf("no_matches(%f%%)\n", (float)no_match/(float)(no_match+good_match+bad_match)*100);
-    printf("bad_matches(%f%%)\n",(float)bad_match/(float)(no_match+bad_match+good_match)*100);
-    printf("good_matches(%f%%)\n",(float)good_match/(float)(no_match+bad_match+good_match)*100);
-    printf("(%%)commands in buffer, copies(%lu), adds(%lu), truncations(%lu)\n", copies, adds, truncations);
-    printf("\n\nflushing command buffer...\n\n\n");
-    */
-    //DCBufferFlush(&buffer, ver, out_fh);
-    //if(encoding_type==USE_GDIFF_ENCODING) {
-		//printf("using gdiff encoding...\n");
-		//if(gdiffEncodeDCBuffer(&buffer, offset_type, ver, out_fh)) {
-		//if(switchingEncodeDCBuffer(buffer, offset_type, ver_cfh, out_cfh)) {
-		
-		//    printf("wtf? error returned from encoding engine\n");
-		//}
-    //}
-    //return NULL;
     return 0;
 }

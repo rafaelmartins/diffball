@@ -184,7 +184,6 @@ unsigned long cwrite(struct cfile *cfile, unsigned char *in_buff, unsigned long 
     unsigned long bytes_wrote = 0, tmp, x;
     unsigned int /*compr_bytes = 0,*/ uncompr_bytes=0;
 //    printf("    cwrite: asked to write(%lu)\n", len);
-#ifdef DEBUG_CWRITE
     while(len > bytes_wrote) {
     	if((cfile->state_flags & CFILE_RAW_BUFF_FULL) /*|| 
     		cfile->raw_filled - cfile->raw_buff >= cfile->raw_size*/) {
@@ -225,9 +224,6 @@ unsigned long cwrite(struct cfile *cfile, unsigned char *in_buff, unsigned long 
     	bytes_wrote += uncompr_bytes;
     }
     return bytes_wrote;
-#else
-	return write(cfile->raw_fh, in_buff, len);
-#endif
 }
 
 unsigned long ctell(struct cfile *cfile, unsigned int tell_type)

@@ -114,8 +114,9 @@ int main(int argc, char **argv)
     DCBufferInit(&buffer, 1000000);
     OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh);
     printf("outputing patch...\n");
-    offset_type = ENCODING_OFFSET_START;
-    gdiffEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
+    offset_type = ENCODING_OFFSET_DC_POS;
+    //gdiffEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
+    switchingEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
     printf("exiting\n");
     cclose(&out_cfh);
     return 0;

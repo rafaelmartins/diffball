@@ -95,7 +95,7 @@ int convertUBytesChar(unsigned char *out_buff, unsigned long value, unsigned cha
     return 0;
 }
 
-int convertSBitsChar(unsigned char *out_buff, signed long value, unsigned char bit_count)
+int convertSBitsChar(unsigned char *out_buff, signed long value, unsigned int bit_count)
 {
 	unsigned int start=0;
 	start = bit_count % 8;
@@ -110,18 +110,12 @@ int convertSBitsChar(unsigned char *out_buff, signed long value, unsigned char b
     return 0;    
 }
 
-int convertUBitsChar(unsigned char *out_buff, unsigned long value, unsigned char bit_count)
+int convertUBitsChar(unsigned char *out_buff, unsigned long value, unsigned int bit_count)
 {
-    unsigned int start, start_byte,x, byte;
-    start = bit_count % 8;
-    x = start;
-    if(start)
-    	start_byte=1;
-    else
-    	start_byte=0;
-    for(x=start, byte=start_byte; x < bit_count; x+=8, byte++)
-    	out_buff[byte] = (value >> (bit_count -8 -x)) & 0xff;
-    out_buff[0] = (value >> (bit_count -8 - start)) & 0xff;
-	//out_buff[byte] = (value >> (byte_count -1 -x)*8) & 0xff;
+    unsigned int start_bit, byte;
+    signed int x;
+    start_bit = bit_count % 8;
+    for(x = bit_count - start_bit, byte=0; x >= 0; byte++, x-=8) 
+	out_buff[byte] = (value >> x) & 0xff;
     return 0;
 }

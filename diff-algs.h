@@ -35,10 +35,5 @@ signed int init_RefHash(struct ref_hash *rhash, struct cfile *ref_cfh,
 signed int OneHalfPassCorrecting(struct CommandBuffer *buffer, 
 	struct ref_hash *rhash, struct cfile *ver_cfh);
 
-/*struct CommandBuffer *OneHalfPassCorrecting(unsigned int encoding_type,
-    unsigned int offset_type, struct cfile *ref_cfh, 
-    struct cfile *ver_cfh, struct cfile *out_cfh,
-    unsigned int seed_len, unsigned long hr_size);
-*/
-
 #endif
+

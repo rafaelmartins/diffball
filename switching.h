@@ -54,8 +54,8 @@
 signed int switchingEncodeDCBuffer(struct CommandBuffer *buffer, 
     unsigned int offset_type, /*unsigned char *ver */
     struct cfile *ver_cfh, /*int fh*/ struct cfile *out_fh);
-/*signed int gdiffReconstructDCBuff(struct cfile *patchf, struct CommandBuffer *dcbuff, 
-    unsigned int offset_type,
-    unsigned int gdiff_version);*/
+signed int switchingReconstructDCBuff(struct cfile *patchf, struct CommandBuffer *dcbuff, 
+    unsigned int offset_type);
+
 
 #endif
