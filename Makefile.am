@@ -1,5 +1,5 @@
-AM_CFLAGS = -ftest-coverage -fprofile-arcs -pg -ftest-coverage -Wall 
-#AM_CFLAGS = -Wall
+#AM_CFLAGS = -ftest-coverage -fprofile-arcs -pg -ftest-coverage -Wall 
+AM_CFLAGS = -Wall
 
 FORMATS = cfile.c bit-functions.c gdiff.c switching.c bdiff.c \
     bdelta.c xdelta1.c udiff.c line-util.c formats.c

@@ -398,7 +398,8 @@ DCB_commands_remain(CommandBuffer *buffer)
 	return (buffer->reconstruct_pos != buffer->ver_size);
     } else if(DCBUFFER_LLMATCHES_TYPE == buffer->DCBtype) {
 	assert(DCB_LLM_FINALIZED & buffer->flags);
-	return (buffer->DCB.llm.main != NULL);
+	return (buffer->reconstruct_pos != buffer->ver_size);
+//	return (buffer->DCB.llm.main != NULL);
     }
     return 0;
 }
@@ -565,7 +566,6 @@ DCB_insert(CommandBuffer *buff)
 	v1printf("inserting a segment %lu:%lu, commands(%u)\n", 
 	    buff->DCB.llm.buff->ver_pos, buff->DCB.llm.cur->ver_pos + 
 	    buff->DCB.llm.cur->len, buff->DCB.llm.buff_count);
-	v1printf("segment is %lu command(s)\n", buff->DCB.llm.buff_count);
 
 	assert(buff->DCB.llm.main_head==NULL ? buff->DCB.llm.main == NULL : 1);
 /*	if(buff->DCB.llm.main_head) {

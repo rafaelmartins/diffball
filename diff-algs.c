@@ -246,7 +246,7 @@ MultiPassAlg(CommandBuffer *buff, cfile *src_cfh, cfile *ver_cfh,
     DCB_insert(buff);
     DCBufferReset(buff);
 
-    for(seed_len = 256; seed_len >=16; seed_len /= 2) {
+    for(seed_len = 128; seed_len >=16; seed_len /= 2) {
 	hash_created = 0;
 	gap_req = seed_len * MULTIPASS_GAP_KLUDGE;
 	v1printf("\nseed size(%lu)...\n\n", seed_len);

@@ -21,7 +21,7 @@
 #define DEFAULT_SEED_LEN 	(16)
 #define COMPUTE_SAMPLE_RATE(hs, x)		\
    ((x) > (hs) ? MAX(1,((x)/(hs))-.5) : 1)
-#define MULTIPASS_GAP_KLUDGE    (1)
+#define MULTIPASS_GAP_KLUDGE    (1.25)
 
 #include "cfile.h"
 #include "dcbuffer.h"

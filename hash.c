@@ -123,7 +123,14 @@ init_RefHash(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len,
 
     update_adler32_seed(&ads, rbuff, seed_len);
     missed=0;
-    for(x=seed_len; x < ref_len - seed_len; x++) {
+/* kludge I realize for the init, but neh, need something better.
+   the specific issue is that mod_hash can track if it's inserted in a sample 
+   window or not (and adjust accordingly)- this results in a better cross 
+   section, not always starting on the same offset.
+   sort_hash cannot unfortunately, so need a kludge of some sort to try and
+   vary up the start position. */
+    for(x=seed_len * (sample_rate > 1 ? 1.5 : 1); 
+	x < ref_len - seed_len; x++) {
 	if(x - rbuff_start >= rbuff_size) {
 	    rbuff_start += rbuff_end;
 #ifdef DEBUG_HASH
@@ -175,6 +182,8 @@ init_RefHash(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len,
 	    rhash->hash.chk[rhash->inserts].chksum = index;
 	    rhash->hash.chk[rhash->inserts].offset = x - seed_len + 1;
 	    rhash->inserts++;
+	    if(sample_rate > 1)
+		x += sample_rate;
 	}
     }
     if(rhash->type & RH_SORT_HASH) {

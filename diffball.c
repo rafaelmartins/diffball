@@ -302,11 +302,14 @@ int main(int argc, char **argv)
     }
 */        
     /* cleanup */
-/* fix this.  doesn't like longlinks... */
-    for(x=0; x< source_count; x++)
+/* fix this.  doesn't like longlinks...
+   no, I think it just likes crapping out every fucking time I run this prog 
+   against a big dataset.
+   fucking bastard. */
+/*    for(x=0; x< source_count; x++)
         free(source[x]->fullname);
     for(x=0; x< target_count; x++)
-	free(target[x]->fullname);
+	free(target[x]->fullname);*/
 
     free(target);
     free(source);
