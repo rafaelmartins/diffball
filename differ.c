@@ -24,7 +24,7 @@
 #include <unistd.h>
 #include "cfile.h"
 #include "diff-algs.h"
-#include "bit-functions.h"
+//#include "bit-functions.h"
 #include <string.h>
 
 unsigned long convertDec(unsigned char *buff, unsigned int len)
