@@ -39,6 +39,8 @@ signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer,
     unsigned char add_buff[add_buff_size];
     unsigned int  bytes_read=0, temp=0;
     unsigned long  bytes_wrote=0;
+    unsigned long count;
+    unsigned long total_add_len=0, total_copy_len=0;
     if(offset_type==ENCODING_OFFSET_VERS_POS || offset_type==ENCODING_OFFSET_DC_POS)
 		off_is_sbytes=1;
     else
@@ -60,6 +62,7 @@ signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer,
 		exit(1);
     }
     cwrite(out_fh, out_buff, GDIFF_VER_LEN);
+	count=buffer->count;
     while(buffer->count--){
 		if((*buffer->cb_tail & (1 << buffer->cb_tail_bit))>0) {
 	    	//ptr=ver + buffer->lb_tail->offset;
@@ -75,6 +78,7 @@ signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer,
 		    printf("add command, delta_pos(%lu), fh_pos(%lu), len(%lu), ",
 				delta_pos, fh_pos, buffer->lb_tail->len);
 		    adds_in_buff++;
+		    total_add_len += buffer->lb_tail->len;
 		    u_off=buffer->lb_tail->len;
 		    adds_in_file++;
 		    if(buffer->lb_tail->len <= 246) {
@@ -102,7 +106,7 @@ signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer,
 		    }
 		    //printf("cseeking to (%lu), got (%lu)\n",
 		    //	buffer->lb_tail->offset, 
-		    cseek(ver_cfh, buffer->lb_tail->offset, CSEEK_ABS);
+		    /*cseek(ver_cfh, buffer->lb_tail->offset, CSEEK_ABS);
 		    bytes_wrote=0;
 		    while(buffer->lb_tail->len - bytes_wrote > 0) {
 		    	//printf("len(%lu), bytes_wrote(%lu), left(%lu)\n", 
@@ -119,10 +123,12 @@ signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer,
 			    bytes_wrote += bytes_read;
 			}
 		    delta_pos += buffer->lb_tail->len;
+		    */
 		    fh_pos += buffer->lb_tail->len;
 		    break;
 		case DC_COPY:
 		    copies++;//clean this up.
+		    total_copy_len += buffer->lb_tail->len;
 		    if(off_is_sbytes) {
 				if(offset_type==ENCODING_OFFSET_VERS_POS)
 				    s_off = (signed long)buffer->lb_tail->offset - (signed long)fh_pos;
@@ -191,11 +197,44 @@ signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer,
     }
     convertUBytesChar(out_buff, 0, 1);
     cwrite(out_fh, out_buff, 1);
-    printf("Buffer statistics- copies(%lu), adds(%lu)\n    copy ratio=(%f%%), add ratio(%f%%)\n",
+    dc_pos++;
+    printf("wrote commands, now writing add data\n");
+    buffer->lb_tail = buffer->lb_start;
+    buffer->cb_tail = buffer->cb_head;
+    buffer->cb_tail_bit = buffer->cb_head_bit;
+    while(count--) {
+    	if ((*buffer->cb_tail & (1 << buffer->cb_tail_bit))==0){
+    		cseek(ver_cfh, buffer->lb_tail->offset, CSEEK_ABS);
+		    bytes_wrote=0;
+		    while(buffer->lb_tail->len - bytes_wrote > 0) {
+		    	//printf("len(%lu), bytes_wrote(%lu), left(%lu)\n", 
+		    	//buffer->lb_tail->len, bytes_wrote, buffer->lb_tail->len - bytes_wrote);
+		    	temp = MIN(buffer->lb_tail->len - bytes_wrote, add_buff_size);
+			    if((bytes_read=cread(ver_cfh, add_buff, temp))!=temp) {
+			    	printf("add failure, offset(%lu), len(%lu)\n", 
+			    	buffer->lb_tail->offset, buffer->lb_tail->len);
+			    	printf("requested (%u) bytes, got (%u) bytes\n", temp, bytes_read);
+			    	printf("shite, problem reading from versionned file.\n");
+			    	exit(1);
+			    }
+			    cwrite(out_fh, add_buff, bytes_read);
+			    bytes_wrote += bytes_read;
+			}
+		    delta_pos += buffer->lb_tail->len;
+    	}
+    	DCBufferIncr(buffer);
+    }
+    convertUBytesChar(out_buff, 0, 1);
+    cwrite(out_fh, out_buff, 1);
+    dc_pos++;
+    printf("Buffer statistics: copies(%lu), adds(%lu)\n    copy ratio=(%f%%), add ratio(%f%%)\n",
 	copies, adds_in_buff, ((float)copies)/((float)(copies + adds_in_buff))*100,
 	((float)adds_in_buff)/((float)copies + (float)adds_in_buff)*100);
-    printf("adds in file(%lu), average # of commands per add(%f)\n", adds_in_file,
-	((float)adds_in_file)/((float)(adds_in_buff)));
+    printf("Buffer statistics: average copy_len(%lu), average add_len(%lu)\n",
+    (float)((float)total_copy_len/(float)copies), 
+    (float)((float)total_add_len/(float)adds_in_buff));
+    //printf("adds in file(%lu), average # of commands per add(%f)\n", adds_in_file,
+	//((float)adds_in_file)/((float)(adds_in_buff)));
     //ahem.  better error handling/returning needed. in time, in time...
     return 0;
 }

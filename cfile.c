@@ -126,7 +126,7 @@ unsigned long cread(struct cfile *cfile, unsigned char *out_buff, unsigned long 
 	    	if(cfile->raw_filled == cfile->raw_buff) {
 	    		printf("cread: len(%lu), bytes_read(%lu)\n", len, bytes_read);
 	    		printf("shit, raw_filled == raw_buff\n");
-				abort();
+				//abort();
 				return bytes_read;
 	    	}
 		}

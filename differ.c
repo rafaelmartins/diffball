@@ -37,17 +37,17 @@ unsigned long convertDec(unsigned char *buff, unsigned int len)
 
 int main(int argc, char **argv)
 {
-    struct stat src_stat, ver_stat;
-    struct cfile out_cfile, src_cfile, ver_cfile;
-    int src_fh, ver_fh, out_fh;
+    struct stat ref_stat, ver_stat;
+    struct cfile out_cfile, ref_cfile, ver_cfile;
+    int ref_fh, ver_fh, out_fh;
     //char *src, *trg;
-    unsigned char *src;
+    unsigned char *ref;
     unsigned long seed_len, multi;
     if(argc <3){
 		printf("pardon, but...\nI need at least 2 args- (source file), (target file), [patch-file]\n");
 		exit(EXIT_FAILURE);
     }
-    if(stat(argv[1], &src_stat)) {
+    if(stat(argv[1], &ref_stat)) {
 		perror("what the hell, stat failed.  wtf?\n");
 		exit(1);
     }
@@ -57,7 +57,7 @@ int main(int argc, char **argv)
     }
     //printf("src_fh size=%lu\ntrg_fh size=%lu\n", 
     //	(unsigned long)src_stat.st_size, (unsigned long)ver_stat.st_size);
-    if ((src_fh = open(argv[1], O_RDONLY,0)) == -1) {
+    if ((ref_fh = open(argv[1], O_RDONLY,0)) == -1) {
 		printf("Couldn't open %s, does it exist?\n", argv[1]);
 		exit(EXIT_FAILURE);
     }
@@ -70,25 +70,26 @@ int main(int argc, char **argv)
 	    	printf("well crud, couldn't duplicate stdout.  Likely a bug in differ.\n");
 	   		exit(EXIT_FAILURE);
 		}
-    } else */if((out_fh = open(argv[3], O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1) {
+    } else */
+    if((out_fh = open(argv[3], O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1) {
 		printf("Couldn't create\truncate patch file.\n");
 		exit(EXIT_FAILURE);
     } else {
 		fprintf(stderr,"storing generated delta in '%s'\n", argv[3]);
     }
     copen(&out_cfile, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
-    printf("allocing %lu\n", src_stat.st_size);
-	src=(unsigned char *)malloc(src_stat.st_size);
+    printf("allocing %lu\n", ref_stat.st_size);
+	ref=(unsigned char *)malloc(ref_stat.st_size);
 	printf("alloced\n");
 	//ver=(unsigned char *)malloc(ver_stat.st_size);
 	printf("reading\n");
-	read(src_fh, src, src_stat.st_size);
+	read(ref_fh, ref, ref_stat.st_size);
 	printf("read\n");
 	//read(trg_fh, trg, trg_stat.st_size);
 	/*signed int cmemopen(struct cfile *cfile, unsigned char *buff, 
 	unsigned long fh_start, unsigned long fh_end, unsigned int compressor_type)*/
 	printf("cmemopening\n");
-	cmemopen(&src_cfile, src, 0, src_stat.st_size, NO_COMPRESSOR);
+	cmemopen(&ref_cfile, ref, 0, ref_stat.st_size, NO_COMPRESSOR);
 	printf("opened\n");
 	//cmemopen(&trg_cfile, trg, 0, trg_stat.st_size, NO_COMPRESSOR);
 	//copen(&src_cfile, src_fh, 0, src_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
@@ -97,11 +98,11 @@ int main(int argc, char **argv)
 	printf("opened\n");
     if(argc < 5) {
 		seed_len = 16;
-		multi = ver_stat.st_size;
+		multi = ref_stat.st_size;
     } else {	     
 		seed_len = convertDec(argv[4], strlen(argv[4]));
 	if(argc < 6) {
-		    multi = src_stat.st_size;
+		    multi = ref_stat.st_size;
 		} else {
 	    	multi = convertDec(argv[5], strlen(argv[5]));
 		}
@@ -114,9 +115,13 @@ int main(int argc, char **argv)
     unsigned int offset_type, struct cfile *ref_cfh, 
     struct cfile *ver_cfh, unsigned int seed_len);*/
     printf("calling one half\n");
-    OneHalfPassCorrecting(USE_GDIFF_ENCODING, ENCODING_OFFSET_DC_POS, 
-&src_cfile,
+    OneHalfPassCorrecting(USE_GDIFF_ENCODING, 
+//ENCODING_OFFSET_DC_POS, 
+ENCODING_OFFSET_START,
+&ref_cfile,
     	&ver_cfile, &out_cfile, (unsigned int)seed_len, (unsigned int)multi);
+    printf("outputing patch...\n");
+    //gdiffEncodeDCBuffer(&buffer, offset_type, ver_cfh, out_cfh)
     printf("exiting\n");
     cclose(&out_cfile);
     return 0;

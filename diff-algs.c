@@ -135,8 +135,7 @@ signed int OneHalfPassCorrecting(unsigned int encoding_type,
     va=vs =vc =0;
     cseek(ver_cfh, 0, CSEEK_ABS);
     vbuff_start=0;
-    vbuff_end=vbuff_size;
-    cread(ver_cfh, vbuff, vbuff_size);
+    vbuff_end=cread(ver_cfh, vbuff, MIN(vbuff_size, ver_len));
     //printf("vc(%lu), seed_len(%lu), ver_len(%lu)\n", vc, seed_len, ver_len);
 	while(vc + seed_len < ver_len) {
 		if(vc + seed_len > vbuff_start + vbuff_size) {
@@ -345,6 +344,7 @@ signed int OneHalfPassCorrecting(unsigned int encoding_type,
 		printf("using gdiff encoding...\n");
 		//if(gdiffEncodeDCBuffer(&buffer, offset_type, ver, out_fh)) {
 		if(gdiffEncodeDCBuffer(&buffer, offset_type, ver_cfh, out_cfh)) {
+		
 		    printf("wtf? error returned from encoding engine\n");
 		}
     }
