@@ -211,8 +211,7 @@ int main(int argc, char **argv)
 	free_RefHash(&rhash);
     } else if (1==1) {
 */
-	DCBufferInit(&buffer, 4, ref_stat.st_size, ver_stat.st_size,
-	    DCBUFFER_LLMATCHES_TYPE);
+	DCB_llm_init(&buffer, 4, ref_stat.st_size, ver_stat.st_size);
 	v1printf("running multipass alg\n");
 	ref_id = DCB_REGISTER_ADD_SRC(&buffer, &ver_cfh, NULL, 0);
 	ver_id = DCB_REGISTER_COPY_SRC(&buffer, &ref_cfh, NULL, 0);

@@ -289,8 +289,8 @@ main(int argc, char **argv)
     }
     v1printf("final trg_common='%.*s'\n", trg_common_len, trg_common);
 
-    err = DCBufferInit(&dcbuff, 4096, (unsigned long)ref_stat.st_size, 
-	(unsigned long)ver_stat.st_size, DCBUFFER_LLMATCHES_TYPE) ||
+    err = DCB_llm_init(&dcbuff, 4096, (unsigned long)ref_stat.st_size, 
+	(unsigned long)ver_stat.st_size) ||
 	DCB_llm_init_buff(&dcbuff, 4096);
 
     check_return2(err,"DCBufferInit");

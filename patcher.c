@@ -200,12 +200,12 @@ main(int argc, char **argv)
         if(x == patch_count - 1 && reorder_commands == 0 && bufferless) {
             v1printf("not reordering, and bufferless is %u, going bufferless\n", bufferless);
 	    if(x==0) {
-	        err=DCBufferInit(&dcbuff[0], 0, src_stat.st_size, 0, DCBUFFER_BUFFERLESS_TYPE);
+	        err=DCB_no_buff_init(&dcbuff[0], 0, src_stat.st_size, 0);
 		check_return2(err, "DCBufferInit");
             	src_id = internal_DCB_register_cfh_src(&dcbuff[0], &src_cfh, NULL, NULL, DC_COPY, 0);
             	check_return(src_id, "internal_DCB_register_src", "unable to continue");
 	    } else {
-	    	err=DCBufferInit(&dcbuff[x % 2], 0, dcbuff[(x - 1) % 2].ver_size, 0, DCBUFFER_BUFFERLESS_TYPE);
+	    	err=DCB_no_buff_init(&dcbuff[x % 2], 0, dcbuff[(x - 1) % 2].ver_size, 0);
 		check_return2(err, "DCBufferInit");
     	    	src_id = DCB_register_dcb_src(dcbuff + ( x % 2), dcbuff + ((x -1) % 2));
             	check_return(src_id, "internal_DCB_register_src", "unable to continue");
@@ -219,17 +219,15 @@ main(int argc, char **argv)
 		v0printf("error opening output file, exitting\n");
 		exit(EXIT_FAILURE);
     	    }
-	    DCB_register_out_cfh(&dcbuff[x % 2], &out_cfh);
+	    DCB_no_buff_register_out_cfh(&dcbuff[x % 2], &out_cfh);
 	} else {
             if(x==0) {
-    	    	err=DCBufferInit(&dcbuff[0], 4096, src_stat.st_size, 0, 
-	    	    DCBUFFER_FULL_TYPE);
+    	    	err=DCB_full_init(&dcbuff[0], 4096, src_stat.st_size, 0);
 		check_return2(err, "DCBufferInit");
             	src_id = internal_DCB_register_cfh_src(&dcbuff[0], &src_cfh, NULL, NULL, DC_COPY, 0);
             	check_return2(src_id, "DCB_register_cfh_src");
     	    } else {
-    	    	err=DCBufferInit(&dcbuff[x % 2], 4096, dcbuff[(x - 1) % 2].ver_size , 0, 
-	    	    DCBUFFER_FULL_TYPE);
+    	    	err=DCB_full_init(&dcbuff[x % 2], 4096, dcbuff[(x - 1) % 2].ver_size , 0);
 	    	check_return2(err, "DCBufferInit");
     	    	src_id = DCB_register_dcb_src(dcbuff + ( x % 2), dcbuff + ((x -1) % 2));
     	    	check_return2(src_id, "DCB_register_dcb_src");
@@ -276,8 +274,8 @@ main(int argc, char **argv)
 
     	v1printf("reconstruction return=%ld", recon_val);
 	if(DCBUFFER_FULL_TYPE == dcbuff[x % 2].DCBtype) {
-    	    v1printf(", commands=%ld\n", dcbuff[x % 2].DCB.full.cl.com_count);
-	    v1printf("result was %lu commands\n", dcbuff[x % 2].DCB.full.cl.com_count);
+    	    v1printf(", commands=%ld\n", ((DCB_full *)dcbuff[x % 2].DCB)->cl.com_count);
+	    v1printf("result was %lu commands\n", ((DCB_full *)dcbuff[x % 2].DCB)->cl.com_count);
     	} else {
     	    v1printf("\n");
     	}

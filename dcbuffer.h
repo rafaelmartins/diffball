@@ -57,6 +57,8 @@ extern unsigned int global_use_md5;
 #define DCB_CFH_SRC			(char)0x80
 #define DCB_DCB_SRC			(char)0x40
 
+typedef unsigned char DCB_SRC_ID;
+
 // internal dcbuffer macros.
 #define LLM_VEND(l)  ((l)->ver_pos + (l)->len)
 
@@ -69,7 +71,6 @@ struct LL_DCLmatch {
 };
 
 typedef struct _CommandBuffer *DCB_ptr;
-
 typedef command_list overlay_chain;
 
 typedef struct {
@@ -79,7 +80,7 @@ typedef struct {
     unsigned long		ov_offset;
     unsigned long		ov_len;
     unsigned char		type;
-    unsigned short		src_id;
+    DCB_SRC_ID			src_id;
 } DCommand;
 
 typedef struct {
@@ -119,45 +120,73 @@ typedef struct _DCB_registered_src {
     unsigned char	flags;
 } DCB_registered_src;
 
-typedef struct _CommandBuffer {
-    off_u64 src_size;
-    off_u64 ver_size;
-    off_u64 reconstruct_pos;
-    unsigned char DCBtype;
-#ifdef DEBUG_DCBUFFER
-    off_u64 total_copy_len;
-#endif
-    union {
-    	struct {
-    	    DCommand		dc;
-    	    cfile		*out_cfh;
-    	} no_buff;
-	struct {
-	    command_list 	cl;
-	    unsigned long 	command_pos;
-	} full;
-	struct {
-	    off_u64 ver_start;
-	    unsigned long buff_count, buff_size;
-	    DCLoc_match *buff, *cur;
-	    u_dcb_src		*gap_src;
-	} matches;
-	struct {
-	    off_u64 ver_start, gap_pos;
-	    LL_DCLmatch *main_head, *main;
-	    unsigned long buff_count, buff_size, main_count;
-	    LL_DCLmatch *buff, *cur;
-	    void **free;
-	    unsigned long free_size, free_count;
-	} llm;
-    } DCB;
 
-    DCB_registered_src	*srcs;
-    unsigned short	src_count;
-    unsigned short	src_array_size;
-    unsigned long flags;
-    DCB_registered_src	*default_add_src;
-    DCB_registered_src	*default_copy_src;
+typedef void(*dcb_get_next_command)(struct _CommandBuffer *, DCommand *);
+typedef void(*dcb_truncate_command)(struct _CommandBuffer *, unsigned long);
+typedef void(*dcb_void_cb_command)(struct _CommandBuffer *);
+typedef void(*dcb_void_dcb_command)(void *);
+typedef int (*dcb_int_command)(void *);
+typedef int (*dcb_add_overlay_command)(struct _CommandBuffer *, off_u64, off_u32, DCB_SRC_ID, off_u64, DCB_SRC_ID);
+typedef int (*dcb_add_add_command)(struct _CommandBuffer *, off_u64, off_u32, DCB_SRC_ID);
+typedef int (*dcb_add_copy_command)(struct _CommandBuffer *, off_u64, off_u64, off_u32, DCB_SRC_ID);
+
+typedef struct _DCB_no_buff {
+    DCommand		dc;
+    cfile		*out_cfh;
+} DCB_no_buff;
+
+typedef struct _DCB_full {
+    command_list 	cl;
+    unsigned long 	command_pos;
+} DCB_full;
+
+typedef struct _DCB_matches {
+    off_u64 ver_start;
+    unsigned long buff_count, buff_size;
+    DCLoc_match *buff, *cur;
+    u_dcb_src		*gap_src;
+} DCB_matches;
+
+typedef struct _DCB_llm {
+    off_u64 ver_start, gap_pos;
+    LL_DCLmatch *main_head, *main;
+    unsigned long buff_count, buff_size, main_count;
+    LL_DCLmatch *buff, *cur;
+    void **free;
+    unsigned long free_size, free_count;
+    unsigned char flags;
+} DCB_llm;
+
+
+typedef struct _CommandBuffer {
+    off_u64 			src_size;
+    off_u64 			ver_size;
+    off_u64 			reconstruct_pos;
+    unsigned char 		DCBtype;
+    void 			*DCB;
+
+    dcb_get_next_command	get_next;
+    dcb_truncate_command	truncate;
+    dcb_add_overlay_command	add_overlay;
+    dcb_add_add_command		add_add;
+    dcb_add_copy_command	add_copy;
+    dcb_int_command		commands_remain;
+    dcb_void_dcb_command	reset;
+    dcb_void_dcb_command	free;
+    dcb_int_command		finalize;
+    dcb_void_cb_command		incr;
+    dcb_void_cb_command		decr;
+
+    DCB_registered_src		*srcs;
+    unsigned short		src_count;
+    unsigned short		src_array_size;
+    unsigned long 		flags;
+    DCB_registered_src		*default_add_src;
+    DCB_registered_src		*default_copy_src;
+#ifdef DEBUG_DCBUFFER
+    off_u64 			total_copy_len;
+#endif
+
 } CommandBuffer;
 
 #define copyDCB_add_src(dcb, dc, out_cfh)				\
@@ -204,35 +233,71 @@ DCBSearch * create_DCBSearch_index(CommandBuffer *dcb);
 void free_DCBSearch_index(DCBSearch *s);
 void tfree(void *p);
 
-void DCBufferIncr(CommandBuffer *buffer);
-void DCBufferDecr(CommandBuffer *buffer);
-void DCBufferCollapseAdds(CommandBuffer *buffer);
+#define DCBufferIncr(buff)	\
+(buff)->incr((buff))
+
+#define DCBufferDecr(buff)	\
+(buff)->decr((buff))
+
+#define DCB_finalize(buff)	\
+( ((buff)->finalize && (buff)->finalize((buff)->DCB)) || 0)
+
+#define DCBufferCollapseAdds(buff)	\
+(void *)NULL;
+
+//(buffer)->collapse_adds != NULL && (buffer)->collapse_adds((buff)->DCB)
+
 void DCBufferFree(CommandBuffer *buffer);
-int DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
-    unsigned long src_size, unsigned long ver_size, unsigned char type);
-void DCBufferReset(CommandBuffer *buffer);
+int DCB_common_init(CommandBuffer *, unsigned long, off_u64, off_u64, unsigned char);
+int DCB_full_init(CommandBuffer *, unsigned long, off_u64, off_u64);
+int DCB_matches_init(CommandBuffer *, unsigned long, off_u64, off_u64);
+int DCB_llm_init(CommandBuffer *, unsigned long, off_u64, off_u64);
+int DCB_no_buff_init(CommandBuffer *, unsigned long, off_u64, off_u64);
+
+#define DCBufferReset(buff)	\
+(buff)->reconstruct_pos = 0;	\
+if((buff)->reset != NULL) (buff)->reset((buff)->DCB);
+
+#define DCB_insert DCB_finalize
 
 unsigned int DCB_get_next_gap(CommandBuffer *buff, unsigned long gap_req, 
     DCLoc *dc);
-unsigned int DCB_commands_remain(CommandBuffer *buffer);
-void internal_DCB_get_next_command(CommandBuffer *buffer, DCommand *dc);
+
+//unsigned int DCB_commands_remain(CommandBuffer *buffer);
+
+#define DCB_commands_remain(buff)	\
+( ((buff)->commands_remain != NULL && (buff)->commands_remain((buff)->DCB)) || \
+( (buff)->reconstruct_pos != (buff)->ver_size) )
+
+#define DCB_truncate(buff, len) \
+(buff)->truncate((buff), (len))
+
+#define DCB_get_next_command(dcb, dc)	\
+((dcb)->get_next((dcb), (dc)))
+
 
 #define DCB_get_next_actual_command(dcb, dc) \
-	internal_DCB_get_next_command((dcb), (dc))
-#define DCB_get_next_command(dcb,dc) \
-	internal_DCB_get_next_command((dcb), (dc))
-	
-void DCB_truncate(CommandBuffer *buffer, unsigned long len);
+	DCB_get_next_command((dcb), (dc))
 
-int DCB_add_overlay(CommandBuffer *buffer, off_u32 diff_src_pos, off_u32 len, 
-    int add_ov_id, off_u32 copy_src_pos, int ov_src_id);
-int DCB_add_add(CommandBuffer *buffer, off_u64 src_pos, unsigned long len,
-    unsigned char src_id);
-int DCB_add_copy(CommandBuffer *buffer, off_u64 src_pos, off_u64 ver_pos,
-    unsigned long len, unsigned char src_id);
+int DCB_add_overlay(CommandBuffer *buffer, off_u64 diff_src_pos, off_u32 len, 
+  DCB_SRC_ID add_ov_id, off_u64 copy_src_pos, DCB_SRC_ID ov_src_id);
+
 int DCB_rec_copy_from_DCB_src(CommandBuffer *tdcb, command_list *tcl,
     CommandBuffer *sdcb, command_list *scl, unsigned short *translation_map,
     unsigned long com_offset, off_u64 seek, off_u64 len);
+
+#ifdef DEV_VERSION
+int DCB_add_copy(CommandBuffer *buffer, off_u64 src_pos, off_u64 ver_pos, off_u32 len, DCB_SRC_ID src_id);
+#else
+#define DCB_add_copy(buff, sp, vp, l, si)  (buff)->add_copy((buff),(sp),(vp),(l),(si))
+#endif
+
+#ifdef DEV_VERSION
+int DCB_add_add(CommandBuffer *buffer, off_u64 src_pos, off_u32 len, DCB_SRC_ID src_id);
+#else
+#define DCB_add_add(buff, sp, l, si) \
+( ((buff)->add_add && (buff)->add_add((buff),(sp),(l),(si))) || 0)
+#endif
 
 off_u64
 process_ovchain(CommandBuffer *dcb, off_u64 ver_pos, command_list *cl,
@@ -241,15 +306,12 @@ process_ovchain(CommandBuffer *dcb, off_u64 ver_pos, command_list *cl,
 command_list *
 DCB_collapse_commands(CommandBuffer *dcb);
 
-int DCB_insert(CommandBuffer *buff);
 int DCB_llm_init_buff(CommandBuffer *buff, unsigned long buff_size);
 unsigned int DCB_test_llm_main(CommandBuffer *buff);
 void DCB_test_total_copy_len(CommandBuffer *buff);
 
-int internal_DCB_resize_cl(command_list *cl);
-int internal_DCB_resize_matches(CommandBuffer *buffer);
-int internal_DCB_resize_llmatches(CommandBuffer *buffer);
-
-int internal_DCB_resize_srcs(CommandBuffer *buffer);
 unsigned long bail_if_called_func();
+
+#define tfree(f) ((void *)f) != NULL && free((f))
+
 #endif

@@ -209,7 +209,7 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, unsigned char ref_id,
     if(err)
 	return err;
     v1printf("multipass, hash_size(%lu)\n", hash_size);
-    if(buff->DCB.llm.main_head == NULL) {
+    if( ((DCB_llm *)buff->DCB)->main_head == NULL) {
 	seed_len = 512;
 	first_run=1;
     } else {
@@ -252,6 +252,7 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, unsigned char ref_id,
 		RHash_insert_block(&rhash, ver_cfh, dc.offset, dc.len + 
 		    dc.offset);
 	    }
+v0printf("here\n");
 	    RHash_sort(&rhash);
 	    v1printf("looking for matches in reference file\n");
 	    err=RHash_find_matches(&rhash, ref_cfh, 0, cfile_len(ref_cfh));

@@ -289,11 +289,16 @@ RH_bucket_resize(bucket *hash, unsigned short index, unsigned short size)
 	hash->depth[index]==64	||
 	hash->depth[index]==128);
     if(hash->depth[index]==0) {
-	return((hash->chksum[index] = (unsigned short *)malloc(size * sizeof(unsigned short)))==NULL || 
-	    (hash->offset[index] = (off_u64 *)malloc(size * sizeof(off_u64)))==NULL);
+	if((hash->chksum[index] = (unsigned short *)malloc(size * sizeof(unsigned short)))==NULL)
+	    return MEM_ERROR;
+	if((hash->offset[index] = (off_u64 *)malloc(size * sizeof(off_u64)))==NULL)
+	    return MEM_ERROR;
     }
-    return((hash->chksum[index] = (unsigned short *)realloc(hash->chksum[index], size * sizeof(unsigned short))) == NULL || 
-	(hash->offset[index] = (off_u64 *)realloc(hash->offset[index], size * sizeof(off_u64)))==NULL);
+    if((hash->chksum[index] = (unsigned short *)realloc(hash->chksum[index], size * sizeof(unsigned short))) == NULL)
+	return MEM_ERROR;
+    else if((hash->offset[index] = (off_u64 *)realloc(hash->offset[index], size * sizeof(off_u64)))==NULL)
+	return MEM_ERROR;
+    return 0;
 }
 
 signed int
