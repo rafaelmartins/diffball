@@ -3,10 +3,8 @@
 #include <errno.h>
 #include <search.h>
 #include <fcntl.h>
+#include "tar.h"
 
-#include "tar.c"
-
-struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, char *md5sum);
 int cmp_tar_entries(const void *te1, const void *te2);
 int command_pipes(const char *command, const char *args, int *pipes);
 
@@ -23,9 +21,10 @@ int main(int argc, char **argv)
     unsigned int src_common_len=0, trg_common_len=0;
     char *text = "debianutils-1.16.7/which.1";
 
-    printf("sizeof struct tar_entry=%u, sizeof *tar_entry=%u, size of **tar_entry=%u\n",
+/*    printf("sizeof struct tar_entry=%u, sizeof *tar_entry=%u, size of **tar_entry=%u\n",
         sizeof(struct tar_entry), sizeof(struct tar_entry *), sizeof(struct tar_entry**));
-    printf("sizeof *char[6]=%u\n", sizeof(char *[6]));
+    printf("sizeof *char[6]=%u\n", sizeof(char *[6]));*/
+    
     /*this will require a rewrite at some point to allow for options*/
     if (argc<4) {
 	printf("Sorry, need three files here bub.  Source, Target, file-to-save-the-patch-in\n");
@@ -113,17 +112,6 @@ int main(int argc, char **argv)
     }
 
 
-    /* note the funky nature, cast the returned void ptr to tar_entry, then dereference it */
-    /*entry = (struct tar_entry)*((struct tar_entry *)bsearch((const void *)&entry, (const void *)target,
-        target_count, sizeof(struct tar_entry), cmp_tar_entries));
-    printf("heh, trying something\n");*/
-    /*if (&entry != NULL)
-        printf("name='%.100s'\n", entry.name);
-    else
-        printf("well, key(%s) was not found\n", text);*/
-    
-        
-        
         
     /* cleanup */
     printf("freeing source: elements, ");
@@ -194,86 +182,3 @@ int command_pipes(const char *command, const char *args, int *ret_pipes)
     
 }
 
-struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, char *md5sum)
-{
-    struct tar_entry **file, *entry;
-    //struct tar_llist source, target, *src_ptr, *trg_ptr;
-    char *entry_char[512];
-    //unsigned int count=0, offset=0;
-    unsigned long offset=0, array_size=100000;
-    unsigned long count =0;
-    unsigned int read_bytes;
-    int pipes[2];
-    if((file = (struct tar_entry **)calloc(array_size,sizeof(struct tar_entry *)))==NULL){
-	    perror("crud, couldn't allocate necesary memory.  What gives?\n");
-	    exit(EXIT_FAILURE);
-	}
-    /*printf("setting array_size==%u\n",array_size);
-    printf("opening md5sum pipes\n");*/
-    if(command_pipes("md5sum", "-", pipes)){
-        perror("failed opening md5sum pipes, wtf?\n");
-        exit(EXIT_FAILURE);
-    }
-    //printf("file=%u, tp=%u\n", file, tp);
-    while((read_bytes=read(src_fh, entry_char, 512))==512 && strnlen(entry_char)!=0) {
-        write(pipes[1], entry_char, 512);
-        entry = convert_str_tar_entry((char *)entry_char);
-        entry->entry_num = count;
-        entry->file_loc = offset;
-        /*if (count==1021 || count==1022 || count==1023){
-            printf("handling annoyance %u\n", count);
-            printf("entry ptr(%lu), name(%.100s)\n", entry, (char *)(entry->name));
-        }*/
-        if (entry->size !=0) {
-            int x= entry->size>>9;
-            if (entry->size % 512)
-                x++;
-            //lseek(src_fh, (long)(x * 512), 1);
-            offset += x + 1;
-            while(x-- > 0){
-                if(read(src_fh, entry_char, 512)==512){
-                    write(pipes[1], entry_char, 512);
-                } else 
-                    perror("Unexpected end of file encountered, exiting\n");
-            }                
-        } else {
-            offset++;
-        }
-        if(count==array_size) {
-            /* out of room, resize */
-            if ((file=(struct tar_entry **)realloc(file,(array_size+=50000)*sizeof(struct tar_entry *)))==NULL){
-                perror("Eh?  Ran out of room for file array...\n");
-                exit(EXIT_FAILURE);
-            /*
-            } else {
-                printf("resized array to %u\n", array_size);
-            */
-            }
-            //array_size *= 5;
-        }
-        file[count++] = entry;
-        /* kludge for testing to capture a segfault*/
-        
-        /*printf("0 :%.100s\n1 :%u\n2 :%u\n3 :%u\n4 :%u\n5 :%.12s\n6 :%u\n7 :%c\n8 :%.100s\n9 :%.6s\n10:%.2s\n11:%.32s\n12:%.32s\n13:%u\n14:%u\n15:%100s\n16:%u\n",
-        entry.name, entry.mode, entry.uid, entry.gid, entry.size, entry.mtime, entry.chksum, entry.typeflag,
-        entry.linkname, entry.magic, entry.version, entry.uname, entry.gname, entry.devmajor, entry.devminor,
-        entry.prefix, entry.file_loc);*/
-    }
-    *total_count = count;
-    if ((file=(struct tar_entry **)realloc(file,count*sizeof(struct tar_entry *)))==NULL){
-        perror("Shit.\nNo explanation, just Shit w/ a capital S.\n");
-        exit(EXIT_FAILURE);
-    }
-    if(read_bytes>0) { /*finish outputing the file for md5summing */
-        write(pipes[1], entry_char, read_bytes);
-        while((read_bytes = read(src_fh, entry_char, 512))>0)
-            write(pipes[1], entry_char, read_bytes);
-    }
-    close(pipes[1]);  /* close the write pipe to md5 */
-    if ((count=read(pipes[0], entry_char, 32))!=32) {
-        perror("thats weird, md5sum didn't return 32 char's... bug most likely in diffball.\n");
-        exit(EXIT_FAILURE);
-    }
-    memcpy((char *)md5sum, (char *)entry_char, 32);
-    return file;
-}
