@@ -1,9 +1,15 @@
 /* config.h.in.  Generated from configure.in by autoheader.  */
 
-/* Toggle on cfile debug messages. */
+/* cfile debug messages */
 #undef DEBUG_CFILE
 
-/* Toggle on asserts. */
+/* dcbuffer debug messages */
+#undef DEBUG_DCBUFFER
+
+/* hash debug messages */
+#undef DEBUG_HASH
+
+/* asserts. */
 #undef DEV_VERSION
 
 /* Define to 1 if you have the `dup2' function. */
