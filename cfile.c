@@ -21,6 +21,7 @@
 #include <string.h>
 #include <assert.h>
 #include <fcntl.h>
+//#include <openssl/evp.h>
 #include "cfile.h"
 
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -43,14 +44,28 @@ unsigned int
 copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end, 
     unsigned int compressor_type, unsigned int access_flags)
 {
+    const EVP_MD *md;
     /* this will need adjustment for compressed files */
     cfh->raw_fh = fh;
-    cfh->access_flags = access_flags;
+    cfh->access_flags = (access_flags & ~CFILE_COMPUTE_MD5);
     cfh->state_flags = 0;
     /*if((cfh->data = (cfile_window *)malloc(sizeof(cfile_window)))==NULL)
 	abort();
     if((cfh->raw = (cfile_window *)malloc(sizeof(cfile_window)))==NULL)
 	abort();*/
+    if(access_flags & CFILE_COMPUTE_MD5) {
+	if((cfh->data_md5_ctx = (EVP_MD_CTX *)malloc(sizeof(EVP_MD_CTX)))==NULL)
+	    abort();
+	cfh->state_flags |= CFILE_COMPUTE_MD5;
+	OpenSSL_add_all_digests();
+	md = EVP_get_digestbyname("md5");
+	EVP_DigestInit(cfh->data_md5_ctx, md);
+	cfh->data_md5_pos = 0;
+    } else {
+	cfh->data_md5_ctx = NULL;
+	/* watch this, may need to change it when compression comes about */
+	cfh->data_md5_pos = cfh->data_total_len;
+    }
     switch( cfh->compressor_type = compressor_type ) {
     case NO_COMPRESSOR: 
 	cfh->data_fh_offset = fh_start;
@@ -92,6 +107,7 @@ cclose(cfile *cfh)
     cfh->raw.pos = cfh->raw.end = cfh->raw.size = cfh->raw.offset = 
 	cfh->data.pos = cfh->data.end = cfh->data.size = cfh->data.offset = 
 	cfh->raw_total_len = cfh->data_total_len = 0;
+    return 0;
 }
 
 unsigned long
@@ -212,19 +228,16 @@ crefill(cfile *cfh)
     unsigned long x;
     switch(cfh->compressor_type) {
     case NO_COMPRESSOR:
-/*	if(cfh->state_flags & CFILE_SEEK_NEEDED) {
-	    x = cfh->data_fh_offset + cfh->data.offset;
-	    cfh->data.end = cfh->data.pos = 0;
-	    if(lseek(cfh->raw_fh, x, SEEK_SET)!=x)
-		abort();
-	    cfh->state_flags &= ~CFILE_SEEK_NEEDED;
-	}*/
 	x = read(cfh->raw_fh, cfh->data.buff, cfh->data.size);
-//        assert(x==cfh->data.size);
 	cfh->data.offset += cfh->data.end;
 	cfh->data.end = x;
 	cfh->data.pos=0;
 	break;
+    }
+    if(cfh->state_flags & CFILE_COMPUTE_MD5 && 
+	cfh->data.offset == cfh->data_md5_pos) {
+	EVP_DigestUpdate(cfh->data_md5_ctx, cfh->data.buff, cfh->data.end);
+	cfh->data_md5_pos += cfh->data.end;
     }
     return cfh->data.end;
 }
@@ -262,6 +275,22 @@ copy_cfile_block(cfile *out_cfh, cfile *in_cfh, unsigned long in_offset,
 	bytes_wrote+=lb;
     }
     return bytes_wrote;
+}
+
+unsigned int
+cfile_finalize_md5(cfile *cfh, unsigned char *buff)
+{
+    unsigned int md5len;
+    /* check to see if someone is being a bad monkey... */
+    if(!(cfh->state_flags & CFILE_COMPUTE_MD5))
+	return 1;
+    if(ctell(cfh, CSEEK_FSTART)!=cfh->data_md5_pos) 
+	cseek(cfh, cfh->data_md5_pos, CSEEK_FSTART);
+    /* basically read in all data needed. */
+    while(cfh->data_md5_pos != cfh->data_total_len) 
+	crefill(cfh);
+    EVP_DigestFinal(cfh->data_md5_ctx, buff, &md5len);
+    return 0;
 }
 
 /*

@@ -17,19 +17,25 @@
 */
 #ifndef _HEADER_CFILE
 #define _HEADER_CFILE
+
+#include <openssl/evp.h>
+
 //#define CFILE_RAW_BUFF_SIZE   (4096)
 //#define CFILE_TRANS_BUFF_SIZE (4096)
 #define CFILE_DEFAULT_BUFFER_SIZE (BUFSIZ)
 //#define CFILE_DEFAULT_BUFFER_SIZE (1)
-#define NO_COMPRESSOR      0
-#define GZIP_COMRPESSOR    1
-#define BZIP2_COMPRESSOR   2
-#define CFILE_RONLY 1
-#define CFILE_WONLY 2
+#define NO_COMPRESSOR			(0x0)
+#define GZIP_COMRPESSOR			(0x1)
+#define BZIP2_COMPRESSOR		(0x2)
+#define CFILE_RONLY			(0x1)
+#define CFILE_WONLY			(0x2)
+/* note, CFILE_COMPUTE_MD5 is common to both state_flags and access_flags */
+#define CFILE_COMPUTE_MD5		(0x8)
 
-#define CFILE_SEEK_NEEDED		(0x4000)
-#define CFILE_MEM_ALIAS			(0x20)
-#define CFILE_BUFFER_ALL		(0x10)
+
+#define CFILE_SEEK_NEEDED		(0x4)
+#define CFILE_MEM_ALIAS			(0x2)
+#define CFILE_BUFFER_ALL		(0x1)
 
 
 /*lseek type stuff
@@ -70,6 +76,11 @@ typedef struct {
     unsigned long	raw_fh_offset;
     unsigned long	raw_total_len;
     cfile_window	raw;
+
+    /* other fun stuff, compression/md5 related. */
+    EVP_MD_CTX 		*data_md5_ctx;
+    /* used to track where the md5 computation is at */
+    unsigned long	data_md5_pos;
 } cfile;
 
 unsigned int  copen(cfile *cfh, int fh, unsigned long fh_start,
@@ -89,4 +100,5 @@ unsigned long copy_cfile_block(cfile *out_cfh, cfile *in_cfh,
     unsigned long in_offset, unsigned long len);
 unsigned long cfile_len(cfile *cfh);
 unsigned long cfile_start_offset(cfile *cfh);
+unsigned int  cfile_finalize_md5(cfile *cfh, unsigned char *buff);
 #endif

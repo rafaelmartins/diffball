@@ -7,8 +7,11 @@ diffball_SOURCES = diffball.c diff-algs.c string-misc.c tar.c primes.c \
 	bdiff.c bdelta.c
 
 ctest_SOURCES = ctest.c cfile.c
-
+ctest_LDADD = -lssl -lcrypto
 diffball_LDADD = -lssl -lcrypto
+differ_LDADD   = -lssl -lcrypto
+convert_delta_LDADD = -lssl -lcrypto
+patcher_LDADD = -lssl -lcrypto
 patcher_SOURCES = patcher.c cfile.c dcbuffer.c bit-functions.c apply-patch.c \
 	gdiff.c bdiff.c switching.c xdelta1.c bdelta.c
 

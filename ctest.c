@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <assert.h>
+#include <string.h>
 #include "cfile.h"
 
 int main(int argc, char **argv){
@@ -102,6 +103,30 @@ int main(int argc, char **argv){
     assert(1==cseek(cfh, -1, CSEEK_CUR));
     assert(1==cread(cfh, buff,1));
     assert('3'==buff[0]);
+    printf("starting md5 test.\n");
+    cclose(cfh);
+    copen(cfh, fh, 0, fstat.st_size, NO_COMPRESSOR, CFILE_RONLY | 
+	CFILE_COMPUTE_MD5);
+    cfh->data.size =2;
+    assert(cseek(cfh, 2, CSEEK_CUR)==2);
+    assert(cfh->data_md5_pos == 0);
+    assert(2==cread(cfh, buff, 2));
+    assert(cfh->data_md5_pos==0);
+    assert(0==cseek(cfh, 0, CSEEK_FSTART));
+    assert(2==cread(cfh, buff, 2));
+    assert(cfh->data_md5_pos == cfh->data.end);
+    //assert(fstat.st_size==cread(cfh, buff, fstat.st_size));
+    cfile_finalize_md5(cfh, buff);
+    unsigned int x;
+    printf("md5=");
+    for(x=0; x < 16; x++) 
+	printf("%2.2x", buff[x]);
+    printf("\n");
+    assert(0x43==buff[0] && 0x2b==buff[1] && 0xab==buff[2] && 0x3b==buff[3] &&
+	0xaf==buff[4] && 0x2c==buff[5] && 0x0c==buff[6] && 0xb7==buff[7] &&
+	0x50==buff[8] && 0xde==buff[9] && 0xee==buff[10] && 0x93==buff[11] &&
+	0xa6==buff[12] && 0xd5==buff[13] && 0x19==buff[14] && 0x15==buff[15]);
+    printf("correct md5.\n");
     printf("so ends the tests.  Prob still didn't find the bug, eh?\n");
     return 0;
 }
