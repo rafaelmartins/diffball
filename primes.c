@@ -136,7 +136,7 @@ unsigned long get_nearest_prime(struct prime_ctx *ctx, unsigned long near) {
 			ctx->base_primes[ctx->prime_count -1] != 65521) {
 			find_next_prime(ctx);
 		}
-		div=ctx->prime_count;
+		div=ctx->prime_count -1;
 	} else {
 		x=0;
 		while(sqr(ctx->base_primes[x]) < near) {
