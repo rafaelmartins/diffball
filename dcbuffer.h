@@ -60,7 +60,7 @@ struct DCStats {
     unsigned long copy_len_bytes[5];
 };
 
-
+unsigned long inline get_current_command_type(struct CommandBuffer *buff);
 void updateDCCopyStats(struct DCStats *stats, signed long pos_offset, signed long dc_offset, unsigned long len);
 void DCBufferIncr(struct CommandBuffer *buffer);
 void DCBufferDecr(struct CommandBuffer *buffer);

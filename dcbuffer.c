@@ -25,6 +25,10 @@
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
+unsigned long inline get_current_command_type(struct CommandBuffer *buff) {
+	return ((*buff->cb_tail >> buff->cb_tail_bit) & 0x01);
+}
+
 void updateDCCopyStats(struct DCStats *stats, signed long pos_offset, signed long dc_offset, unsigned long len)
 {
     stats->copy_count++;

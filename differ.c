@@ -27,6 +27,7 @@
 //#include "bit-functions.h"
 #include "string-misc.h"
 #include "gdiff.h"
+#include "bdiff.h"
 
 unsigned long convertDec(unsigned char *buff, unsigned int len)
 {
@@ -102,7 +103,8 @@ int main(int argc, char **argv)
     cclose(&ref_cfh);
     printf("outputing patch...\n");
     offset_type = ENCODING_OFFSET_DC_POS;
-    gdiffEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
+    bdiffEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
+//    gdiffEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
 //    switchingEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
 //    rawEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
     printf("exiting\n");
