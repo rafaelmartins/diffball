@@ -10,7 +10,7 @@ DONE	* seperate my modifications of gdiff format into v5, and enable a
 DONE	* md5 support in cfile- basically flag the cfile at opening, add func 
 	  for finalizing/retrieving md5.  Refactor cfile (buffering system) 
 	  for compression support to be added.
-STARTED	* code cleanup.  EG, add extern global verbosity option for control of
+DONE	* code cleanup.  EG, add extern global verbosity option for control of
 	  printf statements, start adding better definitions throughout code 
 	  for compilation (eg via compile flags/options disabling certain 
 	  sections of code).
@@ -20,9 +20,10 @@ STARTED	* work out a solution for handling md5's in file format- basically
 	  md5's if they're included in file (xdelta format).
 STARTED	* start enabling checking of returned values.  Basically start cleaning
 	  out the use of abort's and exit's, and use appropriate return values.
-	* relevant man pages
+DONE	* relevant man pages
 
 0.41			Oct/Nov 2003
+STARTED	* write *GOOD* man pages
 	* add patch info functions, for polling info on existant patches.
 	  possibly a new binary, although might be overkill.
 	* bsdiff support, possibly included into 0.4.
@@ -31,14 +32,15 @@ STARTED	* start enabling checking of returned values.  Basically start cleaning
 	  basically the unknown 8 bytes sandwiched between add data and control
 	  block.  Contact bdharring@wisc.edu if anyone has ideas/better 
 	  solution for the serialsource stored memory requirement.
-	  No clue why the hell that is stored, but it is.
+	  No clue why the hell that is stored there let alone if that's what 
+	  it is...
 	* check into, and support if viable, past xdelta formats.
 	  likely the serialsource issue listed above is going to be 
 	  problematic- I'm betting that had a hand in the breaking of backwards
 	  compatability in xdelta...
 STARTED	* optimizations of buffering system.  Do something about the 
 	  duplication of buffered data between cfile and differencing alg.
-	  Possibly an 'cfileExposeBuffer' type command, that returns a const 
+DONE	* Possibly a 'cfileExposeBuffer' type command, that returns a const 
 	  unsigned char * to the internal cfile buffer.
 STARTED	* refactor memalias for differing alg.  Basically adjustment of 
 	  returned values, although exposeBuffer (above) might solve this.
@@ -60,12 +62,12 @@ STARTED	* have working compression support in cfile.  Not saying it be'll
 	  doesn't require the entire set of delta commands to be stored in mem.
 
 0.75			Jan-Mar 2004
-DONE	* have at least a dev version of gnuDiff support (unified and context).
+STARTED	* have at least a dev version of gnuDiff support (unified and context).
 	  Note that is for a single patch, eg-non recursive.
 	  for recursive, basically need a for loop opening cfiles as needed.
 
 0.80			March 2004
-	* gnudiff support working, at least in applying non-recursive patch.
+STARTED	* gnudiff support working, for both recursive and  non-recursive patch.
 	* dev version of vcdiff.
 
 0.90			June 2004
