@@ -6,7 +6,7 @@
 
 #include "tar.c"
 
-struct tar_entry *read_fh_to_tar_entry(int src_fh, unsigned long *total_count, char *md5sum);
+struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, char *md5sum);
 int cmp_tar_entries(const void *te1, const void *te2);
 int command_pipes(const char *command, const char *args, int *pipes);
 
@@ -14,7 +14,7 @@ int main(int argc, char **argv)
 {
 	int src_fh;
 	int trg_fh;
-        struct tar_entry *source, *target, entry;
+        struct tar_entry **source, **target, entry;
         char source_md5[32], target_md5[32];
         unsigned long source_count, target_count;
 	unsigned long x;
@@ -39,18 +39,24 @@ int main(int argc, char **argv)
 	target = read_fh_to_tar_entry(trg_fh, &target_count, target_md5);
 	printf("target file md5sum=%.32s\n", target_md5);
         /* this next one is moreso for bsearch's, but it's prob useful for the common-prefix alg too */
-        qsort((struct tar_entry *)target, target_count, sizeof(struct tar_entry), cmp_tar_entries);
+        //qsort((struct tar_entry *)target, target_count, sizeof(struct tar_entry), cmp_tar_entries);
         
-        
+        printf("dumping source entries\n");
+        for(x=0; x< source_count; x++) {
+            printf("%lu: name('%.100s'), count(%lu), size(%lu), loc(%lu)\n",
+                x, source[x]->name, source[x]->entry_num, source[x]->size, source[x]->file_loc);
+        }
+        printf("finished\n");
         /* alg to basically figure out the common dir prefix... eg, if everything is in dir debianutils-1.16.3
            one thing I do wonder about... I make user of ptr algebra, do these methods hold for all architectures?
            ergo, do all arch's storage of a string have for ptr's string[x] < then string[x+1]? */
         /*note, we want the slash, hence +1 */
-        src_common_len=(char *)rindex((const char *)source->fullname, '/') - (char *)source->fullname+1;
-        strncpy((char *)src_common, (char *)source->fullname,src_common_len);
+        src_common_len=(char *)rindex((const char *)source[0]->fullname, '/') - (char *)source[0]->fullname+1;
+        strncpy((char *)src_common, (char *)source[0]->fullname,src_common_len);
         src_common[src_common_len] = '\0';  /*null delimit it */
+        printf("src_common=%s\n", src_common);
         for (x=0; x < source_count; x++) {
-            if (strncmp((const char *)src_common, (const char *)source[x].fullname, src_common_len) !=0) {
+            if (strncmp((const char *)src_common, (const char *)source[x]->fullname, src_common_len) !=0) {
                 char *p;
                 /* null the / at src_common_len-1, and attempt rindex again. */
                 src_common[src_common_len -1]='\0';
@@ -65,11 +71,11 @@ int main(int argc, char **argv)
             }
         }
         printf("new src_common='%.255s'\n", src_common);
-        trg_common_len=(char *)rindex((const char *)target->fullname, '/') - (char *)target->fullname+1;
-        strncpy((char *)trg_common, (char *)target->fullname,trg_common_len);
+        trg_common_len=(char *)rindex((const char *)target[0]->fullname, '/') - (char *)target[0]->fullname+1;
+        strncpy((char *)trg_common, (char *)target[0]->fullname,trg_common_len);
         trg_common[trg_common_len] = '\0';  /* null delimit it */
         for (x=0; x < target_count; x++) {
-            if (strncmp((const char *)trg_common, (const char *)target[x].fullname, trg_common_len) !=0) {
+            if (strncmp((const char *)trg_common, (const char *)target[x]->fullname, trg_common_len) !=0) {
                 char *p;
                 /* null the / at trg_common_len-1, and attempt rindex again. */
                 trg_common[trg_common_len -1]='\0';
@@ -90,9 +96,9 @@ int main(int argc, char **argv)
         to the start of fullname. */
         /*note for harring.  deref fullname, add common_len, then assign to ptr after casting */
         for (x=0; x < source_count; x++)
-            source[x].fullname_ptr= (char *)&source[x].fullname + src_common_len;
+            source[x]->fullname_ptr= (char *)&source[x]->fullname + src_common_len;
         for (x=0; x < target_count; x++) 
-            target[x].fullname_ptr = (char *)&target[x].fullname + trg_common_len;
+            target[x]->fullname_ptr = (char *)&target[x]->fullname + trg_common_len;
         /*printf("attempting bsearch lookup...\n");*/
         /* strncpy((char *)entry.name, text,strlen(text));*/
         /*printf("verifying something, name=%s\n", (char *)entry.name);*/
@@ -104,7 +110,17 @@ int main(int argc, char **argv)
             printf("name='%.100s'\n", entry.name);
         else
             printf("well, key(%s) was not found\n", text);*/
+        /*for(x=0; x< source_count; x++) {
+            printf("freeing source's elements[%lu]\n", x);
+            free((struct tar_entry *)(source[x]));
+        }*/
+        printf("freeing source array\n");
         free(source);
+        /*for(x=0; x< target_count; x++) {
+            printf("freeing target's elements[%lu]\n",x);
+            free((struct tar_entry *)(target[x]));
+        }*/
+        printf("freeing target array\n");
         free(target);
 	close(src_fh);
 	close(trg_fh);
@@ -165,17 +181,17 @@ int command_pipes(const char *command, const char *args, int *ret_pipes)
     
 }
 
-struct tar_entry *read_fh_to_tar_entry(int src_fh, unsigned long *total_count, char *md5sum)
+struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, char *md5sum)
 {
-    struct tar_entry *file, *entry;
+    struct tar_entry **file, *entry;
     //struct tar_llist source, target, *src_ptr, *trg_ptr;
     char *entry_char[512];
     //unsigned int count=0, offset=0;
-    unsigned long offset=0, array_size=50000;
+    unsigned long offset=0, array_size=100000;
     unsigned long count =0;
     unsigned int read_bytes;
     int pipes[2];
-    if((file = (struct tar_entry *)calloc(array_size,sizeof(struct tar_entry)))==NULL){
+    if((file = (struct tar_entry **)calloc(array_size,sizeof(struct tar_entry *)))==NULL){
 	    perror("crud, couldn't allocate necesary memory.  What gives?\n");
 	    exit(EXIT_FAILURE);
 	}
@@ -208,7 +224,7 @@ struct tar_entry *read_fh_to_tar_entry(int src_fh, unsigned long *total_count, c
         }
         if(count==array_size) {
             /* out of room, resize */
-            if ((file=(struct tar_entry *)realloc(file,(array_size+=50000)*sizeof(struct tar_entry)))==NULL){
+            if ((file=(struct tar_entry **)realloc(file,(array_size+=50000)*sizeof(struct tar_entry *)))==NULL){
                 perror("Eh?  Ran out of room for file array...\n");
                 exit(EXIT_FAILURE);
             /*
@@ -218,7 +234,7 @@ struct tar_entry *read_fh_to_tar_entry(int src_fh, unsigned long *total_count, c
             }
             //array_size *= 5;
         }
-        file[count++] = *entry;
+        file[count++] = entry;
         /*printf("0 :%.100s\n1 :%u\n2 :%u\n3 :%u\n4 :%u\n5 :%.12s\n6 :%u\n7 :%c\n8 :%.100s\n9 :%.6s\n10:%.2s\n11:%.32s\n12:%.32s\n13:%u\n14:%u\n15:%100s\n16:%u\n",
         entry.name, entry.mode, entry.uid, entry.gid, entry.size, entry.mtime, entry.chksum, entry.typeflag,
         entry.linkname, entry.magic, entry.version, entry.uname, entry.gname, entry.devmajor, entry.devminor,
@@ -240,7 +256,7 @@ struct tar_entry *read_fh_to_tar_entry(int src_fh, unsigned long *total_count, c
     //while(write(pipes[1], entry_char, read(src_fh, entry_char, 512)));
     //printf("source has %lu files, reallocing from %u to %u\n", count, array_size, count);
     /* free up the unused memory of the array */
-    if ((file=(struct tar_entry *)realloc(file,count*sizeof(struct tar_entry)))==NULL){
+    if ((file=(struct tar_entry **)realloc(file,count*sizeof(struct tar_entry *)))==NULL){
         perror("Shit.\nNo explanation, just Shit w/ a capital S.\n");
         exit(EXIT_FAILURE);
     }
