@@ -5,7 +5,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include "delta.h"
+#include <string.h>
+//#include "delta.h"
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
@@ -42,7 +43,7 @@ int main(int argc, char **argv)
     int src_fh, delta_fh, out_fh;
     signed long offset;
     unsigned long len;
-    unsigned long fh_pos, delta_pos=0;
+    unsigned long fh_pos, delta_pos=0, dc_pos=0;
     unsigned int buff_filled;
     unsigned int clen, ctmp;
     unsigned char buffer[1024], cpy_buff[12];
@@ -77,8 +78,11 @@ int main(int argc, char **argv)
 	printf("ahem.  the delta file is empty?\n");
 	exit(EXIT_FAILURE);
     }
+    if(*commands == 1) {
+	printf("using relative to dc_pos offsets\n");
+    }
     fh_pos=0;
-    cptr=commands;
+    cptr=commands + 1;
     //buff_filled=512;
     while(*cptr != 0) {
 	if(*cptr > 0 && *cptr <= 248) {
@@ -157,7 +161,7 @@ int main(int argc, char **argv)
 	    printf("copy command delta_pos(%lu), fh_pos(%lu), type(%u), offset(%d), ref_pos(%lu) len(%lu)\n",
 		delta_pos, fh_pos, ccom, offset, fh_pos + offset, len);
 	    delta_pos += clen + ctmp + 1;
-	    if(lseek(src_fh, fh_pos + offset, SEEK_SET)!= fh_pos + offset) {
+	    if(lseek(src_fh, dc_pos + offset, SEEK_SET)!= dc_pos + offset) {
 		printf("well that's weird, couldn't lseek.\n");
 		exit(EXIT_FAILURE);
 	    }
@@ -175,6 +179,7 @@ int main(int argc, char **argv)
 		}
 		len -= clen;
 	    }
+	    dc_pos += offset;
 	}
 	if(cptr == commands + buff_filled) {
 	    printf("refreshing buffer: cptr(%u)==buff_filled(%u)\n", cptr - commands, buff_filled);
