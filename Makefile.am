@@ -15,6 +15,7 @@ diffball_SOURCES = diffball.c string-misc.c tar.c options.c \
 differ_SOURCES = differ.c $(DIFF_FILES) options.c $(FORMATS)
 convert_delta_SOURCES = convert_delta.c options.c $(FORMATS)
 man_MANS = differ.1 diffball.1 patcher.1 convert_delta.1
+EXTRA_DIST = $(man_MANS)
 
 include_HEADERS = cfile.h dcbuffer.h diff-algs.h bit-functions.h gdiff.h \
 	apply-patch.h adler32.h switching.h primes.h string-misc.h \
