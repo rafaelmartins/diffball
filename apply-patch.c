@@ -39,7 +39,7 @@ reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh, int reorder_for_seq_acces
     DCommand *dc = NULL, *dc_array = NULL;
     unsigned long array_size = 0;
     assert(DCBUFFER_FULL_TYPE == dcbuff->DCBtype);
-    reorder_for_seq_access = 0;
+    reorder_for_seq_access = 1;
     assert(reorder_for_seq_access == 0 || CFH_IS_SEEKABLE(out_cfh) || 1);
     if(reorder_for_seq_access) {
 
@@ -54,7 +54,7 @@ reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh, int reorder_for_seq_acces
 	while(DCB_commands_remain(dcbuff)) {
 	    DCB_get_next_command(dcbuff, dc);
 	    dc++;
-	    if(dc - dc_array >= array_size) {
+	    if((unsigned long)(dc - dc_array) >= array_size) {
 		if((dc_array = (DCommand *)realloc(dc_array, 
 		   sizeof(DCommand) * array_size * 2)) == NULL) {
 		   return MEM_ERROR;
@@ -99,11 +99,10 @@ read_seq_write_rand(CommandBuffer *dcb, DCommand *dc_array, unsigned long array_
     unsigned char buf[buf_size];
     unsigned long x, start=0, end=0, len=0;
     unsigned long max_pos = 0, pos = 0;
-    unsigned long src_id;
     unsigned long offset;
     signed long tmp_len;
     cfile *cfh = NULL;
-    int old_id = 0;
+    unsigned long old_id = 0;
     #define END_POS(x) ((x).data.src_pos + (x).data.len)
     while(end < array_size) {
 	old_id = dc_array[end].src_id;
