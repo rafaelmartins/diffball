@@ -100,11 +100,11 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
 	{
 	case DC_ADD:
 	    //offset=0;
-	    printf("add command, delta_pos(%lu), fh_pos(%lu), len(%lu), broken into '%lu' commands\n",
+	    /*printf("add command, delta_pos(%lu), fh_pos(%lu), len(%lu), broken into '%lu' commands\n",
 		delta_pos, fh_pos, buffer->lb_tail->len, buffer->lb_tail->len/248 + (buffer->lb_tail->len % 248 ? 1 : 0));
 	    adds_in_buff++;
-	    //u_off=buffer->lb_tail->len;
-	    u_off=MIN(buffer->lb_tail->len, 248);
+	    u_off=buffer->lb_tail->len;*/
+	    //u_off = buffer->lb_tail->len / 248 > 0 ? 1 : 0;
 	    /*if(u_off > 246) {
 		if(u_off <= 0xffff) {
 		    clen=247;
@@ -127,7 +127,8 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
 		clen=MIN(buffer->lb_tail->len, 248);//modded
 		if(u_off)
 		    printf("    writing add command offset(%lu), len(%u)\n", buffer->lb_tail->offset, clen);
-		write(fh, ver + buffer->lb_tail->offset, u_off);
+		write(fh, &clen, 1);
+		write(fh, ver + buffer->lb_tail->offset, clen);
 		//offset+=clen;
 		fh_pos+=clen;
 		delta_pos += clen + 1;
