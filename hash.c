@@ -38,6 +38,7 @@ signed long
 RH_bucket_find_chksum(unsigned short chksum, unsigned short array[], 
     unsigned short count)
 {
+    assert(rhash->type & (RH_BUCKET_HASH | RH_RBUCKET_HASH));
     signed long low,high,mid;
     assert(count);
     low = 0;
@@ -75,7 +76,7 @@ lookup_offset(RefHash *rhash, ADLER32_SEED_CTX *ads)
 	if(p==NULL)
 	    return 0;
 	return ((chksum_ent*)p)->offset;
-    } else if(rhash->type & RH_BUCKET_HASH) {
+    } else if(rhash->type & (RH_BUCKET_HASH | RH_RBUCKET_HASH)) {
 	index = chksum & 0xffff;
 	if(rhash->hash.bucket.depth[index]==0) {
 	    return 0;
@@ -136,10 +137,8 @@ free_RefHash(RefHash *rhash)
     } else if((rhash->type & (RH_SORT_HASH | RH_RSORT_HASH | 
 	RH_RMOD_HASH | RH_CMOD_HASH)) && (rhash->hash.chk != NULL)) {
 	free(rhash->hash.chk);
-    } else if(rhash->type & RH_BUCKET_HASH) {
+    } else if(rhash->type & (RH_BUCKET_HASH | RH_RBUCKET_HASH)) {
 	for(x=0; x < rhash->hr_size; x++) {
-//	    if(rhash->hash.bucket.depth[x]) {
-
 	    if(rhash->hash.bucket.chksum[x]!= NULL) {
 		free(rhash->hash.bucket.chksum[x]);
 		free(rhash->hash.bucket.offset[x]);
@@ -171,7 +170,7 @@ init_RefHash(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len,
     rhash->flags = 0;
     rhash->type = hash_type;
     v2printf("init_RefHash\n");
-    if(rhash->type & RH_BUCKET_HASH) {
+    if(rhash->type & (RH_BUCKET_HASH | RH_RBUCKET_HASH)) {
 	rhash->hr_size = 0x10000;
 	rhash->hash.bucket.max_depth = 255;
     } else {
@@ -217,7 +216,7 @@ init_RefHash(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len,
 	    perror("couldn't alloc needed memory for ref hash\n");
 	    exit(EXIT_FAILURE);
 	}
-    } else if(rhash->type & RH_BUCKET_HASH) {
+    } else if(rhash->type & (RH_BUCKET_HASH | RH_RBUCKET_HASH)) {
 	if((rhash->hash.bucket.depth = (unsigned char *)malloc(
 	    rhash->hr_size)) == NULL || 
 	    (rhash->hash.bucket.chksum = (unsigned short **)malloc(
@@ -240,11 +239,11 @@ signed int
 RH_bucket_resize(RefHash *rhash, unsigned short index, unsigned short size)
 {
     assert(rhash->hash.bucket.depth[index]==0 || 
-	rhash->hash.bucket.depth[index]==4 || 
-	rhash->hash.bucket.depth[index]==8 || 
-	rhash->hash.bucket.depth[index]==16 ||
-	rhash->hash.bucket.depth[index]==32 ||
-	rhash->hash.bucket.depth[index]==64 ||
+	rhash->hash.bucket.depth[index]==4    || 
+	rhash->hash.bucket.depth[index]==8    || 
+	rhash->hash.bucket.depth[index]==16   ||
+	rhash->hash.bucket.depth[index]==32   ||
+	rhash->hash.bucket.depth[index]==64   ||
 	rhash->hash.bucket.depth[index]==128);
     if(rhash->hash.bucket.depth[index]==0) {
 	return((rhash->hash.bucket.chksum[index] = (unsigned short *)malloc(
@@ -323,7 +322,7 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 		rhash->duplicates++;
 		missed++;
 	    }
-	} else if(rhash->type & RH_BUCKET_HASH) {
+	} else if(rhash->type & (RH_BUCKET_HASH | RH_RBUCKET_HASH)) {
 	    chksum = get_checksum(&ads);
 	    index = chksum & 0xffff;
 	    chksum = ((chksum >> 16) & 0xffff);
@@ -335,8 +334,10 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 		    abort();
 		}
 		rhash->hash.bucket.chksum[index][0] = chksum;
-		rhash->hash.bucket.offset[index][0] = cfw->offset + cfw->pos -
-		    rhash->seed_len;
+		if(rhash->type & (RH_BUCKET_HASH)) {
+		    rhash->hash.bucket.offset[index][0] = cfw->offset + 
+			cfw->pos - rhash->seed_len;
+		}
 		rhash->hash.bucket.depth[index]++;
 		rhash->inserts++;
 		if(rhash->sample_rate > 1) 
@@ -346,10 +347,10 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 		low = 0;
 		high = rhash->hash.bucket.depth[index] - 1;
 		while(low < high) {
-		    mid = (low+high) /2;
+		    mid = (low + high) /2;
 		    if(chksum < rhash->hash.bucket.chksum[index][mid])
 			high = mid -1;
-		    else if (chksum > rhash->hash.bucket.offset[index][mid]) 
+		    else if (chksum > rhash->hash.bucket.chksum[index][mid]) 
 			low = mid + 1;
 		    else {
 			low = mid;
@@ -358,9 +359,12 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 		}
 
 		if(rhash->hash.bucket.chksum[index][low] != chksum) {
+
 		    /* expand bucket if needed */
+
 #define NEED_RESIZE(x)							\
     ((x)==128 || (x)==64 || (x)==32 || (x)==16 || (x)==8 || (x)==4)
+
 		    if(NEED_RESIZE(rhash->hash.bucket.depth[index])) {
 			if (RH_bucket_resize(rhash, index, 
 			    MIN(rhash->hash.bucket.max_depth, 
@@ -375,31 +379,44 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 			    rhash->hash.bucket.chksum[index] + low, 
 			    (rhash->hash.bucket.depth[index] - low) * 
 			    sizeof(unsigned short));
-			memmove(rhash->hash.bucket.offset[index] + low + 1, 
-			    rhash->hash.bucket.offset[index] + low , 
-			    (rhash->hash.bucket.depth[index] - low) * 
-			    sizeof(off_u64));
 			rhash->hash.bucket.chksum[index][low] = chksum;
-			rhash->hash.bucket.offset[index][low] = cfw->offset +
-			    cfw->pos - rhash->seed_len;
+			if(rhash->type & RH_BUCKET_HASH) {
+			    memmove(rhash->hash.bucket.offset[index] + low + 1, 
+				rhash->hash.bucket.offset[index] + low , 
+				(rhash->hash.bucket.depth[index] - low) * 
+				sizeof(off_u64));
+			    rhash->hash.bucket.offset[index][low] = cfw->offset +
+				cfw->pos - rhash->seed_len;
+			} else {
+			    rhash->hash.bucket.offset[index][low] = 0;
+			}
 		    } else if(low == rhash->hash.bucket.depth[index] -1) {
 			rhash->hash.bucket.chksum[index][
 			    rhash->hash.bucket.depth[index]] = chksum;
-			rhash->hash.bucket.chksum[index][
-			    rhash->hash.bucket.depth[index]] = cfw->offset +
-			    cfw->pos - rhash->seed_len;
+			if(rhash->type & RH_BUCKET_HASH) {
+			    rhash->hash.bucket.offset[index][
+				rhash->hash.bucket.depth[index]] = cfw->offset
+				+ cfw->pos - rhash->seed_len;
+			} else {
+			    rhash->hash.bucket.offset[index][
+				rhash->hash.bucket.depth[index]] = 0;
+			}
 		    } else {
-			memmove(rhash->hash.bucket.offset[index] + low + 2, 
-			    rhash->hash.bucket.offset[index] + low +1 , 
-			    (rhash->hash.bucket.depth[index] - low - 1) * 
-			    sizeof(off_u64));
 			memmove(rhash->hash.bucket.chksum[index] + low + 2, 
 			    rhash->hash.bucket.chksum[index] + low +1 , 
 			    (rhash->hash.bucket.depth[index] - low - 1) * 
 			    sizeof(unsigned short));
 			rhash->hash.bucket.chksum[index][low] = chksum;
-			rhash->hash.bucket.offset[index][low] = cfw->offset +
-			    cfw->pos - rhash->seed_len;
+			if(rhash->type & RH_BUCKET_HASH) {
+			    memmove(rhash->hash.bucket.offset[index] + low + 2, 
+				rhash->hash.bucket.offset[index] + low +1 , 
+				(rhash->hash.bucket.depth[index] - low - 1) * 
+				sizeof(off_u64));
+			    rhash->hash.bucket.offset[index][low] = cfw->offset
+				+ cfw->pos - rhash->seed_len;
+			} else {
+			    rhash->hash.bucket.offset[index][low] = 0;
+			}
 		    }
 		    rhash->inserts++;
 		    if(rhash->inserts == (rhash->hr_size * 
@@ -490,7 +507,8 @@ RHash_find_matches(RefHash *rhash, cfile *ref_cfh)
     ADLER32_SEED_CTX ads;
     chksum_ent *me, m_ent;
     unsigned long chksum, index;
-    if(!(rhash->type & (RH_RSORT_HASH | RH_RMOD_HASH))) {
+    signed long pos;
+    if(!(rhash->type & (RH_RSORT_HASH | RH_RMOD_HASH | RH_RBUCKET_HASH))) {
 	return 0;
     }
     if(!(RH_SORTED & rhash->flags))
@@ -515,12 +533,24 @@ RHash_find_matches(RefHash *rhash, cfile *ref_cfh)
 	} else if(rhash->type & RH_RMOD_HASH) {
 	    chksum = get_checksum(&ads);
 	    index = chksum % rhash->hr_size;
-//hash_it(rhash, &ads);
 	    if(rhash->hash.chk[index].chksum == chksum) {
 		rhash->hash.chk[index].offset = cfw->offset + cfw->pos - 
 		    rhash->seed_len;
 	    }
-	}
+	} else if(rhash->type & RH_RBUCKET_HASH) {
+	    chksum = get_checksum(&ads);
+	    index = (chksum & 0xffff);
+	    chksum = ((chksum >> 16) & 0xffff);
+	    if(rhash->hash.bucket.depth[index]) {
+		pos = RH_bucket_find_chksum(chksum, 
+		    rhash->hash.bucket.chksum[index], 
+		    rhash->hash.bucket.depth[index]);
+		if(pos >= 0 && rhash->hash.bucket.offset[index][pos]==0) {
+		    rhash->hash.bucket.offset[index][pos] = cfw->offset + 
+			cfw->pos - rhash->seed_len;
+		}
+	    }
+	}	    
 	update_adler32_seed(&ads, cfw->buff + cfw->pos, 1);
 	cfw->pos++;
 

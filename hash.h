@@ -24,12 +24,13 @@
 #define DEFAULT_SEED_LEN 	(16)
 #define DEFAULT_MAX_HASH_COUNT	(48000000/sizeof(unsigned long))
 
-#define RH_MOD_HASH	(0x1)
-#define RH_RMOD_HASH	(0x2)
-#define RH_CMOD_HASH	(0x4)
-#define RH_SORT_HASH	(0x8)
-#define RH_RSORT_HASH	(0x10)
-#define RH_BUCKET_HASH  (0x20)
+#define RH_MOD_HASH		(0x1)
+#define RH_RMOD_HASH		(0x2)
+#define RH_CMOD_HASH		(0x4)
+#define RH_SORT_HASH		(0x8)
+#define RH_RSORT_HASH		(0x10)
+#define RH_BUCKET_HASH		(0x20)
+#define RH_RBUCKET_HASH		(0x40)
 
 #define RH_BUCKET_MIN_ALLOC (4)
 
