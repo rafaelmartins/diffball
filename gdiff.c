@@ -66,14 +66,14 @@ signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer,
 				cwrite(out_fh, out_buff, 3);
 				delta_pos+=3;
 				printf("type(%u)\n", 247);
-				printf("verifying, %u %u %u\n", out_buff[0], out_buff[1], out_buff[2]);
+				//printf("verifying, %u %u %u\n", out_buff[0], out_buff[1], out_buff[2]);
 		    } else if (buffer->lb_tail->len <= 0xffffffff) {
 				convertUBytesChar(out_buff, 248, 1);
 				convertUBytesChar(out_buff + 1, buffer->lb_tail->len, 4);
 				cwrite(out_fh, out_buff, 5);
 				delta_pos+=5;
 				printf("type(%u)\n", 248);
-				printf("verifying, %5.5s\n", out_buff);
+				//printf("verifying, %5.5s\n", out_buff);
 		    } else {
 				printf("wtf, encountered an offset larger then int size.  croaking.\n");
 				exit(1);
