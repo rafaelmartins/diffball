@@ -282,7 +282,7 @@ int main(int argc, char **argv)
     copen(&ref_full, src_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     DCBufferInit(&dcbuff, 20000000, (unsigned long)ref_stat.st_size, 
 	(unsigned long)ver_stat.st_size);
-    init_RefHash(&rhash_full, &ref_full, 16, 1, ref_full.byte_len);
+    init_RefHash(&rhash_full, &ref_full, 16, 8, ref_full.byte_len/8);
     printf("looking for matching filenames in the archives...\n");
     for(x=0; x< target_count; x++) {
         //entry=source[x];

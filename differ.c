@@ -94,9 +94,9 @@ int main(int argc, char **argv)
 		}
     }
     printf("using seed_len(%lu), multi(%lu)\n", seed_len, multi);
-    DCBufferInit(&buffer, 1000000);
+    DCBufferInit(&buffer, 1000000, ref_stat.st_size, ver_stat.st_size);
     copen(&ref_cfh, ref_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
-    init_RefHash(&rhash, &ref_cfh, seed_len, 1, ref_cfh.byte_len);
+    init_RefHash(&rhash, &ref_cfh, seed_len, 6, ref_cfh.byte_len/6);
     copen(&ver_cfh, ver_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     printf("opened\n");
     OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh);
@@ -108,6 +108,7 @@ int main(int argc, char **argv)
 //    gdiffEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
 //    switchingEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
 //    rawEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
+    bdeltaEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
     printf("exiting\n");
     cclose(&ver_cfh);
     cclose(&out_cfh);

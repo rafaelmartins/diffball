@@ -11,7 +11,7 @@ patcher_SOURCES = patcher.c cfile.c dcbuffer.c bit-functions.c apply-patch.c \
 
 differ_SOURCES = differ.c diff-algs.c dcbuffer.c dcbuffer.h cfile.c \
 	bit-functions.c primes.c adler32.c gdiff.c bdiff.c \
-	switching.c xdelta1.c raw.c
+	switching.c xdelta1.c raw.c bdelta.c file.c
 #switching.c bdiff.c
 convert_delta_SOURCES = convert_delta.c cfile.c dcbuffer.c gdiff.c \
 	switching.c raw.c bdiff.c bit-functions.c
