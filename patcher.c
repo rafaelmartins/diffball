@@ -26,6 +26,7 @@
 #include "cfile.h"
 #include "gdiff.h"
 #include "switching.h"
+#include "raw.h"
 #include "dcbuffer.h"
 #include "apply-patch.h"
 
@@ -71,10 +72,12 @@ int main(int argc, char **argv)
     copen(&delta_cfh, delta_fh, 0, delta_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
     printf("here goes...\n");
-    offset_type = ENCODING_OFFSET_DC_POS;
+    offset_type = ENCODING_OFFSET_START;
+//    offset_type = ENCODING_OFFSET_DC_POS;
 	DCBufferInit(&dcbuff, 1000000);
-	switchingReconstructDCBuff(&delta_cfh, &dcbuff, offset_type);
-//   	gdiffReconstructDCBuff(&delta_cfh, &dcbuff, offset_type, 4);
+//	switchingReconstructDCBuff(&delta_cfh, &dcbuff, offset_type);
+   	gdiffReconstructDCBuff(&delta_cfh, &dcbuff, offset_type, 4);
+//	rawReconstructDCBuff(&delta_cfh, &dcbuff, offset_type);
    	printf("reconstructing target file based off of dcbuff commands...\n");
    	reconstructFile(&dcbuff, &src_cfh, &delta_cfh, &out_cfh);
    	printf("reconstruction done.  calling close.\n");

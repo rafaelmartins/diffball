@@ -31,6 +31,7 @@
 #include "diff-algs.h"
 #include "gdiff.h"
 #include "switching.h"
+#include "raw.h"
 
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -373,8 +374,8 @@ int main(int argc, char **argv)
     DCBufferCollapseAdds(&dcbuff);
     printf("outputing patch...\n");
     copen(&ver_full, trg_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
-    offset_type= ENCODING_OFFSET_DC_POS;
-//    offset_type= ENCODING_OFFSET_START;
+//    offset_type= ENCODING_OFFSET_DC_POS;
+    offset_type= ENCODING_OFFSET_START;
 //    rawEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
 //    switchingEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
     gdiffEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);

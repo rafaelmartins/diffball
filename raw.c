@@ -63,15 +63,25 @@ signed int rawEncodeDCBuffer(struct CommandBuffer *buffer,
     total_add_len=0;
     command_count=0;
     count = buffer->count;
+    last_com=DC_COPY;
+    if(*buffer->cb_tail & (1 << buffer->cb_tail_bit))
+	command_count++;
     while(count--) {
     	if(buffer->lb_tail->len!=0) {
 	    if ((*buffer->cb_tail & (1 << buffer->cb_tail_bit))==DC_ADD) {
     		total_add_len += buffer->lb_tail->len;
-    	    }
+		last_com = DC_ADD;
+	    } else {
+		if(last_com==DC_COPY) {
+		    command_count++;
+		}
+		last_com = DC_COPY;
+	    }
 	    command_count++;
-    	DCBufferIncr(buffer);
 	}
+    	DCBufferIncr(buffer);
     }
+    printf("count=%lu, command_count=%lu\n", buffer->count, command_count);
     convertUBytesChar(out_buff, command_count, 4);
     convertUBytesChar(out_buff + 4, total_add_len, 4);
     cwrite(out_fh, out_buff, 8);
@@ -114,7 +124,7 @@ signed int rawEncodeDCBuffer(struct CommandBuffer *buffer,
     count = buffer->count;
     last_com = DC_COPY;
     dc_pos=0;
-    while(count--){
+    while(command_count--){
 	if(buffer->lb_tail->len > 0) {
 	    if((*buffer->cb_tail & (1 << buffer->cb_tail_bit))==DC_ADD){
 		    adds_in_buff++;
@@ -179,94 +189,52 @@ signed int rawEncodeDCBuffer(struct CommandBuffer *buffer,
 
 signed int rawReconstructDCBuff(struct cfile *patchf, struct CommandBuffer *dcbuff, 
     unsigned int offset_type) {
-/*    //unsigned char *cptr;
-	const unsigned int buff_size = 4096;
+    const unsigned int buff_size = 8;
     unsigned char buff[buff_size];
-	unsigned long int len;
-    unsigned long ver_pos=0, dc_pos=0;
-    unsigned long int u_off;
-    signed long int s_off;
+    unsigned long int len;
+    unsigned long dc_pos=0;
+    unsigned long int u_off, add_off, com_start;
     unsigned int last_com;
-    unsigned long add_off, com_start;
-    unsigned int off_is_sbytes, ob, lb;
-    unsigned int end_of_patch =0;
-    unsigned long *copy_off_array;
+    unsigned int off_is_sbytes;
+    unsigned long command_count, add_block_len;
     if(offset_type==ENCODING_OFFSET_DC_POS) {
 	off_is_sbytes = 1;
     } else {
 	off_is_sbytes = 0;
     }
-    dc_pos=0;
-    printf("starting pos=%lu\n", ctell(patchf, CSEEK_ABS));
-    cread(patchf, buff, 4);
-    com_start = readUnsignedBytes(buff, 4);
+    cread(patchf, buff, 8);
+    command_count = readUnsignedBytes(buff, 4);
+    com_start = readUnsignedBytes(buff + 4, 4);
     cseek(patchf, com_start, CSEEK_CUR);
-    add_off=4;
-	last_com=DC_COPY;
-	printf("add data block size(%lu), starting commands at pos(%lu)\n", com_start,
-		ctell(patchf, CSEEK_ABS));
-    while(cread(patchf, buff, 1)==1 && end_of_patch==0) {
-    //printf("adding command num(%lu)\n", dcbuff->count+1);
-    	printf("processing(%u) at pos(%lu): ", buff[0], ctell(patchf, CSEEK_ABS) -1);
-	    if(last_com != DC_ADD) {
-	    	lb = (buff[0] >> 6) & 0x3;
-	    	len = buff[0] & 0x3f;
-	    	if(lb) {
-	    		cread(patchf, buff, lb);
-	    		len = (len << (lb * 8)) + readUnsignedBytes(buff, lb);
-	    		len += add_len_start[lb];
-	    	}
-	    	if(len) {
-	    		DCBufferAddCmd(dcbuff, DC_ADD, add_off, len);
-	    		add_off += len;
-	    	}
-	    	last_com = DC_ADD;
-	    	printf("add len(%lu)\n", len);
-	    } else if(last_com != DC_COPY) {
-	    	lb = (buff[0] >> 6) & 0x3;
-	    	ob = (buff[0] >> 4) & 0x3;
-	    	//printf("lb(%u), len(%lu): ", lb, len);
-	    	len = buff[0] & 0x0f;
-	    	if(lb) {
-	    		cread(patchf, buff, lb);
-	    		len = (len << (lb * 8)) + readUnsignedBytes(buff, lb);
-	    		//printf("adding(%lu): ", copy_len_start[lb]);
-	    		len += copy_len_start[lb];
-	    	}
-	    	//printf("len now(%lu): ", len);
-	    	printf("ob(%u): ", ob);
-	    	cread(patchf, buff, ob + 1);
-	    	if (offset_type == ENCODING_OFFSET_DC_POS) {
-	    		s_off = readSignedBytes(buff, ob + 1);
-			// positive or negative 0?  Yes, for this, there is a difference... 
-	    		if(buff[0] & 0x80) {
-	    			s_off -= copy_off_array[ob];
-	    		} else {
-	    			s_off += copy_off_array[ob];
-	    		}
-				u_off = dc_pos + s_off;
-				printf("u_off(%lu), dc_pos(%lu), s_off(%ld): ", 
-					u_off, dc_pos, s_off);
-				dc_pos = u_off;
-	    	} else {
-	    		u_off = readUnsignedBytes(buff, ob + 1);
-	    		u_off += copy_off_start[ob];
-	    	}
-	    	if(lb==0 && ob==0 && len==0 && u_off==0) {
-	    		printf("zero length, zero offset copy found.\n");
-	    		end_of_patch=1;
-	    		continue;
-	    	}
-	    	if(len)
-		    	DCBufferAddCmd(dcbuff, DC_COPY, u_off, len);
-	    	last_com = DC_COPY;
-	    	printf("copy off(%ld), len(%lu)\n", u_off, len);
+    dc_pos = 8 + com_start;
+    add_off = 8;
+    last_com=DC_COPY;
+    while(command_count-- && cread(patchf, buff, 4)==4) {
+	len = readUnsignedBytes(buff, 4);
+	printf("command(%lu), len(%lu)\n", command_count + 1, len);
+	if(last_com==DC_COPY) { //eg it's an add
+	    last_com = DC_ADD;
+	    if(len) {
+		printf("adding len(%lu)\n", len);
+		DCBufferAddCmd(dcbuff, DC_ADD, add_off, len);
+		add_off += len;
+	    }
+	} else {
+	    last_com = DC_COPY;
+	    if(cread(patchf, buff, 4)!=4) {
+		abort();
+	    }
+	    if(len) {
+		if(off_is_sbytes) {
+		    u_off = dc_pos + readSignedBytes(buff, 4);
+		} else {
+		    u_off = readUnsignedBytes(buff, 4);
+		}
+		printf("copying len(%lu)\n", len);
+		DCBufferAddCmd(dcbuff, DC_COPY, u_off, len);
 	    }
 	}
-    printf("closing command was (%u)\n", *buff);
-    printf("cread fh_pos(%lu)\n", ctell(patchf, CSEEK_ABS)); 
-    printf("ver_pos(%lu)\n", ver_pos);
-    
-	return 0;    */
+    }
+    return 0;
 }
 
