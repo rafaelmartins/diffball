@@ -168,12 +168,11 @@ signed int gdiffReconstructDCBuff(struct cfile *patchf, struct CommandBuffer *dc
     //unsigned char *cptr;
 	const unsigned int buff_size = 4096;
     unsigned char buff[buff_size];
-	unsigned long int len, x;
+	unsigned long int len;
     unsigned long ver_pos=0, dc_pos=0;
     unsigned long int u_off;
     signed long int s_off;
     int off_is_sbytes, ob, lb;
-    //unsigned char cpy_buff[PATCHER_COPY_BUFFER_SIZE];
     if(offset_type==ENCODING_OFFSET_VERS_POS || offset_type==ENCODING_OFFSET_DC_POS)
 		off_is_sbytes=1;
     else if(offset_type==ENCODING_OFFSET_START)
@@ -182,12 +181,9 @@ signed int gdiffReconstructDCBuff(struct cfile *patchf, struct CommandBuffer *dc
 		printf("wtf, unknown offset_type for reconstruction(%u)\n",offset_type);
 		exit(1);
     }
-//    cptr= PDBuff->buffer;
-	//	cread(patchf, &ccom, 1);
-	printf("patchf->fh_pos(%lu)\n", cposition(patchf));
+
     while(cread(patchf, buff, 1)==1 && *buff != 0) {
     //printf("adding command num(%lu)\n", dcbuff->count+1);
-	    //printf("ver_pos(%lu), fh_pos(%lu), command(%u)\n", ver_pos, patchf->fh_pos, *buff);
 	    if(*buff > 0 && *buff <= 248) {
 	        //add command
 	        printf("add command type(%u) ", *buff);
@@ -201,37 +197,12 @@ signed int gdiffReconstructDCBuff(struct cfile *patchf, struct CommandBuffer *dc
 					exit(1);
 				}
 	        	len= readUnsignedBytes(buff, lb);
-	        	//cptr+=lb;
 	        } else
 	        	len=*buff;
 			printf("len(%lu)\n", len);
-	        //cptr++;
-	        //printf("first byte of add command(%u) is (%u)\n", *(cptr -1), *cptr);
-	        //printf("add  command delta_pos(%lu), fh_pos(%lu), len(%u)\n", PDBuff->delta_pos, fh_pos, ccom);
-	        //clen = MIN(buff_filled - (cptr - commands), ccom);
-	        //printf("len(%lu), clen(%lu)\n", *cptr, clen);
-	        //DCBufferAddCmd(dcbuff, DC_ADD, patchf->
-	        //printf("add dc offset(%lu)\n", cposition(patchf));
 	        printf("adding add for len(%lu), dc_pos(%lu)\n", len, cposition(patchf));
 	        DCBufferAddCmd(dcbuff, DC_ADD, cposition(patchf), len);
 	        cseek(patchf, len, CSEEK_CUR);
-	        //ver_pos += len;
-	        
-	        /*while(len) {
-	        	//x=MIN(len, PDBuff->filled_len - (cptr - PDBuff->buffer));
-	        	x=MIN(len, buff_size);
-	        	if(cread(patchf, buff, x)!=x) {
-	        		printf("error reading in.\n");
-	        		exit(1);
-	        	}
-				printf("   adding, len(%lu), x(%lu)\n", len, x);
-	        	if((write(out_fh, buff, x))!=x) {
-	        	    printf("Weird... error writing to out_fh\n");
-	        	    exit(1);
-	        	}
-	        	len-=x;
-	        }*/
-	        //printf("left with cptr(%u)\n", *cptr);
 	    } else if(*buff >= 249 ) {
 	        //copy command
             printf("copy command ccom(%u) ", *buff);
@@ -255,14 +226,6 @@ signed int gdiffReconstructDCBuff(struct cfile *patchf, struct CommandBuffer *dc
 				ob=8;
 				lb=4;
 	    	}
-	    	/*if(PDBuff->filled_len - (cptr - PDBuff->buffer) < 1 + ob + lb) {
-				printf("refreshing buffer in copy, cptr(%u), filled_len(%u), (%u)\n",
-		       PDBuff->filled_len, cptr - PDBuff->buffer,
-		       PDBuff->filled_len - (cptr - PDBuff->buffer));
-				refreshPDBuffer(PDBuff, PDBuff->filled_len - (cptr - PDBuff->buffer));
-				cptr = PDBuff->buffer;
-				printf("cptr(%u)\n", *cptr);
-		    }*/
 		    if(cread(patchf, buff + 1, lb + ob)!= lb + ob) {
 		    	printf("error reading in lb/ob for copy...\n");
 		    	exit(1);
@@ -275,46 +238,17 @@ signed int gdiffReconstructDCBuff(struct cfile *patchf, struct CommandBuffer *dc
 				//convertUBytesChar(out_buff + 1, u_off, ob);
 				u_off=readUnsignedBytes(buff + 1, ob);
 		    }
-		    //cptr+=ob;
 		    len = readUnsignedBytes(buff + 1 + ob, lb);
-		    //cptr+=lb;
 		    if(offset_type!=ENCODING_OFFSET_START) {
 				if(offset_type==ENCODING_OFFSET_VERS_POS)
 				    u_off = ver_pos + s_off;
 				else //ENCODING_DC_POS
 				    dc_pos = u_off = dc_pos + s_off;
 		    }
-		    /*if(lseek(src_fh, u_off, SEEK_SET)!= u_off) {
-				printf("well that's weird, couldn't lseek.\n");
-				exit(EXIT_FAILURE);
-		    }*/
-		    printf("offset(%lu), len(%lu)\n", len);
+		    printf("offset(%lu), len(%lu)\n", u_off, len);
 		    DCBufferAddCmd(dcbuff, DC_COPY, u_off, len);
 		    ver_pos+=len;
-		    /*while(len) {
-				x = MIN(buff_size, len);
-				//printf("copying (%lu) bytes of len(%lu)\n", x ,len);
-				if(read(src_fh, buff, x) != x) {
-				    printf("hmm, error reading src_fh.\n");
-				    //printf("clen(%u), len(%lu)\n", clen, len);
-				    exit(EXIT_FAILURE);
-				}
-				if(write(out_fh, buff, x) != x){
-				    printf("hmm, error writing the versionned file.\n");
-				    exit(EXIT_FAILURE);
-				}
-				len -= x;
-		    }*/
-		    
 		}
-		/*if(cptr - PDBuff->buffer == PDBuff->filled_len) {
-		    printf("refreshing buffer\n");
-		    //printf("refreshing buffer: cptr(%u)==buff_filled(%u)\n", 
-		    cptr - commands, buff_filled);
-		    refreshPDBuffer(PDBuff, 0);
-		    cptr = PDBuff->buffer;
-		    //continue;
-		}*/
     }
     printf("closing command was (%u)\n", *buff);
     printf("cread fh_pos(%lu)\n", cposition(patchf)); 
