@@ -11,6 +11,7 @@
 #include "cfile.h"
 #include "gdiff.h"
 #include "dcbuffer.h"
+#include "apply-patch.h"
 
 
 //offset = fh_pos + readSignedBytes(cpy_buff, ctmp);
@@ -21,8 +22,8 @@ int main(int argc, char **argv)
 {
     struct stat src_stat, delta_stat;
     int src_fh, delta_fh, out_fh;
-    //struct PatchDeltaBuffer PDBuff;
-    struct cfile patchfile;
+    struct cfile src_cfh, delta_cfh, out_cfh;
+    struct CommandBuffer dcbuff;
     if(argc <4){
 		printf("pardon, but...\nI need at least 3 args- (reference file), patch-file, target file\n");
 		exit(EXIT_FAILURE);
@@ -55,16 +56,24 @@ int main(int argc, char **argv)
     struct PatchDeltaBuffer *PDBuff, unsigned int offset_type,
     unsigned int gdiff_version);*/
     //initPDBuffer(&PDBuff, delta_fh, 5, 4096);
-    copen(&patchfile, delta_fh, 5, NO_COMPRESSOR, CFILE_RONLY);
+    copen(&src_cfh, src_fh, 0, src_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
+    copen(&delta_cfh, delta_fh, 5, delta_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
+    copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
     printf("here goes...\n");
     /*printf("dumping initial buffer\n");
     printf("initial value(%u)\n", PDBuff.buffer[0]);
     printf("filled_len(%u), buff(%u)\n", PDBuff.filled_len, PDBuff.buff_size);
     printf("%*s\n", 5800, PDBuff.buffer);*/
-    printf("patchf->fh_pos(%lu)\n", patchfile.fh_pos);
-    gdiffReconstructFile(src_fh, out_fh, &patchfile, ENCODING_OFFSET_START, 4);
-	
-	cclose(&patchfile);
+    printf("patchf->raw_fh_pos(%lu)\n", delta_cfh.raw_fh_pos);
+	DCBufferInit(&dcbuff, 1000000);
+    //gdiffReconstructFile(src_fh, out_fh, &patchfile, ENCODING_OFFSET_START, 4);
+    printf("patchf cposition(%lu)\n", cposition(&delta_cfh));
+    printf("converting gdiff encoding to a dcbuff...\n");
+   	gdiffReconstructDCBuff(&delta_cfh, &dcbuff, ENCODING_OFFSET_START, 4);
+   	printf("reconstructing target file based off of dcbuff commands...\n");
+   	reconstructFile(&dcbuff, &src_cfh, &delta_cfh, &out_cfh);
+   	printf("reconstruction done.  calling close.\n");
+	cclose(&out_cfh);
 	return 0;
 }
 

@@ -47,7 +47,7 @@ int main(int argc, char **argv)
     } else {
 		fprintf(stderr,"storing generated delta in '%s'\n", argv[3]);
     }
-    copen(&out_cfile, out_fh, 0, NO_COMPRESSOR, CFILE_WONLY);
+    copen(&out_cfile, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
     src=(char*)malloc(src_stat.st_size);
     trg=(char*)malloc(trg_stat.st_size);
     read(src_fh, src, src_stat.st_size);

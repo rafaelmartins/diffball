@@ -35,8 +35,7 @@
 
 signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer, 
     unsigned int offset_type, unsigned char *ver, /*int fh*/ struct cfile *out_fh);
-signed int gdiffReconstructFile(int src_fh, int out_fh,
-    /*struct PatchDeltaBuffer *PDBuff,*/ struct cfile *patchf, 
+signed int gdiffReconstructDCBuff(struct cfile *patchf, struct CommandBuffer *dcbuff, 
     unsigned int offset_type,
     unsigned int gdiff_version);
 #endif
