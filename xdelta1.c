@@ -20,7 +20,6 @@
 #include <string.h>
 #include "dcbuffer.h"
 #include "cfile.h"
-#include "defs.h"
 #include "bit-functions.h"
 #include "xdelta1.h"
 
