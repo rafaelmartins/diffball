@@ -42,8 +42,15 @@ struct DCStats {
     unsigned long copy_len_bytes[5];
 };
 
+void updateDCCopyStats(struct DCStats *stats, signed long pos_offset, signed long dc_offset, unsigned long len);
+void DCBufferIncr(struct CommandBuffer *buffer);
+void DCBufferDecr(struct CommandBuffer *buffer);
+void DCBufferAddCmd(struct CommandBuffer *buffer, int type, unsigned long offset, unsigned long len);
+void DCBufferTruncate(struct CommandBuffer *buffer, unsigned long len);
+void DCBufferInit(struct CommandBuffer *buffer, unsigned long max_commands);
+void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh);
 inline int bitsNeeded(long y);
-inline int bytesNeeded(long y);
+inline int unsignedBytesNeeded(long y);
 inline int signedBytesNeeded(signed long y);
 
 #endif

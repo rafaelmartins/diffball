@@ -13,10 +13,9 @@
 void updateDCCopyStats(struct DCStats *stats, signed long pos_offset, signed long dc_offset, unsigned long len)
 {
     stats->copy_count++;
-    
-    stats->copy_pos_offset_bytes[MAX(abs(pos_offset/8),5)]++;
-    stats->copy_rel_offset_bytes[MAX(abs(dc_offset/8), 5)]++;
-    stats->copy_len_bytes[MAX(len/8,5)]++;
+    stats->copy_pos_offset_bytes[MAX( MIN(signedBytesNeeded(pos_offset) - 1, 0), 5)]++;
+    stats->copy_rel_offset_bytes[MAX(MIN(signedBytesNeeded(dc_offset) -1, 0), 5)]++;
+    stats->copy_len_bytes[MAX(MIN(unsignedBytesNeeded(len)-1, 0),5)]++;
 }
 
 void updateDCAddStats(struct DCStats *stats, unsigned long len)
@@ -25,49 +24,21 @@ void updateDCAddStats(struct DCStats *stats, unsigned long len)
     
 }
 
-void DCBufferIncr(struct CommandBuffer *buffer)
+void undoDCCopyStats(struct DCStats *stats, signed long pos_offset, unsigned long len)
 {
-    //printf("   incr: cb was offset(%lu)-bit(%u),", buffer->cb_tail - buffer->cb_start, buffer->cb_tail_bit);
-    buffer->lb_tail = (buffer->lb_end==buffer->lb_tail) ? buffer->lb_start : buffer->lb_tail + 1;
-    if (buffer->cb_tail_bit >= 7) {
-	buffer->cb_tail_bit = 0;
-	buffer->cb_tail = (buffer->cb_tail == buffer->cb_end) ? buffer->cb_start : buffer->cb_tail + 1;
-    } else {
-	buffer->cb_tail_bit++;
-    }
-    //printf(" now is offset(%lu)-bit(%u)\n", buffer->cb_tail - buffer->cb_start, buffer->cb_tail_bit);
+    stats->copy_count++;
+    stats->copy_pos_offset_bytes[MAX( MIN(signedBytesNeeded(pos_offset) - 1, 0), 5)]--;
+//    stats->copy_rel_offset_bytes[MAX(MIN(signedBytesNeeded(dc_offset) -1, 0), 5)]--;
+    stats->copy_len_bytes[MAX(MIN(unsignedBytesNeeded(len)-1, 0),5)]--;
 }
 
-void DCBufferDecr(struct CommandBuffer *buffer)
+void undoDCAddStats(struct DCStats *stats, unsigned long len)
 {
-    //printf("   decr: cb was offset(%lu)-bit(%u),", buffer->cb_tail - buffer->cb_start, buffer->cb_tail_bit);
-    buffer->lb_tail--;
-    if (buffer->cb_tail_bit != 0) {
-	buffer->cb_tail_bit--;
-    } else {
-	buffer->cb_tail = (buffer->cb_tail == buffer->cb_start) ? buffer->cb_end : buffer->cb_tail - 1;
-	buffer->cb_tail_bit=7;
-    }
-    //printf(" now is offset(%lu)-bit(%u)\n", buffer->cb_tail - buffer->cb_start, buffer->cb_tail_bit);
+    stats->add_count--;
+    
 }
 
-void DCBufferAddCmd(struct CommandBuffer *buffer, int type, unsigned long offset, unsigned long len)
-{
-    if(buffer->count == buffer->max_commands) {
-	printf("shite, buffer full.\n");
-	exit(EXIT_FAILURE);
-    }
-    buffer->lb_tail->offset = offset;
-    buffer->lb_tail->len = len;
-    if (type==DC_ADD)
-	*buffer->cb_tail &= ~(1 << buffer->cb_tail_bit);
-    else
-	*buffer->cb_tail |= (1 << buffer->cb_tail_bit);
-    //printf("   addcmd desired value(%u), actual (%u)\n", type,
-	//(*buffer->cb_tail & (1 << buffer->cb_tail_bit)) >> buffer->cb_tail_bit);
-    buffer->count++;
-    DCBufferIncr(buffer);
-}
+
 
 void DCBufferTruncate(struct CommandBuffer *buffer, unsigned long len)
 {
@@ -94,26 +65,6 @@ void DCBufferTruncate(struct CommandBuffer *buffer, unsigned long len)
     DCBufferIncr(buffer);
 }
 
-void DCBufferInit(struct CommandBuffer *buffer, unsigned long max_commands)
-{
-    buffer->count=0;
-    buffer->max_commands = max_commands + (max_commands % 8 ? 1 : 0);
-    printf("asked for size(%lu), using size(%lu)\n", max_commands, buffer->max_commands);
-    if((buffer->cb_start = (char *)malloc(buffer->max_commands/8))==NULL){
-	perror("shite, malloc failed\n");
-	exit(EXIT_FAILURE);
-    }
-    buffer->cb_head = buffer->cb_tail = buffer->cb_start;
-    buffer->cb_end = buffer->cb_start + (buffer->max_commands/8) -1;
-    buffer->cb_head_bit = buffer->cb_tail_bit = 0;
-    if((buffer->lb_start = (struct DCLoc *)malloc(sizeof(struct DCLoc) * buffer->max_commands))==NULL){
-	perror("shite, malloc failed\n");
-	exit(EXIT_FAILURE);
-    }
-    buffer->lb_head = buffer->lb_tail = buffer->lb_start;
-    buffer->lb_end = buffer->lb_start + buffer->max_commands -1;
-}
-
 inline int bitsNeeded(long y)
 {
     unsigned int x=1;
@@ -126,7 +77,7 @@ inline int bitsNeeded(long y)
     return x;    
 }
 
-inline int bytesNeeded(long y)
+inline int unsignedBytesNeeded(long y)
 {
     unsigned int x;
     if (y == 0) {
@@ -198,7 +149,7 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
 	    //printf("s_offset(%d) ob: ");
 	    ob=signedBytesNeeded(s_off);
 	    //printf("lb: ");
-	    lb=bytesNeeded(buffer->lb_tail->len);
+	    lb=unsignedBytesNeeded(buffer->lb_tail->len);
 	    if(ob <= 2 && lb ==1)
 		clen=249;
 	    else if(ob <= 2 && lb <=2)
@@ -428,3 +379,66 @@ char *OneHalfPassCorrecting(unsigned char *ref, unsigned long ref_len,
 
 //unsigned long hash_it(unsigned long
 
+void DCBufferIncr(struct CommandBuffer *buffer)
+{
+    //printf("   incr: cb was offset(%lu)-bit(%u),", buffer->cb_tail - buffer->cb_start, buffer->cb_tail_bit);
+    buffer->lb_tail = (buffer->lb_end==buffer->lb_tail) ? buffer->lb_start : buffer->lb_tail + 1;
+    if (buffer->cb_tail_bit >= 7) {
+	buffer->cb_tail_bit = 0;
+	buffer->cb_tail = (buffer->cb_tail == buffer->cb_end) ? buffer->cb_start : buffer->cb_tail + 1;
+    } else {
+	buffer->cb_tail_bit++;
+    }
+    //printf(" now is offset(%lu)-bit(%u)\n", buffer->cb_tail - buffer->cb_start, buffer->cb_tail_bit);
+}
+
+void DCBufferDecr(struct CommandBuffer *buffer)
+{
+    //printf("   decr: cb was offset(%lu)-bit(%u),", buffer->cb_tail - buffer->cb_start, buffer->cb_tail_bit);
+    buffer->lb_tail--;
+    if (buffer->cb_tail_bit != 0) {
+	buffer->cb_tail_bit--;
+    } else {
+	buffer->cb_tail = (buffer->cb_tail == buffer->cb_start) ? buffer->cb_end : buffer->cb_tail - 1;
+	buffer->cb_tail_bit=7;
+    }
+    //printf(" now is offset(%lu)-bit(%u)\n", buffer->cb_tail - buffer->cb_start, buffer->cb_tail_bit);
+}
+
+void DCBufferAddCmd(struct CommandBuffer *buffer, int type, unsigned long offset, unsigned long len)
+{
+    if(buffer->count == buffer->max_commands) {
+	printf("shite, buffer full.\n");
+	exit(EXIT_FAILURE);
+    }
+    buffer->lb_tail->offset = offset;
+    buffer->lb_tail->len = len;
+    if (type==DC_ADD)
+	*buffer->cb_tail &= ~(1 << buffer->cb_tail_bit);
+    else
+	*buffer->cb_tail |= (1 << buffer->cb_tail_bit);
+    //printf("   addcmd desired value(%u), actual (%u)\n", type,
+	//(*buffer->cb_tail & (1 << buffer->cb_tail_bit)) >> buffer->cb_tail_bit);
+    buffer->count++;
+    DCBufferIncr(buffer);
+}
+
+void DCBufferInit(struct CommandBuffer *buffer, unsigned long max_commands)
+{
+    buffer->count=0;
+    buffer->max_commands = max_commands + (max_commands % 8 ? 1 : 0);
+    printf("asked for size(%lu), using size(%lu)\n", max_commands, buffer->max_commands);
+    if((buffer->cb_start = (char *)malloc(buffer->max_commands/8))==NULL){
+	perror("shite, malloc failed\n");
+	exit(EXIT_FAILURE);
+    }
+    buffer->cb_head = buffer->cb_tail = buffer->cb_start;
+    buffer->cb_end = buffer->cb_start + (buffer->max_commands/8) -1;
+    buffer->cb_head_bit = buffer->cb_tail_bit = 0;
+    if((buffer->lb_start = (struct DCLoc *)malloc(sizeof(struct DCLoc) * buffer->max_commands))==NULL){
+	perror("shite, malloc failed\n");
+	exit(EXIT_FAILURE);
+    }
+    buffer->lb_head = buffer->lb_tail = buffer->lb_start;
+    buffer->lb_end = buffer->lb_start + buffer->max_commands -1;
+}
