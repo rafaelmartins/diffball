@@ -440,7 +440,7 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 	cfh->data.pos = data_offset - cfh->data.offset;
 	return (CSEEK_ABS==offset_type ? data_offset + cfh->data_fh_offset: 
 	    data_offset);
-    } else if(data_offset >= cfh->data.end + cfh->data.offset && 
+    } else if((cfh->access_flags &! CFILE_WRITEABLE) && data_offset >= cfh->data.end + cfh->data.offset && 
 	data_offset < cfh->data.end + cfh->data.size + cfh->data.offset &&
 	IS_LAST_LSEEKER(cfh) ) {
 	// see if the desired location is the next page (avoid lseek + read, get read instead).
