@@ -412,10 +412,11 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 				rhash->hash.bucket.offset[index] + low +1 , 
 				(rhash->hash.bucket.depth[index] - low - 1) * 
 				sizeof(off_u64));
-			    rhash->hash.bucket.offset[index][low] = cfw->offset
-				+ cfw->pos - rhash->seed_len;
+			    /* this ought to be low + 1 */
+			    rhash->hash.bucket.offset[index][low + 1] = 
+				cfw->offset + cfw->pos - rhash->seed_len;
 			} else {
-			    rhash->hash.bucket.offset[index][low] = 0;
+			    rhash->hash.bucket.offset[index][low+1] = 0;
 			}
 		    }
 		    rhash->inserts++;
