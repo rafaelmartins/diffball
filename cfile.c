@@ -229,13 +229,13 @@ crefill(cfile *cfh)
     return cfh->data.end;
 }
 
-unsigned long
+inline unsigned long
 cfile_len(cfile *cfh)
 {
     return cfh->data_total_len;
 }
 
-unsigned long
+inline unsigned long
 cfile_start_offset(cfile *cfh)
 {
     return cfh->data_fh_offset;
@@ -243,7 +243,6 @@ cfile_start_offset(cfile *cfh)
 
 /* while I realize this may not *necessarily* belong in cfile, 
    eh, it's going here.
-   
    deal with it.  */
 unsigned long 
 copy_cfile_block(cfile *out_cfh, cfile *in_cfh, unsigned long in_offset, 
