@@ -17,15 +17,16 @@
 */
 #include <stdlib.h>
 #include <string.h>
-#include "defs.h"
 #include <errno.h>
 #include "dcbuffer.h"
 #include "cfile.h"
 #include "bit-functions.h"
 #include "defs.h"
 
+extern unsigned int verbosity;
+
 unsigned long inline current_command_type(CommandBuffer *buff) {
-	return ((*buff->cb_tail >> buff->cb_tail_bit) & 0x01);
+        return ((*buff->cb_tail >> buff->cb_tail_bit) & 0x01);
 }
 
 void updateDCCopyStats(DCStats *stats, signed long pos_offset, signed long dc_offset, unsigned long len)
@@ -38,8 +39,7 @@ void updateDCCopyStats(DCStats *stats, signed long pos_offset, signed long dc_of
 
 void updateDCAddStats(DCStats *stats, unsigned long len)
 {
-    stats->add_count++;
-    
+    stats->add_count++;    
 }
 
 void undoDCCopyStats(DCStats *stats, signed long pos_offset, unsigned long len)
@@ -53,7 +53,6 @@ void undoDCCopyStats(DCStats *stats, signed long pos_offset, unsigned long len)
 void undoDCAddStats(DCStats *stats, unsigned long len)
 {
     stats->add_count--;
-    
 }
 
 void DCBufferTruncate(CommandBuffer *buffer, unsigned long len)
@@ -107,9 +106,25 @@ void DCBufferDecr(CommandBuffer *buffer)
 
 void DCBufferAddCmd(CommandBuffer *buffer, int type, unsigned long offset, unsigned long len)
 {
-    if(buffer->buffer_count == buffer->buffer_size) {
-		v2printf("shite, buffer full.\n");
-		exit(EXIT_FAILURE);
+    if(buffer->lb_tail == buffer->lb_end) {
+	v1printf("resizing command buffer from %lu to %lu\n", 
+	    buffer->buffer_size, buffer->buffer_size * 2);
+	if((buffer->cb_start = (char *)realloc(buffer->cb_start,
+	    buffer->buffer_size /4 ))==NULL) {
+	    v0printf("resizing command buffer failed, exiting\n");
+	    exit(EXIT_FAILURE);
+	} else if((buffer->lb_start = (DCLoc *)realloc(buffer->lb_start, 
+	    buffer->buffer_size * 2 * sizeof(DCLoc)) )==NULL) {
+	    v0printf("resizing command buffer failed, exiting\n");
+	    exit(EXIT_FAILURE);
+	}
+	buffer->buffer_size *= 2;
+	buffer->cb_head = buffer->cb_start;
+	buffer->lb_head = buffer->lb_start;
+	buffer->lb_tail = buffer->lb_start + buffer->buffer_count;
+	buffer->cb_tail = buffer->cb_start + (buffer->buffer_count/8);
+	buffer->lb_end = buffer->lb_start + buffer->buffer_size -1;
+	buffer->cb_end = buffer->cb_start + (buffer->buffer_size/8) -1;
     }
     buffer->lb_tail->offset = offset;
     buffer->lb_tail->len = len;
@@ -170,7 +185,9 @@ void DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
     buffer->ver_size = ver_size;
     buffer_size = (buffer_size > 0 ? (buffer_size/8) : 0) + 1;
     buffer->buffer_size = buffer_size * 8;
-    if((buffer->cb_start = (char *)malloc(buffer_size))==NULL){
+    /* non-intuitive, but note I'm using *buffer_size* rather then 
+	buffer->buffer_size.  it makes one hell of a difference. */
+    if((buffer->cb_start = (unsigned char *)malloc(buffer_size))==NULL){
 	perror("shite, malloc failed\n");
 	exit(EXIT_FAILURE);
     }
@@ -179,7 +196,6 @@ void DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
     buffer->cb_head_bit = buffer->cb_tail_bit = 0;
     if((buffer->lb_start = (DCLoc *)malloc(sizeof(DCLoc) * 
 	buffer->buffer_size))==NULL){
-	
 	perror("shite, malloc failed\n");
 	exit(EXIT_FAILURE);
     }

@@ -23,8 +23,12 @@ STARTED	* work out a solution for handling md5's in file format- basically
 STARTED	* start enabling checking of returned values.  Basically start cleaning
 	  out the use of abort's and exit's, and use appropriate return values.
 DONE	* relevant man pages
-	* have a basic (not necessarily cleanest/best) gzip compressor setup so 
+STARTED	* have a basic (not necessarily cleanest/best) gzip compressor setup so 
 	  compressed xdelta can be handled.
+	* add a set of functions for pulling add len/offset pairs for formats
+	  reasonning being, make it a default function so I can move optimizing
+	  multiple adds (from diffball) into a single add command in the format
+	  encoding.
 0.41			Oct/Nov 2003
 STARTED	* write *GOOD* man pages
 	* add patch info functions, for polling info on existant patches.

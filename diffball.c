@@ -145,7 +145,7 @@ int main(int argc, char **argv)
     }
     if(hash_size==0) {
 	/* implement a better assessment based on mem and such */
-	hash_size = ref_stat.st_size;
+	hash_size = /*65536;//*/ ref_stat.st_size;
     }
     if(seed_len==0) {
 	seed_len = DEFAULT_SEED_LEN;
@@ -243,7 +243,7 @@ int main(int argc, char **argv)
     
     copen(&ref_full, src_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY |
 	CFILE_OPEN_FH);
-    DCBufferInit(&dcbuff, 20000000, (unsigned long)ref_stat.st_size, 
+    DCBufferInit(&dcbuff, 4096, (unsigned long)ref_stat.st_size, 
 	(unsigned long)ver_stat.st_size);
     init_RefHash(&rhash_full, &ref_full, seed_len, sample_rate, 
 	hash_size);
@@ -350,13 +350,6 @@ int main(int argc, char **argv)
     } else if (BDELTA_FORMAT == patch_format_id) {
         encode_result = bdeltaEncodeDCBuffer(&dcbuff, &ver_full, &out_cfh);
     }
-//    offset_type= ENCODING_OFFSET_DC_POS;
-//    offset_type= ENCODING_OFFSET_START;
-//    rawEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
-//    switchingEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
-//    gdiffEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
-//    bdiffEncodeDCBuffer(&dcbuff, &ver_full, &out_cfh);
-//    bdeltaEncodeDCBuffer(&dcbuff, &ver_full, &out_cfh);
     DCBufferFree(&dcbuff);
     cclose(&ver_full);
     cclose(&out_cfh);

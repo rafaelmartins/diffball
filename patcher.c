@@ -141,7 +141,7 @@ main(int argc, char **argv)
     v1printf("patch_type=%lu\n", patch_id);
     cseek(&patch_cfh, 0, CSEEK_FSTART);
     copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
-	DCBufferInit(&dcbuff, 2000000, 0, 0);
+	DCBufferInit(&dcbuff, 4096, 0, 0);
     if(SWITCHING_FORMAT == patch_id) {
 	recon_val = switchingReconstructDCBuff(&patch_cfh, &dcbuff);
     } else if(GDIFF4_FORMAT == patch_id) {

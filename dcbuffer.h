@@ -31,6 +31,11 @@ typedef struct {
 } DCLoc;
 
 typedef struct {
+    DCLoc copy;
+    unsigned long position;
+} DCLoc_just_copies;
+
+typedef struct {
     unsigned long flush_count;
     unsigned long buffer_count;
     unsigned long buffer_size;

@@ -134,7 +134,7 @@ main(int argc, char **argv)
 	}
     }
     poptFreeContext(p_opt);
-    DCBufferInit(&dcbuff, 1000000,0,0);
+    DCBufferInit(&dcbuff, 4096,0,0);
     if(SWITCHING_FORMAT == src_format_id) {
         recon_val = switchingReconstructDCBuff(&in_cfh, &dcbuff);
     } else if(GDIFF4_FORMAT == src_format_id) {

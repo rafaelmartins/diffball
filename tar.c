@@ -51,14 +51,6 @@ inline unsigned long octal_str2long(char *string, unsigned int length)
     return(x);
 }
 
-/* I'll flat out state the previous var is a kludge to deal w/ gnu extensions.
-   hopefully that'll be removed, or this will be integrated into read_fh_to... */
-/*struct tar_entry *convert_str_tar_entry(char *block, struct tar_entry *previous)
-{
-    
-    return t;
-}*/
-
 struct tar_entry 
 **read_fh_to_tar_entry(int src_fh, unsigned long *total_count) 
 {
