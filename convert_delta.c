@@ -68,8 +68,8 @@ main(int argc, char **argv)
     bdiffReconstructDCBuff(&din_cfh, &dcbuff);
     DCBufferCollapseAdds(&dcbuff);
     printf("outputing patch...\n");
-    gdiffEncodeDCBuffer(&dcbuff, offset_type, &din_cfh, &dout_cfh);
-//    switchingEncodeDCBuffer(&dcbuff, offset_type, &din_cfh, &dout_cfh);
+//    gdiffEncodeDCBuffer(&dcbuff, offset_type, &din_cfh, &dout_cfh);
+    switchingEncodeDCBuffer(&dcbuff, offset_type, &din_cfh, &dout_cfh);
 /*    if(argc > 3) {
 	copen(&dout2_cfh, dout2_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
 	printf("outputting second patch.\n");

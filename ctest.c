@@ -130,6 +130,28 @@ int main(int argc, char **argv){
 	0x50==buff[8] && 0xde==buff[9] && 0xee==buff[10] && 0x93==buff[11] &&
 	0xa6==buff[12] && 0xd5==buff[13] && 0x19==buff[14] && 0x15==buff[15]);
     printf("correct md5.\n");
+    cclose(cfh);
+    printf("beginning page tests\n");
+    copen(cfh, fh, 0, fstat.st_size, NO_COMPRESSOR, CFILE_RONLY);
+    cfh->data.size=2;
+    cfile_window *cfw;
+    cfw = expose_page(cfh);
+    assert(cfw!=NULL);
+    assert('0'==cfw->buff[0]);
+    assert('1'==cfw->buff[1]);
+    assert(0==cfw->offset);
+    cfw=next_page(cfh);
+    assert(cfw!=NULL);
+    assert('2'==cfw->buff[0]);
+    assert('3'==cfw->buff[1]);
+    assert(cfw->size==2);
+    assert(cfw->end==2);
+    assert(cfw->offset==2);
+    cfw=prev_page(cfh);
+    assert(cfw!=NULL);
+    assert('0'==cfw->buff[0]);
+    assert('1'==cfw->buff[1]);
+    assert(0==cfw->offset);
     printf("so ends the tests.  Prob still didn't find the bug, eh?\n");
     return 0;
 }

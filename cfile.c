@@ -122,8 +122,9 @@ cread(cfile *cfh, unsigned char *buff, unsigned long len)
 {
     unsigned long bytes_wrote=0;
     unsigned long x;
-    if(cfh->state_flags & CFILE_SEEK_NEEDED)
-	cseek(cfh, cfh->data.offset, CSEEK_FSTART);	
+/*    if(cfh->state_flags & CFILE_SEEK_NEEDED)
+	cseek(cfh, cfh->data.offset, CSEEK_FSTART);
+*/
     while(bytes_wrote != len) {
 	if(cfh->data.end==cfh->data.pos) {
 	    if(0==crefill(cfh))
@@ -174,6 +175,7 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 	abort(); /*lovely error handling eh? */
     data_offset -= cfh->data_fh_offset;
     assert(data_offset >= 0);
+
 /* not sure on this next assert, probably should be < rather then <= */
     assert(data_offset <= cfh->data_total_len);
 
@@ -233,6 +235,8 @@ unsigned long
 crefill(cfile *cfh)
 {
     unsigned long x;
+    if(cfh->state_flags & CFILE_SEEK_NEEDED)
+	cseek(cfh, cfh->data.offset, CSEEK_FSTART);
     switch(cfh->compressor_type) {
     case NO_COMPRESSOR:
 	x = read(cfh->raw_fh, cfh->data.buff, cfh->data.size);

@@ -29,7 +29,8 @@ void
 reconstructFile(CommandBuffer *dcbuff, cfile *src_cfh, cfile *delta_cfh, 
     cfile *out_cfh)
 {
-    unsigned long x, tmp, count;
+//    unsigned long x, tmp, count;
+    unsigned long count;
     count = DCBufferReset(dcbuff);
     while(count--) {
 	if(current_command_type(dcbuff)==DC_COPY) {
