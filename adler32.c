@@ -82,10 +82,10 @@ void update_adler32_seed(struct adler32_seed *ads, unsigned char *buff, unsigned
 			ads->s2 += ads->s1;
 			ads->last_seed[x] = PRIMES[buff[x]];
 			ads->seed_chars[x] = buff[x];
-			ads->last_parity_bits[x] = ads->last_seed[x] % 2;
+			ads->last_parity_bits[x] = ads->last_seed[x] & 0x1;
 			ads->parity += ads->last_parity_bits[x];
 		}
-		ads->parity %= 2;
+		ads->parity &= 0x1;
 		ads->tail = 0;
 		
 	} else {
@@ -100,10 +100,10 @@ void update_adler32_seed(struct adler32_seed *ads, unsigned char *buff, unsigned
 			ads->tail = (ads->tail + 1) % ads->seed_len;
 			parity -= ads->last_parity_bits[ads->tail];
 			ads->last_parity_bits[ads->tail] = 
-				ads->last_seed[ads->tail] %2;
+				ads->last_seed[ads->tail]  & 0x1;
 			parity += ads->last_parity_bits[ads->tail];
 		}
-		ads->parity = (abs(parity) %2);
+		ads->parity = (abs(parity) & 0x1);
 	}
 }
 

@@ -131,6 +131,10 @@ signed int switchingEncodeDCBuffer(struct CommandBuffer *buffer,
     last_com = DC_COPY;
     dc_pos=0;
     while(buffer->count--){
+		if(buffer->lb_tail->len==0) {
+		    DCBufferIncr(buffer);
+		    continue;
+		}
 		if((*buffer->cb_tail & (1 << buffer->cb_tail_bit))>0) {
 	    	type=DC_COPY;
 		} else if ((*buffer->cb_tail & (1 << buffer->cb_tail_bit))==0){
