@@ -24,7 +24,8 @@
 #include "adler32.h"
 #include "diff-algs.h"
 #include "bit-functions.h"
-#include "gdiff.h"
+//#include "gdiff.h"
+#include "switching.h"
 
 /* this is largely based on the algorithms detailed in randal burn's various papers.
    Obviously credit for the alg's go to him, although I'm the one who gets the dubious
@@ -35,19 +36,15 @@
 #define hash_it(ads, tbl_size) (get_checksum(&ads) % tbl_size)
 
 
-signed int OneHalfPassCorrecting(unsigned int encoding_type,
+struct CommandBuffer *OneHalfPassCorrecting(unsigned int encoding_type,
     unsigned int offset_type, struct cfile *ref_cfh, 
     struct cfile *ver_cfh, struct cfile *out_cfh,
     unsigned int seed_len, unsigned long hr_size)
 {
     unsigned long *hr; //reference hash table.
-//    unsigned long hr_size;
     unsigned long x, index, len;
-    //unsigned long s1, s2;
-//    unsigned long empties=0, good_collisions=0, bad_collisions=0;
     unsigned long inserts=0, duplicates=0;
     unsigned long no_match=0, bad_match=0, good_match=0;
-    //unsigned char *vc, *va, *vs, *vm, *rm; //va=adler start, vs=first non-encoded byte.
     unsigned long vc, va, vs, vm, rm;
     unsigned int const rbuff_size = 512, vbuff_size = 1024;
     unsigned char rbuff[rbuff_size], vbuff[vbuff_size];
@@ -56,13 +53,18 @@ signed int OneHalfPassCorrecting(unsigned int encoding_type,
     unsigned int init_seed =1;
     unsigned long ver_len, ref_len;
     unsigned int rbuff_reset=0, vbuff_reset=0;
-    struct CommandBuffer buffer;
+    struct CommandBuffer *buffer;
     struct adler32_seed ads;
     unsigned long copies=0, adds=0, truncations=0;
+    unsigned long min_offset_dist = 0, max_offset_dist = 0;
 
-    ref_len = ref_cfh->byte_len;
+
+	if((buffer=(struct CommandBuffer *)malloc(sizeof(struct CommandBuffer)))==NULL) {
+		perror("shite, couldn't alloc needed memory.\n");
+		exit(EXIT_FAILURE);
+	}
+	ref_len = ref_cfh->byte_len;
     ver_len = ver_cfh->byte_len;
-//    hr_size = ref_len - seed_len;
     printf("ref(%lu), ver(%lu), hr(%lu)\n", ref_len, ver_len, hr_size);
     if((hr=(unsigned long*)malloc(sizeof(unsigned long)*(hr_size)))==NULL) {
 		perror("Shite.  couldn't allocate needed memory for reference hash table.\n");
@@ -75,26 +77,14 @@ signed int OneHalfPassCorrecting(unsigned int encoding_type,
     // init the bugger==0
     for(x=0; x < hr_size; x++) {
 		hr[x] = 0;
-	}
-	init_adler32_seed(&ads, seed_len, 1);
-	//s1=s2=0;
+    }
+    init_adler32_seed(&ads, seed_len, 1);
     rbuff_end=cread(ref_cfh, rbuff, rbuff_size);
-    //printf("rbuff_end(%lu)\n", rbuff_end);
+    printf("rbuff_end(%lu)\n", rbuff_end);
     rbuff_start = 0;
-/*    for(x=0; x < seed_len; x++) {
-    	//printf("x %% seed_len==(%u)\n",(x % seed_len));
-        last_seed[x % seed_len] = rbuff[x];
-        s1 += rbuff[x]; s2 += s1;
-    }*/
     update_adler32_seed(&ads, rbuff, seed_len);
-    //exit(0);
-    //hr[hash_it(ads, hr_size)] =0;
-    //printf("initial seed s1(%lu), s2(%lu), hash(%lu)\n", ads.s1, ads.s2,
-    //	hash_it(ads, hr_size));
 
-    for(x=seed_len; x < /*seed_len + 1*/ref_len; x++) {
-		//s1 = s1 - ref[x-seed_len] + ref[x];
-		//s2 = s2 - (seed_len * ref[x-seed_len]) + s1;
+    for(x=seed_len; x < ref_len - seed_len; x++) {
 		if(x - rbuff_start >= rbuff_size) {
 			rbuff_start += rbuff_end;
 			rbuff_end   = cread(ref_cfh, rbuff, 
@@ -130,14 +120,14 @@ signed int OneHalfPassCorrecting(unsigned int encoding_type,
     printf("version run:\n");
     printf("creating lookback buffer\n");
     //exit(0);
-    DCBufferInit(&buffer, 10000000);
+    DCBufferInit(buffer, 10000000);
     va=vs =vc =0;
     cseek(ver_cfh, 0, CSEEK_ABS);
     vbuff_start=0;
     vbuff_end=cread(ver_cfh, vbuff, MIN(vbuff_size, ver_len));
     //printf("vc(%lu), seed_len(%lu), ver_len(%lu)\n", vc, seed_len, ver_len);
 	while(vc + seed_len < ver_len) {
-		printf("handling vc(%lu)\n", vc);
+		//printf("handling vc(%lu)\n", vc);
 		if(vc + seed_len > vbuff_start + vbuff_size) {
 			printf("full refresh of vbuff\n");
 			//if(vc > vbuff_start + vbuff_size) {
@@ -152,56 +142,15 @@ signed int OneHalfPassCorrecting(unsigned int encoding_type,
 			vbuff_start = cseek(ver_cfh, vc, CSEEK_ABS);
 			vbuff_end = cread(ver_cfh, vbuff, MIN(ver_len - vbuff_start, vbuff_size));
 		}
-		/*	if(vc + seed_len - vbuff_start > vbuff_size) {
-			if(vc - vbuff_start <= vbuff_size) {
-				x = vbuff_size - (vc - vbuff_start);
-				printf("refreshing vbuff, saving(%u), pos(%lu)\n", x, ctell(ver_cfh, CSEEK_ABS));
-				printf("vbuff_size(%u), vc(%lu), vbuff_start(%lu)\n", vbuff_size, vc, vbuff_start);
-				if(x)
-					memmove(vbuff, &vbuff[vbuff_size - x], x);
-				vbuff_end = cread(ver_cfh, vbuff + x,
-					MIN(vbuff_size -x, ver_len - vbuff_start - x));
-				vbuff_start += vbuff_end;
-				vbuff_end += x;
-			} else {
-				vbuff_start=cseek(ver_cfh, vc, CSEEK_ABS);
-				vbuff_end=cread(ver_cfh, vbuff, vbuff_size);
-			}
-		}*/
 		assert(ctell(ver_cfh, CSEEK_ABS)==vbuff_start + vbuff_end);
-		/*if(vc - seed_len > va){// || init_seed) {
-		    s1=s2=0;
-		    for(va=vc; va < vc + seed_len; va++){
-				//s1 += *va;
-				//s2 += s1;
-				s1 += vbuff[va - vbuff_start];
-				s2 += s1;
-				//last_seed[va % seed_len] = vbuff[va - vbuff_start];
-		    }
-		    va=vc;
-		    init_seed=0;
-		} else {
-		    for(; va < vc; va++) {
-				//s1 = s1 - *va + va[seed_len];
-				//s2 = s2 - (seed_len * (unsigned char)*va) + s1;
-		    	s1 = s1 - last_seed[va % seed_len] + vbuff[va - vbuff_start];
-		    	s2 = s2 - (seed_len * last_seed[va % seed_len]) + s1;
-		    	last_seed[va % seed_len] = vbuff[va - vbuff_start];
-		    }
-		}*/
-		//printf("vc(%lu) va(%lu), len(%lu): ", vc - vbuff_start, va - vbuff_start, 
-		//	vc - va);
 		if(va -vc >= seed_len) {
 			//printf("flushing loc(%lu)\n", vc - vbuff_start);
 			update_adler32_seed(&ads, vbuff + vc - vbuff_start, seed_len);
 		} else {
 			//printf("rolling (%u)\n", vc + seed_len -va);
 			update_adler32_seed(&ads, vbuff + (va - vbuff_start), vc + seed_len -va);
-			//seed_len - (va -vc));
 		}
 		va = vc + seed_len;
-		//printf("seed: vc(%lu), s1(%lu), s2(%lu), chksum(%lu), off(%lu)\n", vc, ads.s1, ads.s2,
-		//	hash_it(ads, hr_size), hr[hash_it(ads, hr_size)]);
 		index = hash_it(ads, hr_size);
 		if(hr[index]>0) {	
 			if(hr[index] != cseek(ref_cfh, hr[index], CSEEK_FSTART)) {
@@ -212,7 +161,7 @@ signed int OneHalfPassCorrecting(unsigned int encoding_type,
 				rbuff_end = cread(ref_cfh, rbuff, rbuff_size);
 			}	
 			if(memcmp(rbuff, vbuff+vc - vbuff_start, seed_len)!=0){
-				printf("bad collision(%lu).\n", vc);
+				//printf("bad collision(%lu).\n", vc);
 				bad_match++;
 				vc++;
 				continue;
@@ -310,17 +259,17 @@ signed int OneHalfPassCorrecting(unsigned int encoding_type,
 		    		printf("    adding vstart(%lu), len(%lu), vend(%lu): (vs < vm)\n",
 						vs, vm-vs, vm);
 		    		//DCBufferAddCmd(&buffer, DC_ADD, vs -ver, vm - vs);
-		    		DCBufferAddCmd(&buffer, DC_ADD, vs, vm - vs);
+		    		DCBufferAddCmd(buffer, DC_ADD, vs, vm - vs);
 		    		adds++;
 				}
 				printf("    copying offset(%lu), len(%lu)\n", vm, len);
-				DCBufferAddCmd(&buffer, DC_COPY, rm, len);
+				DCBufferAddCmd(buffer, DC_COPY, rm, len);
 		    } else {
 				printf("    truncating(%lu) bytes: (vm < vs)\n", vs - vm);
-				DCBufferTruncate(&buffer, vs - vm);
+				DCBufferTruncate(buffer, vs - vm);
 				printf("    replacement copy: offset(%lu), len(%lu)\n", rm, len);
 				//DCBufferAddCmd(&buffer, DC_COPY, rm -ref, len);
-				DCBufferAddCmd(&buffer, DC_COPY, rm, len);
+				DCBufferAddCmd(buffer, DC_COPY, rm, len);
 				truncations++;
 	    	}
 	    	copies++;
@@ -328,12 +277,12 @@ signed int OneHalfPassCorrecting(unsigned int encoding_type,
 	    	vc = vs -1;
 		} else {
 	    	no_match++;
-	    	printf("no match(%lu)\n", vc);
+	    	//printf("no match(%lu)\n", vc);
 		}
 		vc++;
     }
     if (vs != ver_len) {
-    	DCBufferAddCmd(&buffer, DC_ADD, vs, ver_len - vs);
+    	DCBufferAddCmd(buffer, DC_ADD, vs, ver_len - vs);
     }
     printf("version summary:\n");
     printf("no_matches(%f%%)\n", (float)no_match/(float)(no_match+good_match+bad_match)*100);
@@ -342,14 +291,15 @@ signed int OneHalfPassCorrecting(unsigned int encoding_type,
     printf("(%%)commands in buffer, copies(%lu), adds(%lu), truncations(%lu)\n", copies, adds, truncations);
     printf("\n\nflushing command buffer...\n\n\n");
     //DCBufferFlush(&buffer, ver, out_fh);
-    if(encoding_type==USE_GDIFF_ENCODING) {
+    //if(encoding_type==USE_GDIFF_ENCODING) {
 		printf("using gdiff encoding...\n");
 		//if(gdiffEncodeDCBuffer(&buffer, offset_type, ver, out_fh)) {
-		if(gdiffEncodeDCBuffer(&buffer, offset_type, ver_cfh, out_cfh)) {
+		if(switchingEncodeDCBuffer(buffer, offset_type, ver_cfh, out_cfh)) {
 		
 		    printf("wtf? error returned from encoding engine\n");
 		}
-    }
+    //}
     //return NULL;
-    return 0;
+    //return 0;
+    return buffer;
 }

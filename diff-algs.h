@@ -20,7 +20,7 @@
 #include "cfile.h"
 #include "dcbuffer.h"
 
-signed int OneHalfPassCorrecting(unsigned int encoding_type,
+struct CommandBuffer *OneHalfPassCorrecting(unsigned int encoding_type,
     unsigned int offset_type, struct cfile *ref_cfh, 
     struct cfile *ver_cfh, struct cfile *out_cfh,
     unsigned int seed_len, unsigned long hr_size);

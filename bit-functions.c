@@ -95,3 +95,33 @@ int convertUBytesChar(unsigned char *out_buff, unsigned long value, unsigned cha
     return 0;
 }
 
+int convertSBitsChar(unsigned char *out_buff, signed long value, unsigned char bit_count)
+{
+	unsigned int start=0;
+	start = bit_count % 8;
+    convertUBitsChar(out_buff, abs(value), bit_count);
+    if(value < 0) {
+		if(out_buff[0] & (1 << start))
+	    	return -1; //num was too large.
+		out_buff[0] |= (1 << start);
+    } else if (out_buff[0] & (1 << start)) { //num was too large.
+		return -1;
+    }
+    return 0;    
+}
+
+int convertUBitsChar(unsigned char *out_buff, unsigned long value, unsigned char bit_count)
+{
+    unsigned int start, start_byte,x, byte;
+    start = bit_count % 8;
+    x = start;
+    if(start)
+    	start_byte=1;
+    else
+    	start_byte=0;
+    for(x=start, byte=start_byte; x < bit_count; x+=8, byte++)
+    	out_buff[byte] = (value >> (bit_count -8 -x)) & 0xff;
+    out_buff[0] = (value >> (bit_count -8 - start)) & 0xff;
+	//out_buff[byte] = (value >> (byte_count -1 -x)*8) & 0xff;
+    return 0;
+}
