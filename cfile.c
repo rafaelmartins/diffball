@@ -834,7 +834,7 @@ cfile_finalize_md5(cfile *cfh)
 cfile_window *
 expose_page(cfile *cfh)
 {
-    if(cfh->access_flags & CFILE_WONLY) {
+    if(cfh->access_flags & CFILE_RONLY) {
     	if(cfh->data.end==0) 
 	    crefill(cfh);
     }
