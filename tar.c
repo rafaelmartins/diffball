@@ -20,7 +20,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
-#include <openssl/evp.h>
 #include "tar.h"
 #include "string-misc.h"
 
@@ -60,39 +59,23 @@ inline unsigned long octal_str2long(char *string, unsigned int length)
     return t;
 }*/
 
-struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, unsigned char *md5sum)
+struct tar_entry 
+**read_fh_to_tar_entry(int src_fh, unsigned long *total_count) 
 {
     struct tar_entry **file, *entry;
-    unsigned int md5len;
-    unsigned char block[512], temp[3], hexmd5[EVP_MAX_MD_SIZE];
+    unsigned char block[512];
     //unsigned int count=0, offset=0;
     unsigned long offset=0, array_size=100000;
     unsigned long count =0;
     unsigned int read_bytes;
     unsigned int name_len, prefix_len;
     unsigned int extra_size;
-    /* md5 stuff */
-    EVP_MD_CTX mdctx;
-    const EVP_MD *md;
     if((file = (struct tar_entry **)calloc(array_size,sizeof(struct tar_entry *)))==NULL){
 	    perror("crud, couldn't allocate necesary memory.  What gives?\n");
 	    exit(EXIT_FAILURE);
 	}
-    /*if(command_pipes("md5sum", "-", pipes)){
-        perror("failed opening md5sum pipes, wtf?\n");
-        exit(EXIT_FAILURE);
-    }*/
-    OpenSSL_add_all_digests();
-    md = EVP_get_digestbyname("md5");
-    if (!md) {
-		perror("wrong digest name schmuck.  fix it.\n");
-		exit(1);
-    }
-    EVP_DigestInit(&mdctx, md);
-
 	extra_size=0;
     while((read_bytes=read(src_fh, block, 512))==512 /*&& strnlen(block)!=0*/) {
-		EVP_DigestUpdate(&mdctx, block, 512);
 		//printf("count(%lu)\n", count);
 		if(strnlen(block, 512)==0)  {
 			//printf("encountered zero length block, len(%u)\n");
@@ -115,7 +98,6 @@ struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, 
 				printf("shite, unexpected eof\n");
 				abort();
 			}
-			EVP_DigestUpdate(&mdctx, block, 512);
 			name_len = strnlen(block, entry->size);
 			if((entry->working_name = entry->fullname = 
 				(unsigned char *)malloc(name_len))==NULL){
@@ -127,7 +109,6 @@ struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, 
 				printf("shite, unexpected eof\n");
 				abort();
 			}
-			EVP_DigestUpdate(&mdctx, block, 512);
 			if(! check_str_chksum((const char *)block)) {
 				printf("shite chksum didn't match on tar header\n");
 				abort();
@@ -167,7 +148,6 @@ struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, 
             offset += x + 1;
             while(x-- > 0){
                 if(read(src_fh, &block, 512)==512){
-				    EVP_DigestUpdate(&mdctx, block, 512);
                 } else 
                     perror("Unexpected end of file encountered, exiting\n");
             }    
@@ -193,21 +173,6 @@ struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, 
     if ((file=(struct tar_entry **)realloc(file,count*sizeof(struct tar_entry *)))==NULL){
         perror("Shit.\nNo explanation, just Shit w/ a capital S.\n");
         exit(EXIT_FAILURE);
-    }
-    
-    if(read_bytes>0) { /*finish outputing the file for md5summing */
-		EVP_DigestUpdate(&mdctx, block, 512);
-        while((read_bytes = read(src_fh, &block, 512))>0) {
-		    EVP_DigestUpdate(&mdctx, block, read_bytes);
-		}
-    }
-    
-    /* I have no doubt there is a better method */
-    EVP_DigestFinal(&mdctx, hexmd5, &md5len);
-    /* write a better method for this.  returned is aparently in hex. */
-    for(count=0; count < md5len; count++){
-		snprintf(temp, 3, "%02x", hexmd5[count]);
-		memcpy(md5sum + count*2, temp, 2);
     }
     return file;
 }
