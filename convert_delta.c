@@ -154,7 +154,7 @@ main(int argc, char **argv)
     v1printf("reconstruction return=%ld\n", recon_val);
     copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
     v1printf("outputing patch...\n");
-    v1printf("there were %lu commands\n", dcbuff.DCB.full.buffer_count);
+    v1printf("there were %lu commands\n", dcbuff.DCB.full.cl.com_count);
     if(GDIFF4_FORMAT == trg_format_id) {
         encode_result = gdiff4EncodeDCBuffer(&dcbuff, &out_cfh);
     } else if(GDIFF5_FORMAT == trg_format_id) {

@@ -24,40 +24,46 @@ create_DCBSearch_index(CommandBuffer *dcb)
 {
     unsigned long pos, ver_pos, dpos;
     DCBSearch *s;
-    DCLoc *dptr;
+
     if(dcb->DCBtype != DCBUFFER_FULL_TYPE)
     	return NULL;
+
     if(! dcb->ver_size) 
     	return NULL;
+
     s = malloc(sizeof(DCBSearch));
+
     if(s == NULL) 
     	return NULL;
 
     // basically, take a rough guess at the avg command len, use it to determine the divisor, then adjust index_size
     // to not allocate uneeded space (due to rounding of original index_size and quanta)
-    s->index_size = ceil(dcb->DCB.full.buffer_count / 2);
+
+    s->index_size = ceil(dcb->DCB.full.cl.com_count / 2);
     s->quanta = ceil(dcb->ver_size / s->index_size);
     s->index_size = ceil(dcb->ver_size / s->quanta);
-    s->index = (DCLoc **)malloc(sizeof(DCLoc *) * s->index_size);
+    s->index = (unsigned long *)malloc(sizeof(unsigned long) * s->index_size);
+
     if(s->index == NULL) {
 	free(s);
 	return NULL;
     }
+
     s->ver_start = (off_u64 *)malloc(sizeof(off_u64) * s->index_size);
     if(s->ver_start == NULL) {
     	free(s->index);
     	free(s);
     	return NULL;
     }
+
     pos=0;
     dpos = 0;
-    dptr = dcb->DCB.full.lb_start;
     ver_pos = 0;
-    while(dpos < dcb->DCB.full.buffer_count) {
-    	ver_pos += dptr[dpos].len;
+    while(dpos < dcb->DCB.full.cl.com_count) {
+    	ver_pos += dcb->DCB.full.cl.command[dpos].len;
     	while(ver_pos > pos * s->quanta && pos < s->index_size) {
-    	    s->index[pos] = dptr + dpos;
-    	    s->ver_start[pos] = ver_pos - dptr[dpos].len;
+    	    s->index[pos] = dpos;
+    	    s->ver_start[pos] = ver_pos - dcb->DCB.full.cl.command[dpos].len;
     	    pos++;
     	}
     	dpos++;
@@ -99,7 +105,7 @@ merge_version_buffers(CommandBuffer *src, CommandBuffer *ver, unsigned long merg
     	return -1;
     }
 
-    if(DCBufferInit(new, ver->DCB.full.buffer_size, src->src_size, ver->ver_size, DCBUFFER_FULL_TYPE)) {
+    if(DCBufferInit(new, ver->DCB.full.cl.com_size, src->src_size, ver->ver_size, DCBUFFER_FULL_TYPE)) {
 	free(new);
     	return MEM_ERROR;
     }
@@ -125,7 +131,7 @@ merge_version_buffers(CommandBuffer *src, CommandBuffer *ver, unsigned long merg
     while(DCB_commands_remain(ver)) {
 //	v0printf("processing command %lu\n", count);
     	DCB_get_next_command(ver, &dc);
-	if(dc.src_id != merge_id) {
+/*	if(dc.src_id != merge_id) {
 	    assert(dc.src_id < ver->src_count);
 	    if(ver_map[dc.src_id] == NOT_TRANSLATED) {
 	    	ver_map[dc.src_id] = DCB_register_src(new, dc.dcb_src->src_ptr.cfh,
@@ -170,7 +176,7 @@ merge_version_buffers(CommandBuffer *src, CommandBuffer *ver, unsigned long merg
 		x = 0;
 	    }
 	}
-	count++;
+*/	count++;
     }
     free(ver_map);
     free(src_map);

@@ -19,6 +19,6 @@
 typedef struct {
     unsigned long	quanta;
     unsigned long	index_size;
-    DCLoc		**index;
+    unsigned long	*index;
     off_u64		*ver_start;
 } DCBSearch;

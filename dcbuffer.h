@@ -82,16 +82,13 @@ typedef struct _CommandBuffer *DCB_ptr;
 
 typedef struct {
     // isn't it fun managing arrays, 'ey kiddies? :)
-//    unsigned long 		*index;
-//    unsigned long		index_count;
-//    unsigned long		index_size;
-//    unsigned long		index_pos;
-//    struct _DCB_registered_src	**command_srcs;
-    unsigned char		*src_ids;
-    DCLoc			*commands;
+    unsigned char		*src_id;
+    DCLoc			*command;
     unsigned long		com_count;
     unsigned long		com_size;
-} overlay_chain;
+} command_list;
+
+typedef command_list overlay_chain;
 
 typedef struct {
     DCLoc_match			data;
@@ -99,7 +96,6 @@ typedef struct {
     DCB_ptr			dcb_ptr;
     unsigned long		ov_offset;
     unsigned long		ov_len;
-//    unsigned long		ov_index;
     unsigned char		type;
     unsigned short		src_id;
 } DCommand;
@@ -144,12 +140,14 @@ typedef struct _CommandBuffer {
 #endif
     union {
 	struct {
-	    unsigned long buffer_count;
+	    command_list 	cl;
+	    unsigned long 	command_pos;
+/*	    unsigned long buffer_count;
 	    unsigned long buffer_size;
 	    unsigned long command_pos;
 	    unsigned char *src_id;
 	    DCLoc *lb_start, *lb_end, *lb_head, *lb_tail;
-	} full;
+*/	} full;
 	struct {
 	    off_u64 ver_start;
 	    unsigned long buff_count, buff_size;

@@ -195,7 +195,7 @@ main(int argc, char **argv)
 //    	} else if(UDIFF_FORMAT == patch_id[x]) {
 //	    recon_val = udiffReconstructDCBuff(src_id, &patch_cfh[x], &src_cfh, NULL, &dcbuff[y 2% 3]);
     	}
-    	v1printf("reconstruction return=%ld, commands=%ld\n", recon_val, dcbuff[y % 3].DCB.full.buffer_count);
+    	v1printf("reconstruction return=%ld, commands=%ld\n", recon_val, dcbuff[y % 3].DCB.full.cl.com_count);
     	if(recon_val) {
 	    v0printf("error detected while reading patch- quitting\n");
 	    exit(EXIT_FAILURE);
@@ -207,7 +207,7 @@ main(int argc, char **argv)
     	       v0printf("failed merging %lu and %lu, aborting\n", x -1, x);
     	       exit(EXIT_FAILURE);
     	    }
-	    v1printf("result was %lu commands\n", dcbuff[(y + 1) % 3].DCB.full.buffer_count);
+	    v1printf("result was %lu commands\n", dcbuff[(y + 1) % 3].DCB.full.cl.com_count);
 	    v1printf("freeing %lu, %lu\n", ((y -1) %3), (y %3));
 	    DCBufferFree(&dcbuff[(y - 1) % 3]);
 	    DCBufferFree(&dcbuff[y % 3]);
@@ -217,7 +217,7 @@ main(int argc, char **argv)
     v1printf("reconstructing target file based off of dcbuff commands...\n");
     if(patch_count > 1) {
     	dcb = &dcbuff[((patch_count-1) * 2)  % 3];
-	v0printf("value = %lu\n", dcb - dcbuff);
+	v0printf("value = %i\n", dcb - dcbuff);
     } else {
     	dcb = dcbuff;
     }
