@@ -29,15 +29,14 @@ check_for_format(char *format_name, unsigned int len)
 	return GDIFF4_FORMAT;
    } else if((len==6) && (strncasecmp(format_name, "GDIFF5", 6)==0)) {
 	return GDIFF5_FORMAT;
-   } else if((len=5) && (strncasecmp(format_name, "BDELTA", 5)==0)) {
+   } else if((len==5) && (strncasecmp(format_name, "BDELTA", 5)==0)) {
 	return BDELTA_FORMAT;
-   } else if((len=5) && (strncasecmp(format_name, "XDELTA", 5)==0)) {
+   } else if((len==5) && (strncasecmp(format_name, "XDELTA", 5)==0)) {
 	return XDELTA1_FORMAT;
-   } else if((len=9) && (strncasecmp(format_name, "SWITCHING", 9)==0)) {
+   } else if((len==9) && (strncasecmp(format_name, "SWITCHING", 9)==0)) {
 	return SWITCHING_FORMAT;
-   } else if((len=5) && (strncasecmp(format_name, "BDIFF", 5)==0)) {
+   } else if((len==5) && (strncasecmp(format_name, "BDIFF", 5)==0)) {
 	return BDIFF_FORMAT;
-   }
    return 0;
 }
 
