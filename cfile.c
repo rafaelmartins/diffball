@@ -81,10 +81,8 @@ unsigned int
 internal_copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end, 
     unsigned int compressor_type, unsigned int access_flags)
 {
-    unsigned long x, y, skip;
     const EVP_MD *md;
     signed long ret_val;
-    int err;
     /* this will need adjustment for compressed files */
     cfh->raw_fh = fh;
 
@@ -205,7 +203,9 @@ internal_gzopen(cfile *cfh)
     cfh->zs->next_in = cfh->raw.buff;
     cfh->zs->next_out = cfh->data.buff;
     cfh->zs->avail_out = cfh->zs->avail_in = 0;
-    cfh->zs->zalloc = cfh->zs->zfree = cfh->zs->opaque = NULL;
+    cfh->zs->zalloc = NULL;
+    cfh->zs->zfree = NULL;
+    cfh->zs->opaque = NULL;
     cfh->raw.pos = cfh->raw.end = 0;
     /* skip the headers */
     cfh->raw.offset = 2;
@@ -375,7 +375,6 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 	return (CSEEK_ABS==offset_type ? data_offset + cfh->data_fh_offset: 
 	    data_offset);
     }
-    int err;
     switch(cfh->compressor_type) {
     case NO_COMPRESSOR:
 	dcprintf("cseek: no_compressor, flagging it\n");
