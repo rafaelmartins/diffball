@@ -76,8 +76,9 @@ int main(int argc, char **argv)
     offset_type = ENCODING_OFFSET_DC_POS;
 	DCBufferInit(&dcbuff, 1000000);
 //	switchingReconstructDCBuff(&delta_cfh, &dcbuff, offset_type);
-   	gdiffReconstructDCBuff(&delta_cfh, &dcbuff, offset_type, 4);
+//   	gdiffReconstructDCBuff(&delta_cfh, &dcbuff, offset_type, 4);
 //	rawReconstructDCBuff(&delta_cfh, &dcbuff, offset_type);
+	bdiffReconstructDCBuff(&delta_cfh, &dcbuff);
    	printf("reconstructing target file based off of dcbuff commands...\n");
    	reconstructFile(&dcbuff, &src_cfh, &delta_cfh, &out_cfh);
    	printf("reconstruction done.  calling close.\n");

@@ -1,11 +1,19 @@
 #!/usr/bin/perl
-open(my $fh, $ARGV[0]) or die("Couldn't open $ARGV[0]!\n");
-my $nolimit = $ARGV[1] eq '' ? 1 : 0;
-my $limitcount = $ARGV[1] eq '' ? 0 : $ARGV[1];
+my @array = @ARGV;
+my $print_char = 0;
+for($x=0; $x < scalar(@array); $x++) {
+	if($array[$x]=~/-c/i) {
+		$print_char =1;
+		splice(@array, $x, 1);
+	}
+}
+open(my $fh, $array[0]) or die("Couldn't open $array[0]!\n");
+my $nolimit = $array[1] eq '' ? 1 : 0;
+my $limitcount = $array[1] eq '' ? 0 : $array[1];
 my $count=0;
 my $char;
-if($ARGV[2] ne '') {
-	sysseek($fh, $ARGV[2], SEEK_SET);
+if($array[2] ne '') {
+	sysseek($fh, $array[2], SEEK_SET);
 }
 for($x=0; sysread($fh, $char, 1) && ($x < $limitcount || $nolimit); $x++) {
 	#sysread($fh, $char, 1);
@@ -13,7 +21,11 @@ for($x=0; sysread($fh, $char, 1) && ($x < $limitcount || $nolimit); $x++) {
 		$count=0;
 		print "\n";
 	}
-	printf(" %03.3s=%02x ", ord($char), ord($char)); 
+	if($print_char) {
+		printf(" %1.1s=%02x ", chr(ord($char)), ord($char));
+	} else {
+		printf(" %03.3s=%02x ", ord($char), ord($char)); 
+	}
 	$count++;
 }
 print "\n";
