@@ -53,7 +53,8 @@ init_adler32_seed(ADLER32_SEED_CTX *ads, unsigned int seed_len,
 	ads->multi = multi;
 	ads->parity=0;
 	//printf("init_adler32_seed\n");
-	if((ads->last_seed = (unsigned int *)malloc(seed_len*sizeof(int)))==NULL) {\
+	if((ads->last_seed = (unsigned int *)
+	    malloc(seed_len*sizeof(int)))==NULL) {
 		//printf("shite, error allocing needed memory\n");
 		abort();
 	}
@@ -95,10 +96,11 @@ update_adler32_seed(ADLER32_SEED_CTX *ads, unsigned char *buff,
 		ads->tail = 0;
 		
 	} else {
-		parity = ads->parity;
-		for(x=0; x < len; x++){
-			ads->s1 = ads->s1 - (ads->multi * ads->last_seed[ads->tail]) + 
-				(ads->multi * PRIMES[buff[x]]);
+	    parity = ads->parity;
+	    for(x=0; x < len; x++){
+		ads->s1 = ads->s1 - 
+		    (ads->multi * ads->last_seed[ads->tail]) + 
+		    (ads->multi * PRIMES[buff[x]]);
 			ads->s2 = ads->s2 - (ads->multi * ads->seed_len * 
 				ads->last_seed[ads->tail]) + ads->s1;
 			ads->seed_chars[ads->tail] = buff[x];

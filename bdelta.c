@@ -33,7 +33,6 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *ver_cfh,
 {
     unsigned long dc_pos, count, maxnum, matches;
     unsigned long add_len, copy_len, copy_offset;
-    DCLoc *add_prev;
     unsigned char prev, current;
     unsigned int intsize;
     unsigned char buff[16];
@@ -130,7 +129,6 @@ printf("writing copy_len=%lu, offset=%lu, dc_pos=%lu, stored_off=0x%x\n",
 signed int 
 bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 {
-
     unsigned int int_size;
     #define BUFF_SIZE 12
     unsigned int ver;
@@ -139,8 +137,8 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
     unsigned long size1, size2, or_mask=0, neg_mask;
     unsigned long ver_pos = 0, add_pos;
     unsigned long add_start;
-    cseek(patchf, 3, CSEEK_FSTART);
-    cread(patchf, buff, 2);
+    assert(3==cseek(patchf, 3, CSEEK_FSTART));
+    assert(2==cread(patchf, buff, 2));
     ver = readUBytesLE(buff, 2);
     printf("ver=%u\n", ver);
     cread(patchf, buff, 1);
@@ -188,7 +186,7 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 	    ver_pos -= (~copy_offset) +1;
 	    printf("ver_pos now(%lu)\n", ver_pos);
 	} else {
-	    printf("positive offset\n", copy_offset);
+	    printf("positive offset(%lu)\n", copy_offset);
 	    ver_pos += copy_offset;
 	}
 	/* an attempt to ensure things aren't whacky. */

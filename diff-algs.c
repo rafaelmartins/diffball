@@ -68,7 +68,7 @@ init_RefHash(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len,
 	rhash->hr_size = get_nearest_prime(&pctx, hr_size);
 	rhash->ref_cfh = ref_cfh;
 	rhash->seed_len = seed_len;
-	ref_len = ref_cfh->byte_len;
+	ref_len = cfile_len(ref_cfh);
 	rhash->inserts = rhash->duplicates = 0;
     if((rhash->hash=(unsigned long*)malloc(sizeof(unsigned long)*(rhash->hr_size)))==NULL) {
 		perror("Shite.  couldn't allocate needed memory for reference hash table.\n");
@@ -127,8 +127,8 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
     ADLER32_SEED_CTX ads;
 
 	init_adler32_seed(&ads, rhash->seed_len, 1);
-	ref_len = rhash->ref_cfh->byte_len;    
-    ver_len = ver_cfh->byte_len;
+	ref_len = cfile_len(rhash->ref_cfh);    
+    ver_len = cfile_len(ver_cfh);
     
     va=vs =vc =0;
     vbuff_start = cseek(ver_cfh, 0, CSEEK_FSTART);
@@ -269,18 +269,20 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 	    	if (vs <= vm) {
 				if (vs < vm) {
 		    		printf("    adding vstart(%lu), len(%lu), vend(%lu): (vs < vm)\n",
-						ver_cfh->raw_fh_start + vs, vm-vs, vm);
-		    		DCBufferAddCmd(buffer, DC_ADD, ver_cfh->raw_fh_start + vs, vm - vs);
+						cfile_start_offset(ver_cfh) + vs, vm-vs, vm);
+		    		DCBufferAddCmd(buffer, DC_ADD, cfile_start_offset(ver_cfh) + vs, vm - vs);
 				}
 				printf("    copying offset(%lu), len(%lu)\n", 
-					ver_cfh->raw_fh_start + vm, len);
-				DCBufferAddCmd(buffer, DC_COPY, rhash->ref_cfh->raw_fh_start + rm, len);
+					cfile_start_offset(ver_cfh) + vm, len);
+				DCBufferAddCmd(buffer, DC_COPY, cfile_start_offset(rhash->ref_cfh) + rm, len);
 		    } else {
+		    		printf("    adding vstart(%lu)\n",
+			cfile_start_offset(ver_cfh) + vs);
 				printf("    truncating(%lu) bytes: (vm < vs)\n", vs - vm);
 				DCBufferTruncate(buffer, vs - vm);
 				printf("    replacement copy: offset(%lu), len(%lu)\n", 
-					rhash->ref_cfh->raw_fh_start + rm, len);
-				DCBufferAddCmd(buffer, DC_COPY, rhash->ref_cfh->raw_fh_start + rm, len);
+					cfile_start_offset(rhash->ref_cfh) + rm, len);
+				DCBufferAddCmd(buffer, DC_COPY, cfile_start_offset(rhash->ref_cfh) + rm, len);
 	    	}
 	    	vs = vm + len;
 	    	vc = vs -1;
@@ -290,7 +292,7 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 		vc++;
     }
     if (vs != ver_len) {
-    	DCBufferAddCmd(buffer, DC_ADD, ver_cfh->raw_fh_start + vs, ver_len - vs);
+    	DCBufferAddCmd(buffer, DC_ADD, cfile_start_offset(ver_cfh) + vs, ver_len - vs);
     }
     free_adler32_seed(&ads);
     return 0;

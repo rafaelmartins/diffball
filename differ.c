@@ -29,6 +29,7 @@
 #include "gdiff.h"
 #include "bdiff.h"
 #include "bdelta.h"
+#include "primes.h"
 
 unsigned long convertDec(unsigned char *buff, unsigned int len)
 {
@@ -97,12 +98,13 @@ int main(int argc, char **argv)
     printf("using seed_len(%lu), multi(%lu)\n", seed_len, multi);
     DCBufferInit(&buffer, 1000000, ref_stat.st_size, ver_stat.st_size);
     copen(&ref_cfh, ref_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
-    init_RefHash(&rhash, &ref_cfh, seed_len, 6, ref_cfh.byte_len/6);
+    init_RefHash(&rhash, &ref_cfh, seed_len, 6, cfile_len(&ref_cfh)/6);
     copen(&ver_cfh, ver_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     printf("opened\n");
     OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh);
     cclose(&ref_cfh);
     printf("outputing patch...\n");
+    printf("there were %lu commands\n", buffer.buffer_count);
     offset_type = ENCODING_OFFSET_START;
 //    offset_type = ENCODING_OFFSET_DC_POS;
     bdiffEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);

@@ -1,10 +1,12 @@
 
-AM_CFLAGS = -ftest-coverage -fprofile-arcs -pg -ftest-coverage -Wall 
-#AM_CFLAGS = -Wall 
-bin_PROGRAMS = differ patcher diffball convert_delta
+#AM_CFLAGS = -ftest-coverage -fprofile-arcs -pg -ftest-coverage -Wall 
+AM_CFLAGS = -Wall 
+bin_PROGRAMS = differ patcher diffball convert_delta ctest
 diffball_SOURCES = diffball.c diff-algs.c string-misc.c tar.c primes.c \
 	bit-functions.c cfile.c adler32.c dcbuffer.c gdiff.c switching.c \
 	bdiff.c bdelta.c
+
+ctest_SOURCES = ctest.c cfile.c
 
 diffball_LDADD = -lssl -lcrypto
 patcher_SOURCES = patcher.c cfile.c dcbuffer.c bit-functions.c apply-patch.c \

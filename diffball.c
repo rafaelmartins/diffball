@@ -33,7 +33,7 @@
 #include "switching.h"
 #include "bdiff.h"
 #include "bdelta.h"
-
+#include "primes.h"
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 int cmp_tar_entries(const void *te1, const void *te2);
@@ -281,7 +281,7 @@ int main(int argc, char **argv)
     copen(&ref_full, src_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     DCBufferInit(&dcbuff, 20000000, (unsigned long)ref_stat.st_size, 
 	(unsigned long)ver_stat.st_size);
-    init_RefHash(&rhash_full, &ref_full, 16, 8, ref_full.byte_len/8);
+    init_RefHash(&rhash_full, &ref_full, 16, 1, cfile_len(&ref_full)/1);
     printf("looking for matching filenames in the archives...\n");
     for(x=0; x< target_count; x++) {
         //entry=source[x];
@@ -328,7 +328,7 @@ int main(int argc, char **argv)
         			tar_ptr->size + 512 - (tar_ptr->size % 512==0 ? 512 : 
         			tar_ptr->size % 512)),
         			NO_COMPRESSOR, CFILE_RONLY | CFILE_BUFFER_ALL);
-        	init_RefHash(&rhash_win, &ref_window, 16, 1, ref_window.byte_len);
+        	init_RefHash(&rhash_win, &ref_window, 16, 1, cfile_len(&ref_window));
         	OneHalfPassCorrecting(&dcbuff, &rhash_win, &ver_window);
         	free_RefHash(&rhash_win);
 		cclose(&ref_window);
