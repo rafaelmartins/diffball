@@ -19,6 +19,7 @@
 #define _HEADER_DCBUFFER 1
 
 #include "cfile.h"
+#include "config.h"
 
 extern unsigned int global_use_md5;
 
@@ -31,9 +32,10 @@ extern unsigned int global_use_md5;
 /* type for CommandBuffer.DCBtype */
 #define DCBUFFER_FULL_TYPE		0x1
 #define DCBUFFER_MATCHES_TYPE		0x2
-#define DCBUFFER_PASSES_TYPE		0x4
+#define DCBUFFER_LLMATCHES_TYPE		0x4
 
 #define ADD_CFH_FREE_FLAG		0x1
+#define DCB_LLM_FINALIZED		0x2
 
 typedef struct {
     unsigned long offset;
@@ -46,6 +48,13 @@ typedef struct {
     unsigned long len;
 } DCLoc_match;
 
+typedef struct LL_DCLmatch LL_DCLmatch;
+
+struct LL_DCLmatch {
+    unsigned long src_pos, ver_pos, len;
+    LL_DCLmatch *next;
+};
+
 typedef struct {
     DCLoc loc;
     unsigned char type;
@@ -56,6 +65,9 @@ typedef struct {
     unsigned long ver_size;
     unsigned long reconstruct_pos;
     unsigned char DCBtype;
+#ifdef DEBUG_DCBUFFER
+    unsigned long total_copy_len;
+#endif
     union {
 	struct {
 	    unsigned long buffer_count;
@@ -65,23 +77,33 @@ typedef struct {
 	    DCLoc *lb_start, *lb_end, *lb_head, *lb_tail;
 	} full;
 	struct {
-	    unsigned long buff_count;
-	    unsigned long buff_size;
+	    unsigned long ver_start;
+	    unsigned long buff_count, buff_size;
 	    DCLoc_match *buff, *cur;
 	} matches;
 	struct {
-	    DCLoc_match **buff;
-	    unsigned long pass_count;
-	    unsigned long *buff_count;
-	} multipass;
+	    unsigned long ver_start;
+	    LL_DCLmatch *main_head, *main;
+	    unsigned long buff_count, buff_size, main_count;
+	    LL_DCLmatch *buff, *cur;
+	    void **free;
+	    unsigned long free_size, free_count;
+	} llm;
     } DCB;
     cfile *add_cfh;
     unsigned long flags;
 } CommandBuffer;
 
-
-#define DCBUFFER_REGISTER_ADD_CFH(buff, handle)		\
+#define DCBUFFER_REGISTER_ADD_CFH(buff, handle)				\
     (buff)->add_cfh = (handle)
+
+#define DCB_REGISTER_MATCHES_VER_CFH(buff, cfh)				\
+    if((buff)->DCBtype==DCBUFFER_MATCHES_TYPE) {			\
+	(buff)->DCB.matches.ver_start = cfile_start_offset((cfh));	\
+    } else if((buff)->DCBtype==DCBUFFER_LLMATCHES_TYPE) {		\
+	(buff)->DCB.llm.ver_start = cfile_start_offset((cfh));		\
+    }
+
 #define DCBUFFER_FREE_ADD_CFH_FLAG(buff) (buff)->flags |= ADD_CFH_FREE_FLAG;
 
 unsigned long inline current_command_type(CommandBuffer *buff);
@@ -101,6 +123,12 @@ void DCB_add_add(CommandBuffer *buffer, unsigned long ver_pos,
 void DCB_add_copy(CommandBuffer *buffer, unsigned long src_pos, 
     unsigned long ver_pos, unsigned long len);
 
+void DCB_insert(CommandBuffer *buff);
+void DCB_llm_init_buff(CommandBuffer *buff, unsigned long buff_size);
+unsigned int DCB_test_llm_main(CommandBuffer *buff);
+void DCB_test_total_copy_len(CommandBuffer *buff);
+
 void DCB_resize_full(CommandBuffer *buffer);
 void DCB_resize_matches(CommandBuffer *buffer);
+void DCB_resize_llmatches(CommandBuffer *buffer);
 #endif

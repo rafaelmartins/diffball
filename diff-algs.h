@@ -18,30 +18,19 @@
 #ifndef _HEADER_DIFF_ALGS
 #define _HEADER_DIFF_ALGS 1
 
-#define DEFAULT_SEED_LEN 16
+#define DEFAULT_SEED_LEN 	(16)
+#define COMPUTE_SAMPLE_RATE(hs, x)		\
+   ((x) > (hs) ? MAX(1,((x)/(hs))-.5) : 1)
+#define MULTIPASS_GAP_KLUDGE    (1)
 
 #include "cfile.h"
 #include "dcbuffer.h"
-typedef struct _RefHash {
-    unsigned int seed_len;
-    unsigned long hr_size;
-    unsigned long *hash;
-    unsigned int  sample_rate;
-    cfile *ref_cfh;
-    unsigned long inserts;
-    unsigned long duplicates;
-#ifdef DEBUG_HASH
-    unsigned long bad_duplicates;
-#endif
-} RefHash;
+#include "hash.h"
 
-signed int init_RefHash(RefHash *rhash, cfile *ref_cfh, 
-	unsigned int seed_len, unsigned int sample_rate, 
-	unsigned long hr_size);
-signed int free_RefHash(RefHash *rhash);	
 void print_RefHash_stats(RefHash *rhash);
 signed int OneHalfPassCorrecting(CommandBuffer *buffer, 
 	RefHash *rhash, cfile *ver_cfh);
-
+signed int MultiPassAlg(CommandBuffer *buffer, cfile *src_cfh, cfile *ver_cfh,
+    unsigned long hash_size);
 #endif
 

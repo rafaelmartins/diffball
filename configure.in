@@ -1,5 +1,5 @@
 # Process this file with autoconf to produce a configure script.
-AC_INIT(diffball, 0.4_pre3, bdharring@wisc.edu)
+AC_INIT(diffball, 0.4_pre4, bdharring@wisc.edu)
 AM_INIT_AUTOMAKE
 AM_CONFIG_HEADER(config.h)
 # Checks for programs.
@@ -7,14 +7,16 @@ AC_PROG_CC
 
 # toggling debug support.
 #AC_DEFINE(DEBUG_CFILE, 1, Toggle on cfile debug messages.)
-#AC_DEFINE(DEV_VERSION, 1, Toggle on asserts.)
+AC_DEFINE(DEV_VERSION, 1, Toggle on asserts.)
 #AC_DEFINE(DEBUG_HASH, 1, Toggle on extra hash tests and messages.)
+#AC_DEFINE(DEBUG_DCBUFFER, 1, Toggle on DCBUFFER checks.)
 
 # Checks for libraries.
 AC_CHECK_LIB(popt, poptGetContext)
 AC_CHECK_LIB(crypto, EVP_get_digestbyname)
 AC_CHECK_LIB(bz2, BZ2_bzCompressInit)
 AC_CHECK_LIB(z, gzdopen)
+AC_CHECK_LIB(m, ceil)
 
 # Checks for header files.
 AC_HEADER_STDC

@@ -62,16 +62,12 @@ int main(int argc, char **argv)
     unsigned long source_count, target_count;
     unsigned long x, patch_format_id, encode_result;
     char src_common[512], trg_common[512], *p;  /* common dir's... */
-    //unsigned int src_common_len=0, trg_common_len=0;
     unsigned long match_count;
-    /*probably should convert these arrays to something more compact, 
-	use bit masking. */
-//    unsigned char *source_matches, *target_matches;
 	
-	cfile ref_full, ref_window, ver_window, ver_full, out_cfh;
-	struct stat ref_stat, ver_stat;
-	RefHash rhash_full, rhash_win;
-	CommandBuffer dcbuff;
+    cfile ref_full, ref_window, ver_window, ver_full, out_cfh;
+    struct stat ref_stat, ver_stat;
+    RefHash rhash_full, rhash_win;
+    CommandBuffer dcbuff;
     poptContext p_opt;
 
     signed long optr;
@@ -135,21 +131,9 @@ int main(int argc, char **argv)
 	"unknown option");
     }
     poptFreeContext(p_opt);
-    if(sample_rate==0) {
-	/* implement a better assessment based on mem and such */
-	sample_rate = 1;
-    }
     if(hash_size==0) {
-	/* implement a better assessment based on mem and such */
-	hash_size = /*65536;//*/ ref_stat.st_size;
+	hash_size = MIN(DEFAULT_MAX_HASH_COUNT, ref_stat.st_size);
     }
-    if(seed_len==0) {
-	seed_len = DEFAULT_SEED_LEN;
-    }
-    v1printf("using patch format %lu\n", patch_format_id);
-    v1printf("using seed_len(%lu), sample_rate(%lu), hash_size(%lu)\n", 
-	seed_len, sample_rate, hash_size);
-    v1printf("verbosity level(%u)\n", global_verbosity);
     if((src_fh = open(src_file, O_RDONLY,0)) == -1) {
 	fprintf(stderr, "error opening source file '%s'\n", src_file);
 	exit(1);
@@ -158,6 +142,19 @@ int main(int argc, char **argv)
 	fprintf(stderr, "error opening target file '%s'\n", trg_file);
 	exit(1);
     }
+    copen(&ref_full, src_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY |
+	CFILE_OPEN_FH);
+    if(sample_rate==0) {
+	sample_rate = COMPUTE_SAMPLE_RATE(hash_size, cfile_len(&ref_full));
+    }
+    if(seed_len==0) {
+	seed_len = DEFAULT_SEED_LEN;
+    }
+    v1printf("using patch format %lu\n", patch_format_id);
+    v1printf("using seed_len(%lu), sample_rate(%lu), hash_size(%lu)\n", 
+	seed_len, sample_rate, hash_size);
+    v1printf("verbosity level(%u)\n", global_verbosity);
+
     copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY | CFILE_OPEN_FH);
     source = read_fh_to_tar_entry(src_fh, &source_count);
     target = read_fh_to_tar_entry(trg_fh, &target_count);
@@ -238,14 +235,9 @@ int main(int argc, char **argv)
 	target[x]->working_len -= trg_common_len;
     }
 
-    copen(&ref_full, src_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY |
-	CFILE_OPEN_FH);
     DCBufferInit(&dcbuff, 4096, (unsigned long)ref_stat.st_size, 
-	(unsigned long)ver_stat.st_size, DCBUFFER_FULL_TYPE);
-    v1printf("initing fallback full reference hash\n");
-    init_RefHash(&rhash_full, &ref_full, seed_len, sample_rate, 
-	hash_size);
-    print_RefHash_stats(&rhash_full);
+	(unsigned long)ver_stat.st_size, DCBUFFER_LLMATCHES_TYPE);
+    DCB_llm_init_buff(&dcbuff, 4096);
     v1printf("looking for matching filenames in the archives...\n");
     for(x=0; x< target_count; x++) {
 	v1printf("processing %lu of %lu\n", x + 1, target_count);
@@ -257,14 +249,15 @@ int main(int argc, char **argv)
         vptr = bsearch((const void **)&target[x], (const void **)source, 
 	    source_count, sizeof(struct tar_entry **), cmp_tar_entries);
         if(vptr == NULL) {
-	    v1printf("didn't find a match for %.255s\n", target[x]->fullname);
-	    v2printf("target loc(%lu:%lu)\n", (512 * target[x]->file_loc), 
+	    v1printf("didn't find a match for %.255s, skipping\n", 
+		target[x]->fullname);
+/*	    v2printf("target loc(%lu:%lu)\n", (512 * target[x]->file_loc), 
         	(512 * target[x]->file_loc) + 512 +(target[x]->size==0 ? 0 : 
         	target[x]->size + 512 - (target[x]->size % 512==0 ? 512 : 
         	target[x]->size % 512) ));
             v1printf("file_loc(%lu), size(%lu)\n", target[x]->file_loc,
         	target[x]->size);
-            OneHalfPassCorrecting(&dcbuff, &rhash_full, &ver_window);
+            OneHalfPassCorrecting(&dcbuff, &rhash_full, &ver_window);*/
         } else {
             tar_ptr = (struct tar_entry *)*((struct tar_entry **)vptr);
             v1printf("found match between %.255s and %.255s\n", target[x]->fullname,
@@ -284,7 +277,8 @@ int main(int argc, char **argv)
         	tar_ptr->size + 512 - (tar_ptr->size % 512==0 ? 512 : 
         	tar_ptr->size % 512)),
         	NO_COMPRESSOR, CFILE_RONLY | CFILE_BUFFER_ALL);
-            init_RefHash(&rhash_win, &ref_window, 16, 1, cfile_len(&ref_window));
+            init_RefHash(&rhash_win, &ref_window, 16, 1, 
+		cfile_len(&ref_window), RH_MOD_HASH);
 	    v1printf("reference window stats:\n");
 	    print_RefHash_stats(&rhash_win);
             OneHalfPassCorrecting(&dcbuff, &rhash_win, &ver_window);
@@ -293,9 +287,12 @@ int main(int argc, char **argv)
         }
         cclose(&ver_window);
     }
-    free_RefHash(&rhash_full);
+//    free_RefHash(&rhash_full);
+    v1printf("beginning search for gaps, and unprocessed files\n");
+    copen(&ver_full, trg_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
+    MultiPassAlg(&dcbuff, &ref_full, &ver_full, hash_size);
     cclose(&ref_full);
-    x= (target[target_count -1]->file_loc * 512) + 512 + 
+/*    x= (target[target_count -1]->file_loc * 512) + 512 + 
     	(target[target_count -1]->size==0 ? 0 : target[target_count -1]->size + 
     		512 - ( target[target_count -1]->size % 512==0 ? 512 :
     			target[target_count -1]->size % 512));
@@ -303,19 +300,16 @@ int main(int argc, char **argv)
     	v1printf("must be a null padded tarball. processing the remainder.\n");
 	DCB_add_add(&dcbuff, x, ver_stat.st_size -x );
     }
-        
+*/        
     /* cleanup */
-    for(x=0; x< source_count; x++) {
+/* fix this.  doesn't like longlinks... */
+    for(x=0; x< source_count; x++)
         free(source[x]->fullname);
-        free(source[x]);
-    }
-    for(x=0; x< target_count; x++) {
+    for(x=0; x< target_count; x++)
 	free(target[x]->fullname);
-	free(target[x]);
-    }
+
     free(target);
     free(source);
-    copen(&ver_full, trg_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     v1printf("outputing patch...\n");
     v1printf("there were %lu commands\n", dcbuff.DCB.full.buffer_count);
     if(GDIFF4_FORMAT == patch_format_id) { 
@@ -338,7 +332,8 @@ int main(int argc, char **argv)
     return 0;
 }
 
-int cmp_tar_entries(const void *te1, const void *te2)
+int 
+cmp_tar_entries(const void *te1, const void *te2)
 {
     struct tar_entry *p1=*((struct tar_entry **)te1);
     struct tar_entry *p2=*((struct tar_entry **)te2);

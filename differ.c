@@ -63,7 +63,6 @@ int main(int argc, char **argv)
     char  *patch_name;
     unsigned long patch_id = 0;
     signed long encode_result=0;
-
     p_opt = poptGetContext("differ", argc, (const char **)argv, options, 0);
     while((optr=poptGetNextOpt(p_opt)) != -1) {
 	if(optr < -1) {
@@ -76,7 +75,7 @@ int main(int argc, char **argv)
 	case OVERBOSE:
 	    global_verbosity++;
 	    break;
-	case OBZIP2:
+/*	case OBZIP2:
 	    if(patch_compressor) {
 		// bitch at em.
 	    } else
@@ -87,7 +86,7 @@ int main(int argc, char **argv)
 		// bitch at em.
 	    } else 
 		patch_compressor = GZIP_COMPRESSOR;
-	    break;
+	    break;*/
 	}
     }
     if( ((src_file=(char *)poptGetArg(p_opt))==NULL) || 
@@ -120,16 +119,15 @@ int main(int argc, char **argv)
 	fprintf(stderr, "error opening trg_file\n");
 	exit(EXIT_FAILURE);
     }
-    copen(&ref_cfh, ref_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     copen(&ver_cfh, ver_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
-    copen(&out_cfh, out_fh, 0, 0, patch_compressor, CFILE_WONLY);
-    if(sample_rate==0) {
-	/* implement a better assessment based on mem and such */
-	sample_rate = 1;
-    }
+    copen(&ref_cfh, ref_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     if(hash_size==0) {
 	/* implement a better assessment based on mem and such */
-	hash_size = /*65536; //*/ ref_stat.st_size;
+	hash_size = MIN(DEFAULT_MAX_HASH_COUNT, ref_stat.st_size);
+    }
+    if(sample_rate==0) {
+	/* implement a better assessment based on mem and such */
+	sample_rate = COMPUTE_SAMPLE_RATE(hash_size, cfile_len(&ref_cfh));
     }
     if(seed_len==0) {
 	seed_len = DEFAULT_SEED_LEN;
@@ -148,15 +146,26 @@ int main(int argc, char **argv)
 	seed_len, sample_rate, hash_size);
     v1printf("verbosity level(%u)\n", global_verbosity);
     v1printf("initializing Command Buffer...\n");
-    DCBufferInit(&buffer, 4, ref_stat.st_size, ver_stat.st_size,
-	DCBUFFER_MATCHES_TYPE);
-//	DCBUFFER_FULL_TYPE);
-    v1printf("initializing Reference Hash...\n");
-    init_RefHash(&rhash, &ref_cfh, seed_len, sample_rate, hash_size);
-    print_RefHash_stats(&rhash);
-    v1printf("running 1.5 pass correcting alg...\n");
-    OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh);
+    if(0==1) {
+	DCBufferInit(&buffer, 4096, ref_stat.st_size, ver_stat.st_size,
+	    DCBUFFER_FULL_TYPE);
+	v1printf("initializing Reference Hash...\n");
+	init_RefHash(&rhash, &ref_cfh, 16, sample_rate, hash_size, 
+	    RH_SORT_HASH);
+	print_RefHash_stats(&rhash);
+	v1printf("running 1.5 pass correcting alg...\n");
+	OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh);
+	free_RefHash(&rhash);
+    } else {
+	DCBufferInit(&buffer, 4, ref_stat.st_size, ver_stat.st_size,
+	    DCBUFFER_LLMATCHES_TYPE);
+	v1printf("running multipass alg\n");
+	MultiPassAlg(&buffer, &ref_cfh, &ver_cfh, hash_size);
+	DCB_insert(&buffer);
+    }
+    DCB_test_total_copy_len(&buffer);
     v1printf("outputing patch...\n");
+    copen(&out_cfh, out_fh, 0, 0, patch_compressor, CFILE_WONLY);
     if(GDIFF4_FORMAT == patch_id) {
 	encode_result = gdiff4EncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
     } else if(GDIFF5_FORMAT == patch_id) {
@@ -169,13 +178,15 @@ int main(int argc, char **argv)
     } else if (BDELTA_FORMAT == patch_id) {
 	encode_result = bdeltaEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
     }
+    v1printf("flushing and closing out file\n");
+    cclose(&out_cfh);
     v1printf("encode_result=%ld\n", encode_result);
     v1printf("all commands processed? %u\n", DCB_commands_remain(&buffer)==0);
     v1printf("exiting\n");
-    free_RefHash(&rhash);
     DCBufferFree(&buffer);
+    v1printf("closing reference file\n");
     cclose(&ref_cfh);
+    v1printf("closing version file\n");
     cclose(&ver_cfh);
-    cclose(&out_cfh);
     return 0;
 }

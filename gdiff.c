@@ -70,19 +70,17 @@ gdiffEncodeDCBuffer(CommandBuffer *buffer,
     unsigned char out_buff[5];
     unsigned long count;
     DCommand dc;
-    if(offset_type==ENCODING_OFFSET_VERS_POS 
-	|| offset_type==ENCODING_OFFSET_DC_POS)
+    if(offset_type==ENCODING_OFFSET_DC_POS) {
 	off_is_sbytes=1;
-    else
+    } else {
 	off_is_sbytes=0;
+    }
     writeUBytesBE(out_buff, GDIFF_MAGIC, GDIFF_MAGIC_LEN);
     cwrite(out_cfh, out_buff, GDIFF_MAGIC_LEN);
     if(offset_type==ENCODING_OFFSET_START)
 	writeUBytesBE(out_buff, GDIFF_VER4_MAGIC, GDIFF_VER_LEN);
     else if(offset_type==ENCODING_OFFSET_DC_POS)
 	writeUBytesBE(out_buff, GDIFF_VER5_MAGIC, GDIFF_VER_LEN);
-/*    else if(offset_type==ENCODING_OFFSET_DC_POS)
-	writeUBytesBE(out_buff, GDIFF_VER6, GDIFF_VER_LEN);*/
     else {
 	v2printf("wtf, gdiff doesn't know offset_type(%u). bug.\n",offset_type);
 	exit(1);
@@ -92,16 +90,13 @@ gdiffEncodeDCBuffer(CommandBuffer *buffer,
     count=0;
     while(DCB_commands_remain(buffer)) {
 	DCB_get_next_command(buffer, &dc);
-//    while(count--){
 	if(dc.loc.len==0) {
 	    DCBufferIncr(buffer);
 	    continue;
 	}
 	if(dc.type == DC_ADD) {
-//	if(current_command_type(buffer)==DC_ADD) {
 	    v2printf("add command, delta_pos(%lu), fh_pos(%lu), len(%lu)\n",
 		delta_pos, fh_pos, dc.loc.len);
-//	    u_off=DCBF_cur_len(buffer);
 	    u_off = dc.loc.len;
 	    if(dc.loc.len <= 246) {
 		out_buff[0] = dc.loc.len;
@@ -129,10 +124,7 @@ gdiffEncodeDCBuffer(CommandBuffer *buffer,
 	    fh_pos += dc.loc.len;
 	} else {
 	    if(off_is_sbytes) {
-		if(offset_type==ENCODING_OFFSET_VERS_POS)
-		    s_off = (signed long)dc.loc.offset - (signed long)fh_pos;
-		else if(offset_type==ENCODING_OFFSET_DC_POS)
-		    s_off = (signed long)dc.loc.offset - (signed long)dc_pos;
+		s_off = (signed long)dc.loc.offset - (signed long)dc_pos;
 		u_off = abs(s_off);
 		ob=signedBytesNeeded(s_off);
 	    } else {
@@ -175,16 +167,17 @@ gdiffEncodeDCBuffer(CommandBuffer *buffer,
 		ob=LONG_BYTE_COUNT;
 		out_buff[0]=255;
 	    }
-	    if(off_is_sbytes)
+	    if(off_is_sbytes) {
 		writeSBytesBE(out_buff + clen, s_off, ob);
-	    else 
+	    } else {
 		writeUBytesBE(out_buff + clen, u_off, ob);
+	    }
 	    clen+= ob;
 	    writeUBytesBE(out_buff + clen, dc.loc.len, lb);
 	    clen+=lb;
 	    v2printf("copy delta_pos(%lu), fh_pos(%lu), type(%u), offset(%ld), len(%lu)\n",
-		delta_pos, fh_pos, out_buff[0], (off_is_sbytes ? s_off: 
-		u_off), dc.loc.len);
+		delta_pos, fh_pos, out_buff[0], (off_is_sbytes ? 
+		    dc_pos + s_off : u_off), dc.loc.len);
 	    if(cwrite(out_cfh, out_buff, clen)!=clen) {
 		v2printf("shite, couldn't write copy command. eh?\n");
 		exit(1);
@@ -212,14 +205,10 @@ gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
     unsigned long int u_off=0;
     signed long int s_off=0;
     int off_is_sbytes, ob=0, lb=0;
-    if(offset_type==ENCODING_OFFSET_VERS_POS || offset_type==ENCODING_OFFSET_DC_POS)
+    if(offset_type==ENCODING_OFFSET_DC_POS)
 	off_is_sbytes=1;
-    else if(offset_type==ENCODING_OFFSET_START)
+    else
 	off_is_sbytes=0;
-    else {
-	v2printf("wtf, unknown offset_type for reconstruction(%u)\n",offset_type);
-	exit(1);
-    }
     assert(DCBUFFER_FULL_TYPE == dcbuff->DCBtype);
     cseek(patchf, 5, CSEEK_CUR);
     while(cread(patchf, buff, 1)==1 && *buff != 0) {
@@ -239,6 +228,7 @@ gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 	    } else
 		len=*buff;
 	    DCB_add_add(dcbuff, ctell(patchf, CSEEK_FSTART), len);
+	    v2printf("len(%lu)\n", len);
 //	    DCBufferAddCmd(dcbuff, DC_ADD, ctell(patchf, CSEEK_FSTART), len);
 	    cseek(patchf, len, CSEEK_CUR);
 	} else if(*buff >= 249 ) {
@@ -269,16 +259,15 @@ gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 		     exit(1);
 		}
 		if(off_is_sbytes) {
-		     s_off=readSBytesBE(buff + 1, ob);
+		    s_off=readSBytesBE(buff + 1, ob);
+		    v2printf("s_off=%ld, computed_pos(%lu)\n", s_off,
+			dc_pos + s_off);
 		} else {
-		     u_off=readUBytesBE(buff + 1, ob);
+		    u_off=readUBytesBE(buff + 1, ob);
 		}
 		len = readUBytesBE(buff + 1 + ob, lb);
-		if(offset_type!=ENCODING_OFFSET_START) {
-		    if(offset_type==ENCODING_OFFSET_VERS_POS)
-			u_off = ver_pos + s_off;
-		    else //ENCODING_DC_POS
-			dc_pos = u_off = dc_pos + s_off;
+		if(off_is_sbytes) {
+		    dc_pos = u_off = dc_pos + s_off;
 		}
 		v2printf("offset(%lu), len(%lu)\n", u_off, len);
 		DCB_add_copy(dcbuff, u_off, 0, len);

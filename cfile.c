@@ -45,6 +45,7 @@ copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
     const EVP_MD *md;
     /* this will need adjustment for compressed files */
     cfh->raw_fh = fh;
+    assert(fh_start <= fh_end);
     cfh->access_flags = (access_flags & ~CFILE_COMPUTE_MD5);
     cfh->state_flags = 0;
     cfh->data_md5 = NULL;

@@ -23,6 +23,16 @@
 
 extern unsigned int global_verbosity;
 
+typedef unsigned long off_u32;
+typedef signed  long soff_U32;
+#ifdef LARGEFILE_SUPPORT
+typedef unsigned long off_u64;
+typedef signed  long soff_u64;
+#else
+typedef unsigned long off_u64;
+typedef signed  long soff_u64;
+#endif
+
 #define PATCH_TRUNCATED	0x1
 #define PATCH_CORRUPT	0x2
 
