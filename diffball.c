@@ -156,19 +156,19 @@ int main(int argc, char **argv)
     v1printf("verbosity level(%u)\n", global_verbosity);
 
     copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY | CFILE_OPEN_FH);
+    v1printf("reading tar entries from src\n");
     source = read_fh_to_tar_entry(src_fh, &source_count);
+    v1printf("reading tar entries from trg\n");
     target = read_fh_to_tar_entry(trg_fh, &target_count);
     v1printf("source tarball's entry count=%lu\n", source_count);
     v1printf("target tarball's entry count=%lu\n", target_count);
-    /* this next one is moreso for bsearch's, but it's prob useful for the common-prefix alg too */
-    
+
     v1printf("qsorting\n");
     qsort((struct tar_entry **)source, source_count, sizeof(struct tar_entry *), cmp_tar_entries);
     v1printf("qsort done\n");
     
-    /* alg to basically figure out the common dir prefix... eg, if everything is in dir 
-    	debianutils-1.16.3*/
-    /*note, we want the slash, hence +1 */
+/* alg to basically figure out the common dir prefix... eg, if everything 
+   is in dir debianutils-1.16.3; note, we want the slash, hence +1 */
     p = rindex(source[0]->fullname, '/');
     if(p!=NULL) {
 	src_common_len = ((char *)p - (char *)source[0]->fullname) + 1;
@@ -251,13 +251,6 @@ int main(int argc, char **argv)
         if(vptr == NULL) {
 	    v1printf("didn't find a match for %.255s, skipping\n", 
 		target[x]->fullname);
-/*	    v2printf("target loc(%lu:%lu)\n", (512 * target[x]->file_loc), 
-        	(512 * target[x]->file_loc) + 512 +(target[x]->size==0 ? 0 : 
-        	target[x]->size + 512 - (target[x]->size % 512==0 ? 512 : 
-        	target[x]->size % 512) ));
-            v1printf("file_loc(%lu), size(%lu)\n", target[x]->file_loc,
-        	target[x]->size);
-            OneHalfPassCorrecting(&dcbuff, &rhash_full, &ver_window);*/
         } else {
             tar_ptr = (struct tar_entry *)*((struct tar_entry **)vptr);
             v1printf("found match between %.255s and %.255s\n", target[x]->fullname,
@@ -290,32 +283,25 @@ int main(int argc, char **argv)
         }
         cclose(&ver_window);
     }
-//    free_RefHash(&rhash_full);
+
+    /* cleanup */
+    for(x=0; x< source_count; x++) {
+        free(source[x]->fullname);
+	free(source[x]);
+    }
+    free(source);
+
+    for(x=0; x< target_count; x++) {
+	free(target[x]->fullname);
+	free(target[x]);
+    }
+    free(target);
+
     v1printf("beginning search for gaps, and unprocessed files\n");
     copen(&ver_full, trg_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     MultiPassAlg(&dcbuff, &ref_full, &ver_full, hash_size);
     cclose(&ref_full);
-/*    x= (target[target_count -1]->file_loc * 512) + 512 + 
-    	(target[target_count -1]->size==0 ? 0 : target[target_count -1]->size + 
-    		512 - ( target[target_count -1]->size % 512==0 ? 512 :
-    			target[target_count -1]->size % 512));
-    	if(x!= ver_stat.st_size) {
-    	v1printf("must be a null padded tarball. processing the remainder.\n");
-	DCB_add_add(&dcbuff, x, ver_stat.st_size -x );
-    }
-*/        
-    /* cleanup */
-/* fix this.  doesn't like longlinks...
-   no, I think it just likes crapping out every fucking time I run this prog 
-   against a big dataset.
-   fucking bastard. */
-/*    for(x=0; x< source_count; x++)
-        free(source[x]->fullname);
-    for(x=0; x< target_count; x++)
-	free(target[x]->fullname);*/
 
-    free(target);
-    free(source);
     v1printf("outputing patch...\n");
     v1printf("there were %lu commands\n", dcbuff.DCB.full.buffer_count);
     if(GDIFF4_FORMAT == patch_format_id) { 

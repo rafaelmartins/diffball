@@ -57,7 +57,6 @@ struct tar_entry
 {
     struct tar_entry **file, *entry;
     unsigned char block[512];
-    //unsigned int count=0, offset=0;
     unsigned long offset=0, array_size=100000;
     unsigned long count =0;
     unsigned int read_bytes;
@@ -83,18 +82,18 @@ struct tar_entry
 	if('L'==block[TAR_TYPEFLAG_LOC]) {
 	    extra_size = 1024;
 	    v2printf("handling longlink\n");
-	    entry->size = octal_str2long(block + TAR_SIZE_LOC, TAR_SIZE_LEN);
+	    name_len = octal_str2long(block + TAR_SIZE_LOC, TAR_SIZE_LEN) -1;
 	    if((read_bytes=read(src_fh, block, 512))!=512) {
 		v0printf("shite, unexpected eof\n");
 		abort();
 	    }
-	    name_len = strnlen(block, entry->size);
-	    if((entry->working_name = entry->fullname = 
+	    if((entry->fullname = 
 		(unsigned char *)malloc(name_len))==NULL){
 		v0printf("shite, lack o' the good ole mem.\n");
 		abort();
 	    }
-	    memcpy(entry->fullname, block, entry->size);
+	    entry->working_name = entry->fullname;
+	    memcpy(entry->fullname, block, name_len);
 	    if((read_bytes=read(src_fh, block, 512))!=512){
 		v0printf("shite, unexpected eof\n");
 		abort();
@@ -103,6 +102,7 @@ struct tar_entry
 		v0printf("shite chksum didn't match on tar header\n");
 		abort();
 	    }
+	    entry->working_len = name_len;
 	    entry->size = octal_str2long(block + TAR_SIZE_LOC, TAR_SIZE_LEN);
 	    entry->file_loc = offset;
 	    offset += 2;

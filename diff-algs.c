@@ -297,6 +297,8 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, cfile *ver_cfh,
 	    RHash_find_matches(&rhash, ref_cfh);
 	    v1printf("cleansing hash, to speed bsearch's\n");
 	    RHash_cleanse(&rhash);
+	    print_RefHash_stats(&rhash);
+	    v1printf("beginning gap processing...\n");
 	    DCBufferReset(buff);
 	    while(DCB_get_next_gap(buff, gap_req, &dc)) {
 		v2printf("handling gap %lu:%lu, size %lu\n", dc.offset, 
@@ -319,14 +321,14 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, cfile *ver_cfh,
 	    init_RefHash(&rhash, ref_cfh, seed_len, sample_rate, 
 		hash_size, RH_BUCKET_HASH);
 	    RHash_insert_block(&rhash, ref_cfh, 0, cfile_len(ref_cfh));
-	    v2printf("making initial run...\n");
+	    print_RefHash_stats(&rhash);
+	    v1printf("making initial run...\n");
 	    DCB_llm_init_buff(buff, 128);
 	    OneHalfPassCorrecting(buff, &rhash, ver_cfh);
 	    DCB_insert(buff);
 	}
 	RHash_sort(&rhash);
 
-	print_RefHash_stats(&rhash);
 #ifdef DEBUG_DCBUFFER
 	assert(DCB_test_llm_main(buff));
 #endif
