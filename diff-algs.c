@@ -56,16 +56,22 @@ init_RefHash(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len,
     unsigned int missed;
 
     ADLER32_SEED_CTX ads;
-    //unsigned long copies=0, adds=0, truncations=0;
-    //unsigned long min_offset_dist = 0, max_offset_dist = 0;
     PRIME_CTX pctx;
+#ifdef DEBUG_HASH
+    unsigned char *test_buff;
+    if((test_buff=(unsigned char*)malloc(seed_len))==NULL) {
+	abort();
+    }
+    rhash->bad_duplicates=0;
+#endif
+
     v2printf("init_RefHash\n");
     init_primes(&pctx);
-	rhash->hr_size = get_nearest_prime(&pctx, hr_size);
-	rhash->ref_cfh = ref_cfh;
-	rhash->seed_len = seed_len;
-	ref_len = cfile_len(ref_cfh);
-	rhash->inserts = rhash->duplicates = 0;
+    rhash->hr_size = get_nearest_prime(&pctx, hr_size);
+    rhash->ref_cfh = ref_cfh;
+    rhash->seed_len = seed_len;
+    ref_len = cfile_len(ref_cfh);
+    rhash->inserts = rhash->duplicates = 0;
     if((rhash->hash=(unsigned long*)malloc(sizeof(unsigned long)*(rhash->hr_size)))==NULL) {
 		perror("Shite.  couldn't allocate needed memory for reference hash table.\n");
 		exit(EXIT_FAILURE);
@@ -82,31 +88,46 @@ init_RefHash(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len,
     update_adler32_seed(&ads, rbuff, seed_len);
     missed=0;
     for(x=seed_len; x < ref_len - seed_len; x++) {
-		if(x - rbuff_start >= rbuff_size) {
-			rbuff_start += rbuff_end;
-			rbuff_end   = cread(ref_cfh, rbuff, 
-				MIN(ref_len - rbuff_start, rbuff_size));
-		}
-		update_adler32_seed(&ads, rbuff + (x - rbuff_start), 1);
-		index=hash_it(ads, rhash->hr_size);
+	if(x - rbuff_start >= rbuff_size) {
+	    rbuff_start += rbuff_end;
+#ifdef DEBUG_HASH
+	    cseek(ref_cfh, rbuff_start, CSEEK_FSTART);
+#endif
+	    rbuff_end   = cread(ref_cfh, rbuff, 
+		MIN(ref_len - rbuff_start, rbuff_size));
+	}
+	update_adler32_seed(&ads, rbuff + (x - rbuff_start), 1);
+	index=hash_it(ads, rhash->hr_size);
 
-		/*note this has the ability to overwrite offset 0...
+	/*note this has the ability to overwrite offset 0...
 	  but thats alright, cause a correcting alg if a match at offset1, will grab the offset 0 */
-		if(rhash->hash[index]==0) {
-		    rhash->inserts++;
-		    rhash->hash[index] =x - seed_len + 1;
-		    if(sample_rate > 1 && missed < sample_rate) {
-			x+= sample_rate - missed;
-		    }
-		    //x += (missed >= sample_rate ? 0 : sample_rate - missed);
-		    missed=0;
-		} else {
-		    rhash->duplicates++;
-		    missed++;
+	if(rhash->hash[index]==0) {
+	    rhash->inserts++;
+	    rhash->hash[index] =x - seed_len + 1;
+	    if(sample_rate > 1 && missed < sample_rate) {
+		x+= sample_rate - missed;
 	    }
+	    //x += (missed >= sample_rate ? 0 : sample_rate - missed);
+	    missed=0;
+	} else {
+	    rhash->duplicates++;
+	    missed++;
+#ifdef DEBUG_HASH
+	    cseek(ref_cfh, rhash->hash[index], CSEEK_FSTART);
+	    cread(ref_cfh, test_buff, seed_len);
+	    if((memcmp(test_buff, ads.seed_chars + ads.tail, seed_len - 
+		ads.tail)!=0) &&
+		(memcmp(test_buff + ads.tail, ads.seed_chars, ads.tail)!=0)) {
+		rhash->bad_duplicates++;
+	    }
+#endif
+	}
     }
     free_primes(&pctx);
     free_adler32_seed(&ads);
+#ifdef DEBUG_HASH
+    free(test_buff);
+#endif
     return 0;
 }
 
@@ -118,6 +139,12 @@ print_RefHash_stats(RefHash *rhash) {
 	((float)rhash->inserts/rhash->hr_size* 100));
     v1printf("hash stats: duplicate rate(%f%%)\n", 
 	((float)rhash->duplicates/rhash->hr_size * 100));
+#ifdef DEBUG_HASH
+    v1printf("hash stats: bad duplicates(%f%%)\n",((float)
+	rhash->bad_duplicates/rhash->duplicates * 100));
+    v1printf("hash stats: good duplicates(%f%%)\n", 100.0 - ((float)
+	rhash->bad_duplicates/rhash->duplicates * 100));
+#endif
     v1printf("hash stats: seed_len(%u)\n", rhash->seed_len);
 }
 

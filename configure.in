@@ -8,10 +8,12 @@ AC_PROG_CC
 # toggling debug support.
 #AC_DEFINE(DEBUG_CFILE, 1, Toggle on cfile debug messages.)
 #AC_DEFINE(DEV_VERSION, 1, Toggle on asserts.)
+#AC_DEFINE(DEBUG_HASH, 1, Toggle on extra hash tests and messages.)
 
 # Checks for libraries.
 AC_CHECK_LIB(popt, poptGetContext)
 AC_CHECK_LIB(crypto, EVP_get_digestbyname)
+AC_CHECK_LIB(bz2, BZ2_bzCompressInit)
 
 # Checks for header files.
 AC_HEADER_STDC

@@ -82,47 +82,46 @@ update_adler32_seed(ADLER32_SEED_CTX *ads, unsigned char *buff,
 {	
     unsigned int x;
     signed long parity;
-	if(len==ads->seed_len) {
-		//printf("computing seed fully\n");
-		ads->s1 = ads->s2 = ads->tail =0;
-		for(x=0; x < ads->seed_len; x++) {
-			ads->s1 += ads->multi * PRIMES[buff[x]];
-			ads->s2 += ads->s1;
-			ads->last_seed[x] = PRIMES[buff[x]];
-			ads->seed_chars[x] = buff[x];
-			ads->last_parity_bits[x] = ads->last_seed[x] & 0x1;
-			ads->parity += ads->last_parity_bits[x];
-		}
-		ads->parity &= 0x1;
-		ads->tail = 0;
-		
-	} else {
-	    parity = ads->parity;
-	    for(x=0; x < len; x++){
-		ads->s1 = ads->s1 - 
-		    (ads->multi * ads->last_seed[ads->tail]) + 
-		    (ads->multi * PRIMES[buff[x]]);
-			ads->s2 = ads->s2 - (ads->multi * ads->seed_len * 
-				ads->last_seed[ads->tail]) + ads->s1;
-			ads->seed_chars[ads->tail] = buff[x];
-			ads->last_seed[ads->tail] = PRIMES[buff[x]];
-			ads->tail = (ads->tail + 1) % ads->seed_len;
-			parity -= ads->last_parity_bits[ads->tail];
-			ads->last_parity_bits[ads->tail] = 
-				ads->last_seed[ads->tail]  & 0x1;
-			parity += ads->last_parity_bits[ads->tail];
-		}
-		ads->parity = (abs(parity) & 0x1);
+    if(len==ads->seed_len) {
+	//printf("computing seed fully\n");
+	ads->s1 = ads->s2 = ads->tail =0;
+	for(x=0; x < ads->seed_len; x++) {
+	    ads->s1 += ads->multi * PRIMES[buff[x]];
+	    ads->s2 += ads->s1;
+	    ads->last_seed[x] = PRIMES[buff[x]];
+	    ads->seed_chars[x] = buff[x];
+	    ads->last_parity_bits[x] = ads->last_seed[x] & 0x1;
+	    ads->parity += ads->last_parity_bits[x];
 	}
+	ads->parity &= 0x1;
+	ads->tail = 0;		
+    } else {
+	parity = ads->parity;
+	for(x=0; x < len; x++){
+	ads->s1 = ads->s1 - 
+	    (ads->multi * ads->last_seed[ads->tail]) + 
+	    (ads->multi * PRIMES[buff[x]]);
+	ads->s2 = ads->s2 - (ads->multi * ads->seed_len * 
+	    ads->last_seed[ads->tail]) + ads->s1;
+	ads->seed_chars[ads->tail] = buff[x];
+	ads->last_seed[ads->tail] = PRIMES[buff[x]];
+	ads->tail = (ads->tail + 1) % ads->seed_len;
+	parity -= ads->last_parity_bits[ads->tail];
+	ads->last_parity_bits[ads->tail] = 
+	    ads->last_seed[ads->tail]  & 0x1;
+	parity += ads->last_parity_bits[ads->tail];
+	}
+	ads->parity = (abs(parity) & 0x1);
+    }
 }
 
 unsigned long 
 get_checksum(ADLER32_SEED_CTX *ads)
 {
 	unsigned long chksum;
-	chksum = (unsigned long)((ads->s2 << 16) | (ads->s1 & 0xffff));
-	return (unsigned long)(
-	    (unsigned long)((ads->s1 << 16) | (ads->s1 & 0xffff)) + ads->parity);
+	chksum = (unsigned long)(((ads->s2) << 16) | ((ads->s1) & 0xffff));
+	return (unsigned long)(chksum);
+//	    (unsigned long)((ads->s1 << 16) | (ads->s1 & 0xffff)) + ads->parity);
 }
 
 unsigned int 

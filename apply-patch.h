@@ -21,4 +21,4 @@
 void reconstructFile(CommandBuffer *dcbuff, cfile *src_cfh, 
 	cfile *delta_cfh, cfile *out_cfh);
 
-#endif _HEADER_APPLY_PATCH
+#endif 

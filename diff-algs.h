@@ -23,13 +23,16 @@
 #include "cfile.h"
 #include "dcbuffer.h"
 typedef struct _RefHash {
-	unsigned int seed_len;
-	unsigned long hr_size;
-	unsigned long *hash;
-	unsigned int  sample_rate;
-	cfile *ref_cfh;
-	unsigned long inserts;
-	unsigned long duplicates;
+    unsigned int seed_len;
+    unsigned long hr_size;
+    unsigned long *hash;
+    unsigned int  sample_rate;
+    cfile *ref_cfh;
+    unsigned long inserts;
+    unsigned long duplicates;
+#ifdef DEBUG_HASH
+    unsigned long bad_duplicates;
+#endif
 } RefHash;
 
 signed int init_RefHash(RefHash *rhash, cfile *ref_cfh, 
