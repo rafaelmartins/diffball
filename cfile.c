@@ -126,11 +126,21 @@ internal_copen(cfile *cfh, int fh, unsigned long raw_fh_start, unsigned long raw
     } else {
 	cfh->compressor_type = compressor_type;
     }
-    if(! ((cfh->access_flags & CFILE_WONLY) && 
+    if(cfh->compressor_type != NO_COMPRESSOR) {
+        if((cfh->access_flags & CFILE_WR) == CFILE_WR) {
+	    // one or the other, not both.
+            return IO_ERROR;
+        } else if(cfh->access_flags & CFILE_RONLY) {
+            cfh->access_flags |= CFILE_SEEKABLE;
+        }
+    } else {
+        cfh->access_flags |= CFILE_SEEKABLE;
+    }
+/*    if(! ((cfh->access_flags & CFILE_WONLY) && 
 	(compressor_type != NO_COMPRESSOR)) ){
 	cfh->access_flags |= CFILE_SEEKABLE;
     }
-    switch(cfh->compressor_type) {
+*/    switch(cfh->compressor_type) {
     case NO_COMPRESSOR:
 	dcprintf("copen: opening w/ no_compressor\n");
 	cfh->data_fh_offset = raw_fh_start;
@@ -147,8 +157,8 @@ internal_copen(cfile *cfh, int fh, unsigned long raw_fh_start, unsigned long raw
 	    access_flags & CFILE_BUFFER_ALL);
 	cfh->raw.size = 0;
         cfh->raw.buff = NULL;
-	cfh->raw.pos = cfh->raw.offset  = cfh->raw.end = cfh->data.pos = 
-	    cfh->data.offset = cfh->data.end = 0;
+	cfh->raw.pos = cfh->raw.offset  = cfh->raw.end = cfh->raw.write_start = cfh->raw.write_end = cfh->data.pos = 
+	    cfh->data.offset = cfh->data.end = cfh->data.write_start = cfh->data.write_end = 0;
  	break;
  	
     case BZIP2_COMPRESSOR:
@@ -183,7 +193,7 @@ internal_copen(cfile *cfh, int fh, unsigned long raw_fh_start, unsigned long raw
             cfh->bzs->avail_in = cfh->bzs->avail_out = 0;
 //        }
 	cfh->raw.pos = cfh->raw.offset  = cfh->raw.end = cfh->data.pos = 
-	    cfh->data.offset = cfh->data.end = 0;
+	    cfh->data.offset = cfh->data.end = cfh->raw.write_end = cfh->raw.write_start = 0;
 	cfh->data.offset = 10;
 	if(0 != cseek(cfh, 0, CSEEK_FSTART)) {
 	    return (cfh->err = IO_ERROR);
@@ -205,6 +215,7 @@ internal_copen(cfile *cfh, int fh, unsigned long raw_fh_start, unsigned long raw
         } else if((cfh->raw.buff = (unsigned char *)malloc(cfh->raw.size))==NULL) {
 	    return MEM_ERROR;
         }
+        cfh->raw.write_end = cfh->raw.write_start = cfh->data.write_start = cfh->data.write_end = 0;
 	internal_gzopen(cfh);
 	break;
     }
@@ -264,7 +275,7 @@ internal_gzopen(cfile *cfh)
 	if(cfh->raw.pos > cfh->raw.end) {
 	    cfh->raw.offset += cfh->raw.pos;
 	    cfh->raw.pos = cfh->raw.end;
-	    if(raw_cseek(cfh)) {
+	    if(raw_ensure_position(cfh)) {
 		return IO_ERROR;
 	    }
 	}
@@ -378,18 +389,21 @@ signed long
 cwrite(cfile *cfh, unsigned char *buff, unsigned long len)
 {
     unsigned long bytes_wrote=0, x;
+    if(cfh->access_flags & CFILE_RONLY && cfh->data.write_end == 0) {
+        //basically, RW mode, and the first write to this buffer.
+        cfh->data.write_start = cfh->data.pos;
+    }
     while(bytes_wrote < len) {
-	if(cfh->data.size==cfh->data.pos) {
+	if(cfh->data.size==cfh->data.write_end) {
 	    cflush(cfh);
-	    /* was originally, assert(cfh->data.pos!=0);
-	       don't understand why, since that condition *should* be
-	       impossible ... */
 	}
 	x = MIN(cfh->data.size - cfh->data.pos, len - bytes_wrote);
 	memcpy(cfh->data.buff + cfh->data.pos, buff + bytes_wrote, x);
 	bytes_wrote += x;
 	cfh->data.pos += x;
+	cfh->data.write_end = cfh->data.pos;
     }
+    cfh->data.write_end = cfh->data.pos;
     return bytes_wrote;
 }
 
@@ -409,9 +423,9 @@ cseek(cfile *cfh, signed long offset, int offset_type)
     else
 	return IO_ERROR;
 
-    assert(data_offset >= 0);
+    assert(data_offset >= 0 || NO_COMPRESSOR != cfh->compressor_type);
 
-    if(cfh->access_flags & CFILE_WONLY) {
+    if(cfh->access_flags & CFILE_WRITEABLE) {
 	dcprintf("flushing cfile prior to cseek\n");
 	if(cflush(cfh)) {
 	    return IO_ERROR;
@@ -433,33 +447,19 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 	FLAG_LSEEK_NEEDED(cfh);
 	break;
     case GZIP_COMPRESSOR:
-/*	if(data_offset < cfh->data.offset ) {
-	    // note this ain't optimal, but the alternative is modifying 
-	    //   zlib to support seeking via buffers...
-	    dcprintf("cseek: zs data_offset < cfh->data.offset, resetting\n");
-	    FLAG_LSEEK_NEEDED(cfh);
-	    inflateEnd(cfh->zs);
-	    cfh->state_flags &= ~CFILE_EOF;
-	    internal_gzopen(cfh);	    
-	    cfh->data.offset = cfh->raw.offset = cfh->raw.pos = cfh->data.pos = 0;
-	    cfh->data.end = 0;
-	} else {
-	    if(ENSURE_LSEEK_POSITION(cfh)) {
-		return IO_ERROR;
+	dcprintf("cseek: bz2: data_off(%li), data.offset(%lu)\n", data_offset, cfh->data.offset);
+	if(data_offset < 0) {
+	    // this sucks.  quick kludge to find the eof, then set data_offset appropriately.
+	    // do something better.
+	    dcprintf("decompressed total_len isn't know, so having to decompress the whole shebang\n");
+	    while(!(cfh->state_flags & CFILE_EOF)) {
+	        crefill(cfh);
 	    }
+	    cfh->data_total_len = cfh->data.offset + cfh->data.end;
+	    data_offset += cfh->data_total_len;
+	    dcprintf("setting total_len(%lu); data.offset(%li), seek_target(%li)\n", cfh->data_total_len, cfh->data.offset, data_offset);
 	}
-	dcprintf("cseek: zs: data_off(%lu), data.offset(%lu)\n", data_offset, cfh->data.offset);
 
-	while(cfh->data.offset + cfh->data.end < data_offset) {
-	    if(crefill(cfh)==0) {
-		return EOF_ERROR;
-	    }
-	}
-	cfh->data.pos = data_offset - cfh->data.offset;
-
-	return (CSEEK_ABS==offset_type ? data_offset + cfh->data_fh_offset : data_offset);
-*/
-	dcprintf("cseek: gz: data_off(%lu), data.offset(%lu)\n", data_offset, cfh->data.offset);
 	if(data_offset < cfh->data.offset ) {
 	    /* note this ain't optimal, but the alternative is modifying 
 	       zlib to support seeking... */
@@ -468,9 +468,6 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 	    inflateEnd(cfh->zs);
 	    cfh->state_flags &= ~CFILE_EOF;
 	    internal_gzopen(cfh);
-//	    cfh->zs->avail_in = cfh->zs->avail_out = 0;
-//	    cfh->data.end = cfh->raw.end = cfh->data.pos = 
-//		cfh->data.offset = cfh->raw.offset = cfh->raw.pos = 0;
 	    if(ENSURE_LSEEK_POSITION(cfh)) {
 		return (cfh->err = IO_ERROR);
 	    }
@@ -499,7 +496,18 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 
 	break;
     case BZIP2_COMPRESSOR: 
-	dcprintf("cseek: bz2: data_off(%lu), data.offset(%lu)\n", data_offset, cfh->data.offset);
+	dcprintf("cseek: bz2: data_off(%li), data.offset(%lu)\n", data_offset, cfh->data.offset);
+	if(data_offset < 0) {
+	   // this sucks.  quick kludge to find the eof, then set data_offset appropriately.
+	    // do something better.
+	    dcprintf("decompressed total_len isn't know, so having to decompress the whole shebang\n");
+	    while(!(cfh->state_flags & CFILE_EOF)) {
+	        crefill(cfh);
+	    }
+	    cfh->data_total_len = cfh->data.offset + cfh->data.end;
+	    data_offset += cfh->data_total_len;
+	    dcprintf("setting total_len(%lu); data.offset(%li), seek_target(%li)\n", cfh->data_total_len, cfh->data.offset, data_offset);
+	}
 	if(data_offset < cfh->data.offset ) {
 	    /* note this ain't optimal, but the alternative is modifying 
 	       bzlib to support seeking... */
@@ -545,9 +553,9 @@ cseek(cfile *cfh, signed long offset, int offset_type)
     cfh->data.offset = data_offset;
     cfh->data.pos = cfh->data.end = 0;
     if(cfh->access_flags & CFILE_WONLY) {
-	if(raw_cseek(cfh)) {
+	if(raw_ensure_position(cfh)) {
 //	if(ENSURE_LSEEK_POSITION(cfh)) {
-	    dcprintf("raw_cseek on WONLY cfile failed\n");
+	    dcprintf("raw_ensure_position on WONLY cfile failed\n");
 	    return IO_ERROR;
 	}
     }
@@ -556,7 +564,7 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 }
 
 unsigned long
-raw_cseek(cfile *cfh)
+raw_ensure_position(cfile *cfh)
 {
     SET_LAST_LSEEKER(cfh);
     if(NO_COMPRESSOR == cfh->compressor_type) {
@@ -588,14 +596,31 @@ ctell(cfile *cfh, unsigned int tell_type)
 unsigned long 
 cflush(cfile *cfh)
 {
-    if(cfh->data.pos!=0) {
+    if(cfh->data.write_end != 0) {
         switch(cfh->compressor_type) {
 	case NO_COMPRESSOR:
-	    if(cfh->data.pos != 
-		write(cfh->raw_fh, cfh->data.buff, cfh->data.pos))
+	    // position the sucker, either at write_end, or at write_start (for CFILE_WR)
+	    if(cfh->access_flags & CFILE_READABLE) {
+		if(lseek(cfh->raw_fh, cfh->data.offset + cfh->data_fh_offset + cfh->data.write_start, SEEK_SET) !=
+	            cfh->data.offset + cfh->data_fh_offset + cfh->data.write_start) {
+	            return (cfh->err = IO_ERROR);
+	        }
+	    } else if(ENSURE_LSEEK_POSITION(cfh)) {
 		return (cfh->err = IO_ERROR);
-	    cfh->data.offset += cfh->data.pos;
-	    cfh->data.pos=0;
+	    }
+	    if(cfh->data.write_end - cfh->data.write_start != 
+		write(cfh->raw_fh, cfh->data.buff + cfh->data.write_start, cfh->data.write_end - cfh->data.write_start)) {
+		return (cfh->err = IO_ERROR);
+	    }
+	    if((cfh->access_flags & CFILE_READABLE) && (cfh->data.end) && (cfh->data.end != cfh->data.write_end)) {
+//	    	if(cfh->data.end != 0 && cfh->data.end != cfh->data.write_end) {
+	    	    FLAG_LSEEK_NEEDED(cfh);
+//	    	}
+	    	cfh->data.offset += cfh->data.end;
+	    } else {
+	    	cfh->data.offset += cfh->data.write_end;
+	    }
+	    cfh->data.write_end = cfh->data.write_start = cfh->data.pos = cfh->data.end = 0;
 	    break;
 /*	case BZIP2_COMPRESSOR:
 	    // fairly raw, if working at all //
@@ -636,12 +661,25 @@ crefill(cfile *cfh)
     int err;
     switch(cfh->compressor_type) {
     case NO_COMPRESSOR:
+	if((cfh->access_flags & CFILE_WRITEABLE) && (cfh->data.write_end != 0)) {
+	    if(cflush(cfh)) {
+//		error handling anyone?
+	    	return 0L;
+	    }
+	}
 	if(ENSURE_LSEEK_POSITION(cfh)) {
 	    return (cfh->err = IO_ERROR);
 	}
 	cfh->data.offset += cfh->data.end;
-	x = read(cfh->raw_fh, cfh->data.buff, MIN(cfh->data.size, 
-	    cfh->data_total_len - cfh->data.offset));
+	if(cfh->data_total_len != 0) {
+	    x = read(cfh->raw_fh, cfh->data.buff, MIN(cfh->data.size, 
+		cfh->data_total_len - cfh->data.offset));
+	} else {
+	    x = read(cfh->raw_fh, cfh->data.buff, cfh->data.size);
+	}
+	// is this valid for write & read mode?
+	if(x==0)
+	    cfh->state_flags |= CFILE_EOF;
 	cfh->data.end = x;
 	cfh->data.pos = 0;
 	dcprintf("crefill: no_compress, got %lu\n", x);
@@ -844,6 +882,9 @@ expose_page(cfile *cfh)
 cfile_window *
 next_page(cfile *cfh)
 {
+    if(cfh->access_flags & CFILE_WRITEABLE) {
+    	cflush(cfh);
+    }
     if(cfh->access_flags & CFILE_RONLY) {
 	crefill(cfh);
     }
@@ -854,6 +895,9 @@ cfile_window *
 prev_page(cfile *cfh)
 {
     /* possibly do an error check or something here */
+    if(cfh->access_flags & CFILE_WRITEABLE) {
+    	cflush(cfh);
+    }
     if(cfh->data.offset ==0) {
 	cfh->data.end=0;
 	cfh->data.pos=0;

@@ -31,6 +31,9 @@
 
 #define CFILE_RONLY			(0x1)
 #define CFILE_WONLY			(0x2)
+#define CFILE_READABLE			(0x1)
+#define CFILE_WRITEABLE			(0x2)
+#define CFILE_WR			(CFILE_READABLE | CFILE_WRITEABLE)
 
 /* note, CFILE_COMPUTE_MD5 is common to both state_flags and access_flags */
 #define CFILE_COMPUTE_MD5		(0x4)
@@ -73,6 +76,8 @@ typedef struct {
     unsigned long pos;
     unsigned long end;
     unsigned long size;
+    unsigned long write_start;
+    unsigned long write_end;
     unsigned char *buff;
 } cfile_window;
 
@@ -129,7 +134,7 @@ typedef struct _cfile {
     (LAST_LSEEKER(cfh) = (cfh)->cfh_id)
 
 #define ENSURE_LSEEK_POSITION(cfh)					\
-    (LAST_LSEEKER(cfh) == (cfh)->cfh_id ? 0 : raw_cseek(cfh))
+    (LAST_LSEEKER(cfh) == (cfh)->cfh_id ? 0 : raw_ensure_position(cfh))
 
 int internal_copen(cfile *cfh, int fh, 
     unsigned long raw_fh_start, unsigned long raw_fh_end,
@@ -150,7 +155,7 @@ signed long cwrite(cfile *cfh, unsigned char *in_buff, unsigned long len);
 unsigned long crefill(cfile *cfh);
 unsigned long cflush(cfile *cfh);
 unsigned long ctell(cfile *cfh, unsigned int tell_type);
-unsigned long raw_cseek(cfile *cfh);
+unsigned long raw_ensure_position(cfile *cfh);
 unsigned long cseek(cfile *cfh, signed long offset, int offset_type);
 unsigned long copy_cfile_block(cfile *out_cfh, cfile *in_cfh, 
     unsigned long in_offset, unsigned long len);

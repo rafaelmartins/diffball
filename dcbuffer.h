@@ -84,7 +84,7 @@ typedef struct {
     unsigned long		index_count;
     unsigned long		index_size;
     unsigned long		index_pos;
-    struct _DCB_registered_src	*command_srcs;
+    struct _DCB_registered_src	**command_srcs;
     DCLoc			*commands;
     unsigned long		com_count;
     unsigned long		com_size;
@@ -99,6 +99,11 @@ typedef struct {
     unsigned long		ov_index;
     unsigned char		type;
 } DCommand;
+
+typedef struct {
+    DCLoc_match			data;
+    unsigned char		src_id;
+} DCommand_abbrev;
 
 typedef union {
     cfile		*cfh;
@@ -118,6 +123,7 @@ typedef struct _DCB_registered_src {
     overlay_chain	ov;
     dcb_src_read_func	read_func;
     dcb_src_copy_func	copy_func;
+    dcb_src_read_func   mask_read_func;
     unsigned char	flags;
 } DCB_registered_src;
 
@@ -200,8 +206,9 @@ int internal_DCB_register_dcb_src(CommandBuffer *dcb, CommandBuffer *dcb_src,
     internal_DCB_register_dcb_src((dcb), (dcb_src), (read), (copy),	\
     (free), (type))
 
-int DCB_register_overlay_srcs(CommandBuffer *dcb, 
-    cfile *src, dcb_src_read_func rf1, dcb_src_copy_func rc1, char free1);
+int DCB_register_overlay_src(CommandBuffer *dcb, 
+    cfile *src, dcb_src_read_func rf1, dcb_src_copy_func rc1, 
+    dcb_src_read_func rm1, char free1);
 
 int internal_DCB_register_cfh_src(CommandBuffer *dcb, cfile *cfh,
     dcb_src_read_func read_func, dcb_src_copy_func copy_func, 

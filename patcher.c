@@ -95,7 +95,7 @@ main(int argc, char **argv)
     } else {
 	if((out_name = (char *)poptGetArg(p_opt))==NULL)
 	    usage(p_opt, 1, "Must specify a name for the out file.", 0);
-	if((out_fh = open(out_name, O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1) {
+	if((out_fh = open(out_name, O_RDWR | O_TRUNC | O_CREAT, 0644))==-1) {
 	    v0printf( "error creating out file (open failed)\n");
 	    exit(1);
 	}
@@ -169,7 +169,7 @@ main(int argc, char **argv)
 	v0printf("error detected while reading patch- quitting\n");
     } else {
 //	DCBUFFER_REGISTER_COPY_SRC(&dcbuff, &src_cfh, NULL, 0);
-	if(copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY)) {
+	if(copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WR)) {
 	    v0printf("error opening output file, exitting\n");
 	} else if(reconstructFile(&dcbuff, &out_cfh,1)) {
 	    v0printf("error detected while reconstructing file, quitting\n");

@@ -28,6 +28,27 @@ bsdiff_overlay_read(DCommand *dc, unsigned long pos, unsigned char *buff, unsign
     return 0L;
 }
 
+unsigned long
+bsdiff_apply_overlay(cfile *cfh, unsigned long src_pos, unsigned char *buff, 
+    unsigned long len)
+{
+    cfile_window *scfw;
+    unsigned char *p;
+    p = buff;
+    scfw = expose_page(cfh);
+    while(p != buff + len) {
+    	if(scfw->pos == scfw->end) {
+    	    scfw = next_page(cfh);
+    	    if (scfw->end == 0)
+    	    	return p - buff;
+    	}
+    	*p += scfw->buff[scfw->pos];
+    	p++; 
+    	scfw->pos++;
+    }
+    return p - buff;
+}
+
 unsigned long 
 bsdiff_overlay_copy(DCommand *dc, 
     cfile *out_cfh)
@@ -57,7 +78,7 @@ bsdiff_overlay_copy(DCommand *dc,
     while(index < index_end) {
     	com_len = 0;
 	dptr = ov->commands + index;
-	dsrc = ov->command_srcs + index;
+	dsrc = ov->command_srcs[index];
 	while(ov->commands[index].len > com_len) {
 	    tmp_len = MIN(dptr->len - com_len, ocfw->size);
 	    if(tmp_len != dsrc->read_func(dsrc->src_ptr, 
@@ -157,8 +178,8 @@ bsdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff)
     }
     
     ref_id = DCB_REGISTER_COPY_SRC(dcbuff, ref_cfh, NULL, 0);
-    diff_id = DCB_register_overlay_srcs(dcbuff, diff_cfh, &bsdiff_overlay_read, 
-    	&bsdiff_overlay_copy, DCB_FREE_SRC_CFH);
+    diff_id = DCB_register_overlay_src(dcbuff, diff_cfh, &bsdiff_overlay_read, 
+    	&bsdiff_overlay_copy, NULL, (unsigned char)DCB_FREE_SRC_CFH);
     if(ver == 4) {
 	extra_id = DCB_REGISTER_ADD_SRC(dcbuff, extra_cfh, NULL, 1);
     }
