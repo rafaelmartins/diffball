@@ -408,6 +408,11 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 
     assert(data_offset >= 0);
 
+    if(cfh->access_flags & CFILE_WONLY) {
+	if(cflush(cfh)) {
+	    return IO_ERROR;
+	}
+    }
     /* see if the desired location is w/in the data buff */
     if(data_offset >= cfh->data.offset &&
 	data_offset <  cfh->data.offset + cfh->data.size && 
@@ -532,6 +537,11 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 
 	/* note bzip2 doens't use the normal return */
 	return (CSEEK_ABS==offset_type ? data_offset + cfh->data_fh_offset : data_offset);
+    }
+    if(cfh->access_flags & CFILE_WONLY) {
+	if(ENSURE_LSEEK_POSITION(cfh)) {
+	    return IO_ERROR;
+	}
     }
     cfh->data.offset = data_offset;
     cfh->data.pos = cfh->data.end = 0;
