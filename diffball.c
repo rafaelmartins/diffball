@@ -279,7 +279,8 @@ int main(int argc, char **argv)
         	NO_COMPRESSOR, CFILE_RONLY | CFILE_BUFFER_ALL);
             init_RefHash(&rhash_win, &ref_window, 16, 1, 
 		cfile_len(&ref_window), RH_MOD_HASH);
-	    v1printf("reference window stats:\n");
+	    RHash_insert_block(&rhash_win, &ref_window, 0, 
+		cfile_len(&ref_window));
 	    print_RefHash_stats(&rhash_win);
             OneHalfPassCorrecting(&dcbuff, &rhash_win, &ver_window);
             free_RefHash(&rhash_win);
