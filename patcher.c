@@ -67,7 +67,7 @@ int main(int argc, char **argv)
     printf("patchf->raw_fh_pos(%lu)\n", delta_cfh.raw_fh_pos);
 	DCBufferInit(&dcbuff, 1000000);
     //gdiffReconstructFile(src_fh, out_fh, &patchfile, ENCODING_OFFSET_START, 4);
-    printf("patchf cposition(%lu)\n", cposition(&delta_cfh));
+    printf("patchf cposition(%lu)\n", ctell(&delta_cfh,CSEEK_ABS));
     printf("converting gdiff encoding to a dcbuff...\n");
    	gdiffReconstructDCBuff(&delta_cfh, &dcbuff, ENCODING_OFFSET_START, 4);
    	printf("reconstructing target file based off of dcbuff commands...\n");
