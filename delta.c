@@ -254,7 +254,7 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
     }
     out_buff[0]=0;
     write(fh, out_buff, 1);
-    printf("Buffer statistics- copies(%lu), adds(%lu)\n    copy ratio=(%f), add ratio(%f)\n",
+    printf("Buffer statistics- copies(%lu), adds(%lu)\n    copy ratio=(%f\%), add ratio(%f\%)\n",
 	copies, adds_in_buff, ((float)copies)/((float)(copies + adds_in_buff))*100,
 	((float)adds_in_buff)/((float)(copies + adds_in_buff))*100);
     printf("adds in file(%lu), average # of commands per add(%f)\n", adds_in_file,
