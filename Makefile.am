@@ -32,6 +32,7 @@ patcher_SOURCES = 	patcher.c	\
 			options.c	\
 			$(FORMATS)	\
 			$(DCB_FILES)	\
+			search-dcb.c	\
 			errors.c
 diffball_SOURCES = 	diffball.c	\
 			string-misc.c	\
@@ -57,6 +58,6 @@ noinst_HEADERS = cfile.h dcbuffer.h diff-algs.h bit-functions.h gdiff.h \
 	apply-patch.h adler32.h switching.h primes.h string-misc.h \
 	data-structs.h tar.h bdiff.h xdelta1.h cfile.h bdelta.h line-util.h \
 	udiff.h fdtu.h bsdiff.h defs.h options.h formats.h hash.h errors.h \
-	dcb-cfh-funcs.h
+	dcb-cfh-funcs.h search-dcb.h
 
 
