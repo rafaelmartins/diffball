@@ -62,6 +62,7 @@ int main(int argc, char **argv)
 	printf("using relative to dc_pos offsets\n");
     }
     fh_pos=0;
+    delta_pos=1;
     cptr=commands + 1;
     //buff_filled=512;
     while(*cptr != 0) {

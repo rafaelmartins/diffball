@@ -6,6 +6,7 @@
 //#include "adler32.h"
 #include "delta.h"
 #include "bit-functions.h"
+
 /* this is largely based on the algorithms detailed in randal burn's various papers.
    Obviously credit for the alg's go to him, although I'm the one who gets the dubious
    credit for bugs in the implementation of said algorithms... */
@@ -99,29 +100,10 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
 	switch(type)
 	{
 	case DC_ADD:
-	    //offset=0;
-	    /*printf("add command, delta_pos(%lu), fh_pos(%lu), len(%lu), broken into '%lu' commands\n",
+	    printf("add command, delta_pos(%lu), fh_pos(%lu), len(%lu), broken into '%lu' commands\n",
 		delta_pos, fh_pos, buffer->lb_tail->len, buffer->lb_tail->len/248 + (buffer->lb_tail->len % 248 ? 1 : 0));
 	    adds_in_buff++;
-	    u_off=buffer->lb_tail->len;*/
-	    //u_off = buffer->lb_tail->len / 248 > 0 ? 1 : 0;
-	    /*if(u_off > 246) {
-		if(u_off <= 0xffff) {
-		    clen=247;
-		} else {
-		    clen=248;
-		}
-	    } else {
-		clen=u_off;
-	    }
-	    write(fh, &clen, 1);
-	    if(clen > 246) {
-		if(clen==247){
-		    
-		} else if(clen==248) {
-		    
-		}
-	    }*/
+	    u_off=buffer->lb_tail->len;
 	    while(buffer->lb_tail->len){
 		adds_in_file++;
 		clen=MIN(buffer->lb_tail->len, 248);//modded
@@ -162,53 +144,47 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
 		delta_pos, fh_pos, clen, s_off, buffer->lb_tail->len);
 	    write(fh, &clen, 1);
 	    delta_pos++;
-	    if(clen >= 249 && clen <= 251) {
-		out_buff[0] = (u_off & 0xff00) >> 8;
-		if(s_off < 0 ) {
-		    //printf("num is signed, initial byte(%u), ", out_buff[0]);
-		    out_buff[0] |= 0x80;
-		    //printf("final byte(%u)\n", out_buff[0]);
+	    if(clen >= 249 && clen <= 251) {		
+		if(writeSignedBytes(out_buff, s_off, 2)) {
+		    printf("shite, too large of signed value!\n");
+		    exit(1);
 		}
-		out_buff[1] = (u_off & 0x00ff);
 		write(fh, out_buff, 2);
 		delta_pos+=2;
 	    } else if(clen>=252 && clen <= 254){
-		out_buff[0] = (u_off & 0xff000000) >> 8*3;
-		if(s_off < 0)
-		    out_buff[0] |= 0x80;
-		out_buff[1] = (u_off & 0x00ff0000) >> 8*2;
-		out_buff[2] = (u_off & 0x0000ff00) >> 8;
-		out_buff[3] = (u_off & 0x000000ff);
+		if(writeSignedBytes(out_buff, s_off, 4)) {
+		    printf("shite, too large of signed value!\n");
+		    exit(1);
+		}
 		write(fh, out_buff, 4);
 		delta_pos+=4;
 	    } else {
-		out_buff[0] = (u_off & 0xff00000000000000) >> 8*7;
-		if(s_off < 0)
-		    out_buff[0] |= 0x80;
-		out_buff[1] = (u_off & 0x00ff000000000000) >> 8*6;
-		out_buff[2] = (u_off & 0x0000ff0000000000) >> 8*5;
-		out_buff[3] = (u_off & 0x000000ff00000000) >> 8*4;
-		out_buff[4] = (u_off & 0x00000000ff000000) >> 8*3;
-		out_buff[5] = (u_off & 0x0000000000ff0000) >> 8*2;
-		out_buff[6] = (u_off & 0x000000000000ff00) >> 8;
-		out_buff[7] = (u_off & 0x00000000000000ff);
+		if(writeSignedBytes(out_buff, s_off, 8)) {
+		    printf("shite, too large of signed value!\n");
+		    exit(1);
+		}
 		write(fh, out_buff, 8);
 		delta_pos+=8;
 	    }
 	    if(clen==249 || clen == 252){
-		out_buff[0] = (buffer->lb_tail->len & 0xff);
+		if(writeUnsignedBytes(out_buff, buffer->lb_tail->len, 1)) {
+		    printf("shite, too large of signed value!\n");
+		    exit(1);
+		}
 		write(fh, out_buff, 1);
 		delta_pos++;
 	    } else if(clen == 250 || clen==253){
-		out_buff[0] = (buffer->lb_tail->len & 0xff00) >> 8;
-		out_buff[1] = (buffer->lb_tail->len & 0x00ff);
+		if(writeUnsignedBytes(out_buff, buffer->lb_tail->len, 2)) {
+		    printf("shite, too large of signed value!\n");
+		    exit(1);
+		}
 		write(fh, out_buff, 2);
 		delta_pos+=2;
 	    } else {
-		out_buff[0] = (buffer->lb_tail->len & 0xff000000) >> 24;
-		out_buff[1] = (buffer->lb_tail->len & 0x00ff0000) >> 16;
-		out_buff[2] = (buffer->lb_tail->len & 0x0000ff00) >> 8;
-		out_buff[3] = (buffer->lb_tail->len & 0x000000ff);
+		if(writeUnsignedBytes(out_buff, buffer->lb_tail->len, 4)) {
+		    printf("shite, too large of signed value!\n");
+		    exit(1);
+		}
 		write(fh, out_buff, 4);
 		delta_pos+=4;
 	    }
@@ -216,7 +192,6 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
 	    dc_pos += s_off;
 	    break;
 	}
-	//DCBufferDecr(buffer);
 	DCBufferIncr(buffer);
     }
     out_buff[0]=0;
