@@ -61,10 +61,13 @@ DCB_get_next_command(CommandBuffer *buff, DCommand *dc)
 	dc->loc.len = buff->DCB.full.lb_tail->len;
 	DCBufferIncr(buff);
     } else if (DCBUFFER_MATCHES_TYPE == buff->DCBtype) {
-	assert(buff->DCB.matches.buff_count > 
-	    (buff->DCB.matches.cur - buff->DCB.matches.buff));
 	assert(buff->reconstruct_pos != buff->ver_size);
-	if(buff->reconstruct_pos == buff->DCB.matches.cur->ver_pos) {
+	if((buff->DCB.matches.cur - buff->DCB.matches.buff) == 
+	    buff->DCB.matches.buff_count) {
+	    dc->type = DC_ADD;
+	    dc->loc.offset = buff->reconstruct_pos;
+	    dc->loc.len = buff->ver_size - buff->reconstruct_pos;
+	} else if(buff->reconstruct_pos == buff->DCB.matches.cur->ver_pos) {
 	    dc->type = DC_COPY;
 	    dc->loc.offset = buff->DCB.matches.cur->src_pos;
 	    dc->loc.len = buff->DCB.matches.cur->len;
@@ -76,9 +79,12 @@ DCB_get_next_command(CommandBuffer *buff, DCommand *dc)
 	}
 	buff->reconstruct_pos += dc->loc.len;
     } else if(DCBUFFER_LLMATCHES_TYPE == buff->DCBtype) {
-	assert(buff->DCB.llm.main != NULL);
 	assert(buff->flags & DCB_LLM_FINALIZED);
-	if(buff->reconstruct_pos == buff->DCB.llm.main->ver_pos) {
+	if(buff->DCB.llm.main == NULL) {
+	    dc->type = DC_ADD;
+	    dc->loc.offset = buff->reconstruct_pos;
+	    dc->loc.len = buff->ver_size - buff->reconstruct_pos;
+	} else if(buff->reconstruct_pos == buff->DCB.llm.main->ver_pos) {
 	    dc->type = DC_COPY;
 	    dc->loc.offset = buff->DCB.llm.main->src_pos;
 	    dc->loc.len = buff->DCB.llm.main->len;
@@ -121,13 +127,10 @@ DCB_truncate(CommandBuffer *buffer, unsigned long len)
 	DCBufferIncr(buffer);
     } else if (DCBUFFER_MATCHES_TYPE == buffer->DCBtype) {
 	assert(buffer->DCB.matches.buff_count > 0);
-	assert(buffer->DCB.matches.cur->ver_pos + 
-	    buffer->DCB.matches.cur->len - len >= 0);
-	trunc_pos = buffer->DCB.matches.cur->ver_pos + 
-	    buffer->DCB.matches.cur->len - len;
+	assert(LLM_VEND(buffer->DCB.matches.cur) - len >= 0);
+	trunc_pos = LLM_VEND(buffer->DCB.matches.cur) - len;
 	while(buffer->DCB.matches.buff_count > 0 && 
-	    trunc_pos < buffer->DCB.matches.cur->ver_pos + 
-	    buffer->DCB.matches.cur->len) {
+	    trunc_pos < LLM_VEND(buffer->DCB.matches.cur)) {
 	    if(buffer->DCB.matches.cur->ver_pos >= trunc_pos) {
 #ifdef DEBUG_DCBUFFER
 		buffer->total_copy_len -= buffer->DCB.matches.cur->len;
@@ -146,19 +149,15 @@ DCB_truncate(CommandBuffer *buffer, unsigned long len)
 	if(buffer->DCB.matches.buff_count == 0 ) {
 	    buffer->reconstruct_pos = buffer->DCB.matches.ver_start;
 	} else { 
-	    buffer->reconstruct_pos = buffer->DCB.matches.cur->ver_pos + 
-		buffer->DCB.matches.cur->len;
+	    buffer->reconstruct_pos = LLM_VEND(buffer->DCB.matches.cur);
 	    DCBufferIncr(buffer);
 	}
     } else if(DCBUFFER_LLMATCHES_TYPE == buffer->DCBtype) {
 	assert(buffer->DCB.llm.buff_count > 0);
-	assert(buffer->DCB.llm.cur->ver_pos + buffer->DCB.llm.cur->len - 
-	    len >= 0);
-	trunc_pos = buffer->DCB.llm.cur->ver_pos + buffer->DCB.llm.cur->len - 
-	    len;
+	assert(LLM_VEND(buffer->DCB.llm.cur) - len >= 0);
+	trunc_pos = LLM_VEND(buffer->DCB.llm.cur) - len;
 	while(buffer->DCB.llm.buff_count > 0 && 
-	    trunc_pos < buffer->DCB.llm.cur->ver_pos + 
-	    buffer->DCB.llm.cur->len) {
+	    trunc_pos < LLM_VEND(buffer->DCB.llm.cur)) {
 	    if(buffer->DCB.llm.cur->ver_pos >= trunc_pos) {
 #ifdef DEBUG_DCBUFFER
 		buffer->total_copy_len -= buffer->DCB.llm.cur->len;
@@ -167,8 +166,8 @@ DCB_truncate(CommandBuffer *buffer, unsigned long len)
 		DCBufferDecr(buffer);
 	    } else {
 #ifdef DEBUG_DCBUFFER
-		buffer->total_copy_len -= (buffer->DCB.llm.cur->ver_pos + 
-		    buffer->DCB.llm.cur->len) - trunc_pos;
+		buffer->total_copy_len -= LLM_VEND(buffer->DCB.llm.cur) - 
+		    trunc_pos;
 #endif
 		buffer->DCB.llm.cur->len = trunc_pos - 
 		    buffer->DCB.llm.cur->ver_pos;
@@ -177,8 +176,7 @@ DCB_truncate(CommandBuffer *buffer, unsigned long len)
 	if(buffer->DCB.llm.buff_count == 0 ) {
 	    buffer->reconstruct_pos = buffer->DCB.llm.ver_start;
 	} else {
-	    buffer->reconstruct_pos = buffer->DCB.llm.cur->ver_pos + 
-		buffer->DCB.llm.cur->len;
+	    buffer->reconstruct_pos = LLM_VEND(buffer->DCB.llm.cur);
 	    DCBufferIncr(buffer);
 	}
     }
@@ -291,6 +289,7 @@ DCB_add_copy(CommandBuffer *buffer, unsigned long src_pos,
 	buffer->DCB.matches.buff_count++;
 	buffer->reconstruct_pos = ver_pos + len;
     } else if(DCBUFFER_LLMATCHES_TYPE == buffer->DCBtype) {
+	assert((DCB_LLM_FINALIZED & buffer->flags)==0);
 	if(buffer->DCB.llm.buff_count == buffer->DCB.llm.buff_size) {
 	    DCB_resize_llmatches(buffer);
 	}
@@ -554,6 +553,45 @@ DCB_test_llm_main(CommandBuffer *buff)
     return 1;
 }
 
+int
+cmp_llmatch(void *dl1, void *dl2)
+{
+    LL_DCLmatch *d1 = (LL_DCLmatch *)dl1;
+    LL_DCLmatch *d2 = (LL_DCLmatch *)dl2;
+    if(d1->ver_pos < d2->ver_pos)
+	return -1;
+    else if(d1->ver_pos > d2->ver_pos)
+	return 1;
+    if(d1->len == d2->len) 
+	return 0;
+    else if(d1->len < d2->len)
+	return -1;
+    return 1;
+}
+
+void
+DCB_merge(CommandBuffer *buff)
+{
+    unsigned long x, skip;
+    LL_DCLmatch *mptr;
+    off_u64 last_vend;
+    if(!(buff->DCBtype & DCBUFFER_LLMATCHES_TYPE)) {
+	return;
+    }
+    if((buff->DCB.llm.buff = (LL_DCLmatch *)realloc(buff->DCB.llm.buff, 
+	buff->DCB.llm.buff_count * sizeof(LL_DCLmatch)))==NULL) {
+	abort();
+    }
+//    qsort(buff->DCB.llm.buff, buff->DCB.llm.buff_count, sizeof(LL_DCLmatch),
+//	cmp_llmatch);
+//    mptr = buffer->DCB.llm.main_head;
+    for(x=1; x < buff->DCB.llm.buff_count; x++) {
+	
+    }
+    DCBufferReset(buff);
+    
+}
+    
 void
 DCB_insert(CommandBuffer *buff)
 {
@@ -564,22 +602,21 @@ DCB_insert(CommandBuffer *buff)
     if(buff->DCB.llm.buff_count > 0 ) {
 	buff->DCB.llm.cur--;
 	v1printf("inserting a segment %lu:%lu, commands(%u)\n", 
-	    buff->DCB.llm.buff->ver_pos, buff->DCB.llm.cur->ver_pos + 
-	    buff->DCB.llm.cur->len, buff->DCB.llm.buff_count);
+	    buff->DCB.llm.buff->ver_pos, LLM_VEND(buff->DCB.llm.cur), 
+	    buff->DCB.llm.buff_count);
 
 	assert(buff->DCB.llm.main_head==NULL ? buff->DCB.llm.main == NULL : 1);
 /*	if(buff->DCB.llm.main_head) {
 	    if(buff->DCB.llm.main->next == NULL) {
-		assert(buff->DCB.llm.cur->ver_pos + buff->DCB.llm.cur->len 
-		    <= buff->ver_size);
+		assert(LLM_VEND(buff->DCB.llm.cur) <= buff->ver_size);
 	    } else if(buff->DCB.llm.main==buff->DCB.llm.main_head) {
 		assert(buff->DCB.llm.main_head->ver_pos >= 
-		    buff->DCB.llm.cur->len + buff->DCB.llm.cur->ver_pos);
+		    LLM_VEND(buff->DCB.llm.cur));
 	    } else {
-		assert(buff->DCB.llm.cur->ver_pos >= buff->DCB.llm.main->ver_pos 
-		    + buff->DCB.llm.main->len );
-		assert(buff->DCB.llm.cur->ver_pos + buff->DCB.llm.cur->len 
-		    <= buff->DCB.llm.main->next->ver_pos);
+		assert(buff->DCB.llm.cur->ver_pos >= 
+		   LLM_END(buff->DCB.llm.main));
+		assert(LLM_END(buff->DCB.llm.cur)<= 
+		   buff->DCB.llm.main->next->ver_pos);
 	    }
 	}*/
 	if((buff->DCB.llm.buff = (LL_DCLmatch *)realloc(buff->DCB.llm.buff, 
