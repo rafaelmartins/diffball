@@ -705,7 +705,7 @@ DCB_rec_copy_from_DCB_src(CommandBuffer *tdcb, command_list *tcl,
 	    	    }
 	    	    if(x < 0)
 	    		return x;
-		    v1printf("as %u\n", x);
+		    v2printf("as %u\n", x);
 
 		    translation_map[scl->src_id[com_offset]] = x;
 
