@@ -5,26 +5,27 @@ struct tar_entry *convert_str_tar_entry(char *block);
 
 struct tar_entry {
     unsigned char       *name;
-    unsigned int        mode;
-    unsigned int        uid;
-    unsigned int        gid;
-    unsigned long       size;
+    unsigned long int   mode;
+    unsigned long int   uid;
+    unsigned long int   gid;
+    /* float, at least on my machine can represent 8**12, is this true for all archs? */
+    /* fix this obviously. */
+    unsigned long int   size;
     /*unsigned long     mtime;*/
-    unsigned char       *mtime[12];
+    unsigned char       mtime[12];
     unsigned long       chksum;
     unsigned char       typeflag;
-    unsigned char       *linkname[100];
-    unsigned char       *magic[6];
-    unsigned char       *version[2];
-    unsigned char       *uname[32];
-    unsigned char       *gname[32];
-    unsigned int        devmajor;
-    unsigned int        devminor;
-    unsigned char       *prefix[155];
-    unsigned long	file_loc;
-    unsigned int        entry_num;
-/* I'm sure there is a better method, but I'm tired of screwing w/ ptrs. */
-    unsigned char       *fullname[257];  /*concattenation of prefix and name, 1 extra for null */
+    unsigned char       *linkname;
+    unsigned char       magic[6];
+    unsigned char       version[2];
+    unsigned char       *uname;
+    unsigned char       *gname;
+    unsigned long int   devmajor;
+    unsigned long int   devminor;
+    unsigned long int	file_loc;
+    unsigned long int   entry_num;
+    unsigned int        prefix_len;
+    unsigned char       *fullname;  /*concattenation of prefix and name, 1 extra for null */
     unsigned char       *fullname_ptr;
     
 };
@@ -57,6 +58,7 @@ int verify_str_chksum(const char *block)
 
 struct tar_entry *convert_str_tar_entry(char *block/*[512]*/)
 {
+    unsigned int l=0;
     char tmp8[9];
     char tmp12[13];
     struct tar_entry *t;
@@ -90,42 +92,58 @@ struct tar_entry *convert_str_tar_entry(char *block/*[512]*/)
     t->mtime = strtol((char *)tmp12, NULL, 12);             block+=12;*/
     strncpy((char *)t->mtime, (const char *)block, 12);      block+=12;
     strncpy((char *)tmp8, (const char *)block, 8);          tmp12[8]='\0';
-    t->chksum = (unsigned long)strtol((char *)tmp8, NULL,8);               block+=8;
-    t->typeflag = *block;                                   block++;
-    strncpy((char *)t->linkname, (const char *)block,100);   block+=100;
+    t->chksum = (unsigned long)strtol((char *)tmp8, NULL,8);               block+=8;    
+    t->typeflag = *block;                                    block++;
+    l = strnlen(block, 100);
+    if((t->linkname = (char *)calloc(sizeof(char), l +1))==NULL) {
+        perror("not enough memory.\n");
+        exit(EXIT_FAILURE);
+    }
+    if(l != 0)
+        strncpy((char *)t->linkname, (const char *)block,100);
+    t->linkname[l]='\0';
+    block+=100;
     strncpy((char *)t->magic, (const char *)block, 6);       block+=6;
     strncpy((char *)t->version, (const char *)block, 2);     block+=2;
-    strncpy((char *)t->uname, (const char *)block, 32);      block+=32;
-    strncpy((char *)t->gname, (const char *)block, 32);      block+=32;
+    l=strnlen(block,32);
+    if((t->uname = (char *)calloc(sizeof(char), l+1))==NULL) {
+        perror("not enough memory.\n");
+        exit(EXIT_FAILURE);
+    }
+    if(l != 0)
+        strncpy((char *)t->uname, (const char *)block, 32);
+    t->uname[l]='\0';
+    block+=32;
+    l=strnlen(block, 32);
+    if((t->gname = (char *)calloc(sizeof(char), l+1))==NULL) {
+        perror("not enough memory.\n");
+        exit(EXIT_FAILURE);
+    }
+    if(l != 0)
+        strncpy((char *)t->gname, (const char *)block, 32);
+    t->gname[l] = '\0';
+    block+=32;
     strncpy((char *)tmp8, (const char *)block, 8);          tmp8[8]='\0';
     t->devmajor = strtol((char *)tmp8, NULL, 8);            block+=8;
     strncpy((char *)tmp8, (const char *)block, 8);          tmp8[8]='\0';
     t->devminor = strtol((char *)tmp8, NULL, 8);            block+=8;
-    if(strnlen(block, 155)==0) { /* ergo prefix is nothing */
-        *(t->prefix) = '\0';
+    if ( (t->prefix_len = strnlen(block, 155)) == 0) { /* ergo prefix is nothing */
+        if( (t->fullname_ptr = t->fullname = (char *)calloc(sizeof(char), strnlen(block-345, 100) + 1)) == NULL) {
+            perror("not enough memory.\n");
+            exit(EXIT_FAILURE);
+        }
         strncpy((char *)t->fullname, (char *)(block -345), 100);
         t->name=(char *)t->fullname;
-        //*(t->fullname[strnlen(t->fullname, 100) +1])='\0';
     } else {
-        /* I don't think this works.  soo... needs testing. */
-        char *p = (char *)t->fullname;
-        //printf("non-null prefix\n");
-        strncpy((char *)t->prefix, (char *)block, 155);
-        strncpy((char *)p, (char *)t->prefix, 155);
-        //printf("so far='%s'\n", t->prefix);
-        //printf("part deux\n");
-        p[strnlen((char *)t->prefix, 155) +1]=(char)'/';
-        //printf("midway\n");
-        t->name = (char *)(p + strnlen(t->prefix, 155)+2);
-        //printf("part troi\n");
+        if( (t->fullname_ptr = t->fullname=(char *)calloc(sizeof(char), l + strnlen(block-345, 100) + 2)) == NULL) {
+            perror("not enough memory.\n");
+            exit(EXIT_FAILURE);
+        }
+        strncpy((char *)t->fullname_ptr, (char *)block, t->prefix_len);
+        t->fullname_ptr[t->prefix_len + 1]=(char)'/';
+        t->name = (char *)(t->fullname_ptr + t->prefix_len + 2);
         strncpy((char *)t->name, (char *)(block -345), 100);
-        //stncpy((char *)(t->fullname + strnlen(t->fullname, 155) +3), (char *)(block -345), 100);
-        //printf("grand finale\n");
-        p[strnlen((char *)t->fullname, 255) +1] = '\0';
+        t->fullname_ptr[strnlen((char *)t->fullname_ptr, 255) +1] = '\0';
     }
-    /*strncpy((char *)t->prefix, (const char *)block, 155);
-    strncpy((char *)t->fullname, (char *)t->prefix, 155);
-    strncat((char *)t->fullname, (char *)t->name, 100);*/
     return t;
-    //printf("matched %i\n", sscanf((const char *)block,"%8c",t.mode));
 }
