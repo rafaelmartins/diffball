@@ -138,8 +138,6 @@ read_entry(cfile *src_cfh, off_u64 start, tar_entry *entry)
 	}
 	entry->fullname[name_len] = '\0';
 	entry->end += octal_str2long(block + TAR_SIZE_LOC, TAR_SIZE_LEN) + 1024;
-	//round the bugger up.
-//	entry->size = octal_str2long(block + TAR_SIZE_LOC, TAR_SIZE_LEN) + 1024 + start;
     } else {
 	name_len = strnlen(block + TAR_NAME_LOC, TAR_NAME_LEN);
 	prefix_len = strnlen(block + TAR_PREFIX_LOC, TAR_PREFIX_LEN);

@@ -80,6 +80,9 @@ DONE	* general reduction of patcher's memory usage; free DCB.full.cl if using a 
 	  of sorted lists fex.
 DONE	* standardize a buffer abstraction for command_lists.
 DONE	* use said standardized command_list
+DONE	* bufferless reconstruct; it's not always needed (or wanted, from a memory standpoint)
+	  to read in all commands, then process them.  so... bufferless reconstruct for 
+	  single patch transformations that aren't reordered.
 	* add patch info functions, for polling info on existant patches.
 	  possibly a new binary, although might be overkill.
 

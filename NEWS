@@ -1,8 +1,13 @@
 * Reconstruction via multiple patches is now supported for all supported patch formats- no limitations on mixing formats also.
   I'd suspect a bug or two linger, but not many (been threw a fair amount of testing).
-
-  No temps files used, each patch's command are merged into a single buffer in memory, rather then using intermediate files.
   
+  No temps files used, each patch's command are merged into a single buffer in memory, rather then using intermediate files.
+
+  Only limitation is number of registered dcb srcs; 256 is the current max.
+  For switching/bdiff/bdelta/gdiff/xdelta, 256 patches are allowed.
+  For bdiff, dependant on the version, figure 128- bsdiff is broken down into multiple bz2'd segments, so for reconstructing
+  from a bsdiff patch patcher must maintain 2 decompressors into the file.
+
 * Reading from compressed (gzip and bzip2, currently) patches/files is now supported, and pretty well tested.
   *NOTE* this is mainly for patcher, and convert_delta.  Using compressed srcs for differ/diffball isn't sane (due to issues 
   w/ seeking detailed below).
@@ -19,6 +24,11 @@
   The commands are reordered such that copies from a src are in sequential order- writes to the reconstructed file are random.
   
   This isn't as quick as I'd like it to be, but its worst case is *much* saner then for dealing w/ seeking in compressed srcs.
+  I would suspect it's performance could be tuned a bit, but currently it is better then the alternative.
+
+* Default behaviour for applying single patches is now to _not_ read in the entire patch commands; now it just executes them as 
+  it encounters them, unless A) applying multiple patches, B) decompressing files, C) reorder for read seq write random is in effect.
+  Decreases memory usage nicely, and doesn't affect performance.
 
 * One Half Pass Correcting alg implementation has been rewritten- basically the same, just minus an extra set of buffers.
   Quicker overall, and some long standing corner cases accessing beyond the buffers has been fixed.

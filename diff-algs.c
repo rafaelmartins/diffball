@@ -110,13 +110,11 @@ OneHalfPassCorrecting2(CommandBuffer *dcb, RefHash *rh, unsigned char rid, cfile
 	vm = vc;
 	rm = hash_offset;
 	while(vm > 0 && rm > 0) {
-//	    if(vm -1 < vcfw->offset) {
 	    while(vm - 1 < vcfw->offset) {
 		vcfw = prev_page(vcfh);
 		if(vcfw->end == 0)
 		    return IO_ERROR;
 	    }
-//	    if(rm -1 < rcfw->offset) {
 	    while(rm - 1 < rcfw->offset) {
 		rcfw = prev_page(rh->ref_cfh);
 		if(rcfw->end == 0) 
@@ -145,7 +143,6 @@ OneHalfPassCorrecting2(CommandBuffer *dcb, RefHash *rh, unsigned char rid, cfile
 	if(rcfw->end == 0 && rcfw->offset != ref_len)
 	    return IO_ERROR;
 
-//	while(vcfw->end > 0 && rcfw->end > 0) {
 	while(vm + len < ver_len && rm + len < ref_len) {
 	    if(vm + len >= end_pos(vcfw)) {
 	    	vcfw = next_page(vcfh);
@@ -413,11 +410,12 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, unsigned char ref_id,
     } else {
 	seed_len = 128;
     }
-    for(/*seed_len = 512*/; seed_len >=16; seed_len /= 2) {
-	gap_req = seed_len;// * MULTIPASS_GAP_KLUDGE;
+    for(; seed_len >=16; seed_len /= 2) {
+	gap_req = seed_len;
 	v1printf("\nseed size(%lu)...\n\n", seed_len);
 	gap_total_len = 0;
 	DCBufferReset(buff);
+
 #ifdef DEBUG_DCBUFFER
 	    assert(DCB_test_llm_main(buff));
 #endif
@@ -436,7 +434,6 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, unsigned char ref_id,
 		continue;
 	    }
 	    hash_size= max_hash_size;
-	    //hash_size = MIN(max_hash_size, gap_total_len);
 	    sample_rate = COMPUTE_SAMPLE_RATE(hash_size, gap_total_len);
 	    v1printf("using hash_size(%lu), sample_rate(%lu)\n", 
 		hash_size, sample_rate);

@@ -86,6 +86,7 @@ xdelta1ReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcb
     cread(patchf, buff, 4);
 
     dcbuff->ver_size = 0;
+    
     // the header is 32 bytes, then 2 word's, each the length of the 
     // src/trg file name.
     add_start = 32 + readUBytesBE(buff, 2) + readUBytesBE(buff + 2, 2);
@@ -93,7 +94,7 @@ xdelta1ReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcb
     control_end = ctell(patchf, CSEEK_FSTART);
     cread(patchf, buff, 4);
     control_offset = readUBytesBE(buff,4);
-    //add_end = control_offset;
+
     cseek(patchf, control_offset, CSEEK_FSTART);
 
     if(flags & XD_COMPRESSED_FLAG) {
@@ -118,7 +119,7 @@ xdelta1ReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcb
     cseek(ctrl_cfh, 2, CSEEK_CUR);
     /* get and skip the segment name's len and md5 */
     x = readXDInt(ctrl_cfh, buff);
-	//v2printf("seg1_len(%lu)\n", x);
+
     cseek(ctrl_cfh, x + 16, CSEEK_CUR);
 
     /* read the damned segment patch len. */
@@ -159,9 +160,8 @@ xdelta1ReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcb
 	add_id = DCB_REGISTER_ADD_SRC(dcbuff, add_cfh, NULL, 1);
     } else {
 	add_pos = add_start;
-	add_id = DCB_REGISTER_ADD_SRC(dcbuff, patchf, NULL, 0);
+	add_id = DCB_REGISTER_VOLATILE_ADD_SRC(dcbuff, patchf, NULL, 0);
     }
-//    ref_id = DCB_REGISTER_COPY_SRC(dcbuff, ref_cfh, NULL, 0);
     ref_id = src_id;
     while(proc_count++ != count) {
 	x = readXDInt(ctrl_cfh, buff);

@@ -24,7 +24,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include "tar.h"
-//#include "data-structs.h"
 #include "cfile.h"
 #include "dcbuffer.h"
 #include "diff-algs.h"
@@ -261,18 +260,6 @@ main(int argc, char **argv)
     ver_id = DCB_REGISTER_ADD_SRC(&dcbuff, &ver_full, NULL, 0);
     ref_id = DCB_REGISTER_COPY_SRC(&dcbuff, &ref_full, NULL, 0);
     for(x=0; x< target_count; x++) {
-//	if(target[x]->file_loc < 1155051 || target[x]->file_loc > 
-//	    1155053) {
-//	    v0printf("bypassing %lu...\n", target[x]->file_loc);
-//	    DCB_add_add(&dcbuff, target[x]->file_loc * 512, 
-//	    512 + (target[x]->size==0 ? 0 :
-//	                    target[x]->size + 512 - (target[x]->size % 512==0 ?
-//	                                    512 : target[x]->size % 512)), ver_id);
-//	    continue;
-//	} else {
-//	    v0printf("processing\n");
-//	}
-
 	v1printf("processing %lu of %lu\n", x + 1, target_count);
 	tar_ptr = &target[x];
         vptr = bsearch(&tar_ptr, src_ptrs, 
@@ -282,33 +269,17 @@ main(int argc, char **argv)
 		target[x].fullname);
         } else {
             tar_ptr = (tar_entry *)*((tar_entry **)vptr);
-//	    tar_ptr = (tar_entry *)vptr;
             v1printf("found match between %.255s and %.255s\n", target[x].fullname,
 		tar_ptr->fullname);
 	    v2printf("differencing src(%lu:%lu) against trg(%lu:%lu)\n",
 		tar_ptr->start, tar_ptr->end, target[x].start, target[x].end);
-/*        	(512 * tar_ptr->file_loc), (512 * tar_ptr->file_loc) + 512 + 
-		(tar_ptr->size==0 ? 0 :	tar_ptr->size + 512 - 
-		(tar_ptr->size % 512==0 ? 512: 	tar_ptr->size % 512)),
-		(512 * target[x]->file_loc), (512 * target[x]->file_loc) + 
-		512 +(target[x]->size==0 ? 0 : target[x]->size + 512 - 
-		(target[x]->size % 512==0 ? 512 : target[x]->size % 512) ));
-*/
+
 	    copen_child_cfh(&ver_window, &ver_full, target[x].start, target[x].end,
             	NO_COMPRESSOR, CFILE_RONLY | CFILE_BUFFER_ALL);
-/*	    (512 * target[x]->file_loc),
-            	(512 * target[x]->file_loc) + 512 + (target[x]->size==0 ? 0 :
-            	target[x]->size + 512 - (target[x]->size % 512==0 ? 
-	    	512 : target[x]->size % 512)),
-*/
+
             copen_child_cfh(&ref_window, &ref_full, tar_ptr->start, tar_ptr->end,
         	NO_COMPRESSOR, CFILE_RONLY | CFILE_BUFFER_ALL);
             
-/*            (512 * tar_ptr->file_loc), 
-        	(512 * tar_ptr->file_loc) + 512 + (tar_ptr->size==0 ? 0 :
-        	tar_ptr->size + 512 - (tar_ptr->size % 512==0 ? 
-        	512 : tar_ptr->size % 512)),
-*/
             match_count++;
             init_RefHash(&rhash_win, &ref_window, 24, 1, 
 		cfile_len(&ref_window), RH_BUCKET_HASH);
@@ -342,7 +313,6 @@ main(int argc, char **argv)
 
     copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY | CFILE_OPEN_FH);
     v1printf("outputing patch...\n");
-//    v1printf("there were %lu commands\n", dcbuff.DCB.full.cl.com_count);
     if(GDIFF4_FORMAT == patch_format_id) { 
         encode_result = gdiff4EncodeDCBuffer(&dcbuff, &out_cfh);
     } else if(GDIFF5_FORMAT == patch_format_id) {

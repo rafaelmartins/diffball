@@ -35,6 +35,7 @@ extern unsigned int global_use_md5;
 #define DCBUFFER_FULL_TYPE		0x1
 #define DCBUFFER_MATCHES_TYPE		0x2
 #define DCBUFFER_LLMATCHES_TYPE		0x4
+#define DCBUFFER_BUFFERLESS_TYPE	0x8
 
 #define DCB_LLM_FINALIZED		0x2
 
@@ -127,6 +128,10 @@ typedef struct _CommandBuffer {
     off_u64 total_copy_len;
 #endif
     union {
+    	struct {
+    	    DCommand		dc;
+    	    cfile		*out_cfh;
+    	} no_buff;
 	struct {
 	    command_list 	cl;
 	    unsigned long 	command_pos;
@@ -178,12 +183,22 @@ int internal_DCB_register_cfh_src(CommandBuffer *dcb, cfile *cfh,
     dcb_src_read_func read_func, dcb_src_copy_func copy_func, 
     unsigned char free, unsigned char type);
 
+int internal_DCB_register_volatile_cfh_src(CommandBuffer *dcb, cfile *cfh,
+    dcb_src_read_func read_func, dcb_src_copy_func copy_func, 
+    unsigned char free, unsigned char type);
+
+#define DCB_REGISTER_VOLATILE_ADD_SRC(dcb, cfh, func, free)		\
+    internal_DCB_register_volatile_cfh_src((dcb), (cfh), NULL, (func), DC_ADD, (free))
+#define DCB_REGISTER_VOLATILE_COPY_SRC(dcb, cfh, func, free)		\
+    internal_DCB_register_volatile_cfh_src((dcb), (cfh), NULL, (func), DC_COPY, (free))
+
 #define DCB_REGISTER_ADD_SRC(dcb, cfh, func, free)	internal_DCB_register_cfh_src((dcb), (cfh), NULL, (func), DC_ADD, (free))
 #define DCB_REGISTER_COPY_SRC(dcb, cfh, func, free)	internal_DCB_register_cfh_src((dcb), (cfh), NULL, (func), DC_COPY, (free))
 #define DCB_register_src(dcb, cfh, rf, cf, free, type)  internal_DCB_register_cfh_src((dcb), (cfh), (rf), (cf), (type), (free))
 
 unsigned long inline current_command_type(CommandBuffer *buff);
 
+void DCB_register_out_cfh(CommandBuffer *dcb, cfile *out_cfh);
 void DCB_free_commands(CommandBuffer *dcb);
 DCBSearch * create_DCBSearch_index(CommandBuffer *dcb);
 void free_DCBSearch_index(DCBSearch *s);

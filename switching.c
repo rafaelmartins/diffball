@@ -153,7 +153,6 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 	    //yes this is a hack.  but it works.
 	    if(offset_type == ENCODING_OFFSET_DC_POS) {
 		s_off = dc.data.src_pos - dc_pos;
-		//u_off = 2 * (abs(s_off));
 	    	u_off = abs(s_off);
 	    	v2printf("off(%lu), dc_pos(%lu), u_off(%lu), s_off(%ld): ", 
 		    dc.data.src_pos, dc_pos, u_off, s_off);
@@ -174,8 +173,6 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 	    	temp=0;
 	    	lb=4;
 	    }
-	    //v2printf("len(%lu) falls into cat(%u) for copy_len\n", 
-//		temp_len, temp);
 	    temp_len -= copy_len_start[temp];
 	    writeUBitsBE(out_buff, temp_len, lb);
 	    out_buff[0] |= (temp << 6);
@@ -235,8 +232,9 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
     return 0;
 }
 
-//signed int switchingReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff) {
-signed int switchingReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcbuff) {
+signed int 
+switchingReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcbuff)
+{
     const unsigned int buff_size = 4096;
     unsigned char buff[buff_size];
     unsigned char ref_id, add_id;
@@ -272,8 +270,7 @@ signed int switchingReconstructDCBuff(unsigned char src_id, cfile *patchf, Comma
     cseek(patchf, com_start, CSEEK_CUR);
     add_off = SWITCHING_MAGIC_LEN + SWITCHING_VERSION_LEN + 4;
     last_com=DC_COPY;
-    add_id = DCB_REGISTER_ADD_SRC(dcbuff, patchf, NULL, 0);
-//    ref_id = DCB_REGISTER_COPY_SRC(dcbuff, ref_cfh, NULL, 0);
+    add_id = DCB_REGISTER_VOLATILE_ADD_SRC(dcbuff, patchf, NULL, 0);
     ref_id = src_id;
     v2printf("add data block size(%lu), starting commands at pos(%lu)\n", com_start,
 	ctell(patchf, CSEEK_ABS));
@@ -296,7 +293,6 @@ signed int switchingReconstructDCBuff(unsigned char src_id, cfile *patchf, Comma
 	    } else if(last_com != DC_COPY) {
 	    	lb = (buff[0] >> 6) & 0x3;
 	    	ob = (buff[0] >> 4) & 0x3;
-	    	//v2printf("lb(%u), len(%lu): ", lb, len);
 	    	len = buff[0] & 0x0f;
 	    	if(lb) {
 	    	    cread(patchf, buff, lb);
@@ -304,12 +300,12 @@ signed int switchingReconstructDCBuff(unsigned char src_id, cfile *patchf, Comma
 	    	    //v2printf("adding(%lu): ", copy_len_start[lb]);
 	    	    len += copy_len_start[lb];
 	    	}
-	    	//v2printf("len now(%lu): ", len);
 	    	v2printf("ob(%u): ", ob);
 	    	cread(patchf, buff, ob + 1);
 		if (offset_type == ENCODING_OFFSET_DC_POS) {
 	    	    s_off = readSBytesBE(buff, ob + 1);
-   // positive or negative 0?  Yes, for this, there is a difference... 
+
+   		    // positive or negative 0?  Yes, for this, there is a difference... 
 	    	    if(buff[0] & 0x80) {
 	    		s_off -= copy_off_array[ob];
 	    	    } else {

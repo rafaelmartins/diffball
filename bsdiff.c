@@ -63,12 +63,7 @@ bsdiff_overlay_copy(DCommand *dc,
     DCLoc *dptr;  DCB_registered_src *dsrc;
     overlay_chain *ov;
     ov = dc->dcb_src->ov;
-//    index = ov->index[dc->ov_index];
-//    if(dc->ov_index < ov->index_count - 1) {
-//    	index_end = ov->index[dc->ov_index + 1];
-//    } else {
-//    	index_end = ov->com_count;
-//    }
+
     // error checking...
     v3printf("processing src(%lu), len(%lu), ver(%lu)\n", dc->data.src_pos, dc->data.len, dc->data.ver_pos);
     cflush(out_cfh);
@@ -76,9 +71,7 @@ bsdiff_overlay_copy(DCommand *dc,
     	return 0L;
     }
     cfw = expose_page(dc->dcb_src->src_ptr.cfh);
-//    cseek(out_cfh, dc->data.ver_pos, CSEEK_FSTART);
     ocfw = expose_page(out_cfh);
-//    while(index < index_end) {
     commands_read = 1;
     while(dc->ov_len > commands_read) {
     	com_len = 0;
@@ -186,7 +179,6 @@ bsdiffReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcbu
 	return MEM_ERROR;
     }
     
-//    ref_id = DCB_REGISTER_COPY_SRC(dcbuff, ref_cfh, NULL, 0);
     ref_id = src_id;
     diff_id = DCB_register_overlay_src(dcbuff, diff_cfh, &bsdiff_overlay_read, 
     	&bsdiff_overlay_copy, NULL, (unsigned char)DCB_FREE_SRC_CFH);
@@ -238,7 +230,6 @@ bsdiffReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcbu
 	return PATCH_CORRUPT_ERROR;
     }
     cclose(&ctrl_cfh);
-//    DCB_REGISTER_EXTRA_PATCH_DATA(dcbuff, src_offsets);
     return 0;
 }
 

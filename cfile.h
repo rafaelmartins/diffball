@@ -152,6 +152,8 @@ int copen_child_cfh(cfile *cfh, cfile *parent, unsigned long fh_start,
     unsigned long fh_end, unsigned int compressor_type, unsigned int
     access_flags);
 
+cfile *copen_dup_cfh(cfile *cfh);
+
 unsigned int  cclose(cfile *cfh);
 signed long cread(cfile *cfh, unsigned char *out_buff, unsigned long len);
 signed long cwrite(cfile *cfh, unsigned char *in_buff, unsigned long len);

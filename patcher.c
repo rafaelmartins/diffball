@@ -57,6 +57,7 @@ main(int argc, char **argv)
     char  *out_name;
     unsigned long patch_count;
     unsigned char reorder_commands = 0;
+    unsigned char bufferless = 1;
     char  **patch_name, **p;
     unsigned long int patch_id[256];
     signed long int recon_val=0;
@@ -110,6 +111,9 @@ main(int argc, char **argv)
 	patch_count--;
     }
 
+    /* currently, unwilling to do bufferless for more then one patch.  overlay patches are the main 
+       concern; it shouldn't be hard completing the support, just no motivation currently :) */
+
     for(x=0; x < patch_count; x++) {
         if(stat(patch_name[x], &patch_stat)) {
 	   v0printf("error stat'ing patch file '%s'\n", patch_name[x]);
@@ -148,6 +152,14 @@ main(int argc, char **argv)
     	cseek(&patch_cfh[x], 0, CSEEK_FSTART);
     }
 
+    if(patch_count -1) {
+    	bufferless = 0;
+    	v1printf("disabling bufferless, patch_count(%lu) != 1\n", patch_count);
+    } else {
+    	v1printf("enabling bufferless, patch_count(%lu) != 1\n", patch_count);
+    	bufferless = 1;
+    }
+
     v1printf("verbosity level(%u)\n", global_verbosity);
     if ((src_fh = open(src_name, O_RDONLY,0)) == -1) {
 	v0printf("error opening source file '%s'\n", src_name);
@@ -158,22 +170,49 @@ main(int argc, char **argv)
 	CFILE_RONLY);
 
     for(x=0; x < patch_count; x++) {
-        if(x==0) {
-    	    if(DCBufferInit(&dcbuff[0], 4096, src_stat.st_size, 0, 
-	    	DCBUFFER_FULL_TYPE)) {
-	    	v0printf("unable to alloc needed mem, exiting\n");
-	    	abort();
+        if(x == patch_count - 1 && reorder_commands == 0 && bufferless) {
+            v1printf("not reordering, and bufferless is %u, going bufferless\n", bufferless);
+	    if(x==0) {
+	        if(DCBufferInit(&dcbuff[0], 0, src_stat.st_size, 0, DCBUFFER_BUFFERLESS_TYPE)) {
+	            v0printf("unable to alloc needed mem, exiting\n");
+	    	    abort();
+	    	}
+            	src_id = internal_DCB_register_cfh_src(&dcbuff[0], &src_cfh, NULL, NULL, DC_COPY, 0);
+	    } else {
+	    	if(DCBufferInit(&dcbuff[x % 2], 0, dcbuff[(x - 1) % 2].ver_size, 0, DCBUFFER_BUFFERLESS_TYPE)) {
+	    	    v0printf("unable to alloc needed mem, exiting\n");
+	    	    abort();
+	    	}
+    	    	src_id = DCB_register_dcb_src(dcbuff + ( x % 2), dcbuff + ((x -1) % 2));
 	    }
-            src_id = internal_DCB_register_cfh_src(&dcbuff[0], &src_cfh, NULL, NULL, DC_COPY, 0);
-    	} else {
-    	    if(DCBufferInit(&dcbuff[x % 2], 4096, dcbuff[(x - 1) % 2].ver_size , 0, 
-	    	DCBUFFER_FULL_TYPE)) {
-	    	v0printf("unable to alloc needed mem, exiting\n");
-	    	abort();
+	    	
+    	    if((out_fh = open(out_name, O_RDWR | O_TRUNC | O_CREAT, 0644))==-1) {
+		v0printf( "error creating out file (open failed)\n");
+    		exit(1);
     	    }
-    	    src_id = DCB_register_dcb_src(dcbuff + ( x % 2), dcbuff + ((x -1) % 2));
-	    v1printf("id = %lu\n", src_id);
-        }
+    	    if(copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WR)) {
+		v0printf("error opening output file, exitting\n");
+		exit(EXIT_FAILURE);
+    	    }
+	    DCB_register_out_cfh(&dcbuff[x % 2], &out_cfh);
+	} else {
+            if(x==0) {
+    	    	if(DCBufferInit(&dcbuff[0], 4096, src_stat.st_size, 0, 
+	    	    DCBUFFER_FULL_TYPE)) {
+	    	    v0printf("unable to alloc needed mem, exiting\n");
+	    	    abort();
+	    	}
+            	src_id = internal_DCB_register_cfh_src(&dcbuff[0], &src_cfh, NULL, NULL, DC_COPY, 0);
+    	    } else {
+    	    	if(DCBufferInit(&dcbuff[x % 2], 4096, dcbuff[(x - 1) % 2].ver_size , 0, 
+	    	    DCBUFFER_FULL_TYPE)) {
+	    	    v0printf("unable to alloc needed mem, exiting\n");
+	    	    abort();
+    	    	}
+    	    	src_id = DCB_register_dcb_src(dcbuff + ( x % 2), dcbuff + ((x -1) % 2));
+    	    }
+	}
+
     	if(SWITCHING_FORMAT == patch_id[x]) {
 	    recon_val = switchingReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
     	} else if(GDIFF4_FORMAT == patch_id[x]) {
@@ -211,33 +250,43 @@ main(int argc, char **argv)
 //    	} else if(UDIFF_FORMAT == patch_id[x]) {
 //	    recon_val = udiffReconstructDCBuff(src_id, &patch_cfh[x], &src_cfh, NULL, &dcbuff[x % 2]);
     	}
-    	v1printf("reconstruction return=%ld, commands=%ld\n", recon_val, dcbuff[x % 2].DCB.full.cl.com_count);
+
+    	v1printf("reconstruction return=%ld", recon_val);
+	if(DCBUFFER_FULL_TYPE == dcbuff[x % 2].DCBtype) {
+    	    v1printf(", commands=%ld\n", dcbuff[x % 2].DCB.full.cl.com_count);
+	    v1printf("result was %lu commands\n", dcbuff[x % 2].DCB.full.cl.com_count);
+    	} else {
+    	    v1printf("\n");
+    	}
     	if(recon_val) {
 	    v0printf("error detected while reading patch- quitting\n");
 	    exit(EXIT_FAILURE);
 	}
 	v1printf("versions size is %lu\n", dcbuff[x % 2].ver_size);
-	v1printf("result was %lu commands\n", dcbuff[x % 2].DCB.full.cl.com_count);
 	if(x) {
 	    DCBufferFree(&dcbuff[(x - 1) % 2]);
     	}
     }
     v1printf("applied %lu patches\n", patch_count);
 
-    if((out_fh = open(out_name, O_RDWR | O_TRUNC | O_CREAT, 0644))==-1) {
-	v0printf( "error creating out file (open failed)\n");
-    	exit(1);
-    }
-    if(copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WR)) {
-	v0printf("error opening output file, exitting\n");
-	exit(EXIT_FAILURE);
-    }
+    if(! bufferless) {
+	if((out_fh = open(out_name, O_RDWR | O_TRUNC | O_CREAT, 0644))==-1) {
+	    v0printf( "error creating out file (open failed)\n");
+    	    exit(1);
+    	}
+        if(copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WR)) {
+	    v0printf("error opening output file, exitting\n");
+	    exit(EXIT_FAILURE);
+    	}
 
-    v1printf("reordering commands? %u\n", reorder_commands);
-    v1printf("reconstructing target file based off of dcbuff commands...\n");
-    if(reconstructFile(&dcbuff[(patch_count - 1) % 2], &out_cfh,reorder_commands)) {
-	v0printf("error detected while reconstructing file, quitting\n");
-	//remove the file here.
+    	v1printf("reordering commands? %u\n", reorder_commands);
+    	v1printf("reconstructing target file based off of dcbuff commands...\n");
+    	if(reconstructFile(&dcbuff[(patch_count - 1) % 2], &out_cfh,reorder_commands)) {
+	    v0printf("error detected while reconstructing file, quitting\n");
+	    //remove the file here.
+    	} else {
+    	    v1printf("reconstruction completed successfully\n");
+    	}
     } else {
     	v1printf("reconstruction completed successfully\n");
     }

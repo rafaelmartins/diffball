@@ -188,7 +188,7 @@ bdeltaReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcbu
     /* add block starts after control data. */
     add_pos += (matches * (3 * int_size));
     add_start = add_pos;
-    add_id = DCB_REGISTER_ADD_SRC(dcbuff, patchf, NULL, 0);
+    add_id = DCB_REGISTER_VOLATILE_ADD_SRC(dcbuff, patchf, NULL, 0);
 //    ref_id = DCB_REGISTER_ADD_SRC(dcbuff, ref_cfh, NULL, 0);
     ref_id = src_id;
     v2printf("add block starts at %lu\nprocessing commands\n", add_pos);

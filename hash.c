@@ -120,8 +120,6 @@ hash_it(RefHash *rhash, ADLER32_SEED_CTX *ads)
 {
     if(rhash->type & (RH_MOD_HASH | RH_RMOD_HASH | RH_CMOD_HASH)) {
 	return (get_checksum(ads) % rhash->hr_size);
-//  could use just a bitmask, although doesn't perform quite as well.
-//	return (get_checksum(ads) & rhash->hr_size);
     }
     return get_checksum(ads);
 }
@@ -341,7 +339,6 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 	    chksum = ((chksum >> 16) & 0xffff);
 
 	    if(rhash->hash.bucket.depth[index]==0) {
-//		v0printf("initing bucket at index(%u)\n", index);
 		if(RH_bucket_resize(rhash, index, RH_BUCKET_MIN_ALLOC)) {
 		    return MEM_ERROR;
 		}
@@ -481,7 +478,6 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 		skip = rhash->sample_rate;
 	}
 	if(skip && worth_continuing) {
-//	    v1printf("asked to skip %lu\n", skip);
 	    if(cfw->pos + cfw->offset + skip>= ref_end) {
 		cfw->pos += skip;
 		continue;
@@ -509,8 +505,8 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 		cfw->pos += skip;
 		skip = 0;
 	    }
-	}// else {
-	// fix this.
+	} /* else {
+	  fix this. */
 	    update_adler32_seed(&ads, cfw->buff + cfw->pos, 1);
 	//}
     }
@@ -679,8 +675,6 @@ RHash_cleanse(RefHash *rhash)
     if(rhash->type & RH_SORT_HASH) {
 	assert(rhash->flags & RH_SORTED);
 	v1printf("inserts=%lu, hr_size=%lu\n", rhash->inserts, rhash->hr_size);
-//	qsort(rhash->hash.chk, rhash->inserts, sizeof(chksum_ent), 
-//	    cmp_chksum_ent);
 	rhash->duplicates=0;
 	for(x=1; x < rhash->inserts; x++) {
 	    if(rhash->hash.chk[x].offset==0) {

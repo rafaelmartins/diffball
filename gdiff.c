@@ -210,7 +210,7 @@ gdiffReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcbuf
     assert(DCBUFFER_FULL_TYPE == dcbuff->DCBtype);
     cseek(patchf, 5, CSEEK_CUR);
 
-    add_id = DCB_REGISTER_ADD_SRC(dcbuff, patchf, NULL, 0);
+    add_id = DCB_REGISTER_VOLATILE_ADD_SRC(dcbuff, patchf, NULL, 0);
 //    ref_id = DCB_REGISTER_COPY_SRC(dcbuff, ref_cfh, NULL, 0);
     ref_id = src_id;
     while(cread(patchf, buff, 1)==1 && *buff != 0) {

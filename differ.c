@@ -24,7 +24,6 @@
 #include <unistd.h>
 #include "cfile.h"
 #include "diff-algs.h"
-//#include "bit-functions.h"
 #include "string-misc.h"
 #include "formats.h"
 #include "cfile.h"
@@ -54,7 +53,6 @@ int main(int argc, char **argv)
     cfile out_cfh, ref_cfh, ver_cfh;
     int ref_fh, ver_fh, out_fh;
     unsigned char ref_id, ver_id;
-    //char *src, *trg;
     CommandBuffer buffer;
     poptContext p_opt;
 
@@ -87,7 +85,8 @@ int main(int argc, char **argv)
 		// bitch at em.
 	    } else 
 		patch_compressor = GZIP_COMPRESSOR;
-	    break;*/
+	    break;
+*/
 	}
     }
     if( ((src_file=(char *)poptGetArg(p_opt))==NULL) || 
