@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2003-2004 Brian Harring
+  Copyright (C) 2003-2005 Brian Harring
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -174,12 +174,12 @@ process_ovchain(CommandBuffer *dcb, off_u64 ver_pos,
     return ver_pos;
 }
 
-int
+EDCB_SRC_ID
 DCB_register_overlay_src(CommandBuffer *dcb, 
     cfile *src, dcb_src_read_func rf1, dcb_src_copy_func rc1, 
     dcb_src_read_func rm1, char free1)
 {
-    int id;
+    EDCB_SRC_ID id;
     id = internal_DCB_register_cfh_src(dcb, src, rf1, rc1, DC_ADD, (free1 | DCB_OVERLAY_SRC));
     if(id < 0) {
     	return id;
@@ -228,14 +228,14 @@ DCB_register_dcb_src(CommandBuffer *dcb, CommandBuffer *dcb_src)
 }
 
 
-int
+EDCB_SRC_ID
 internal_DCB_register_volatile_cfh_src(CommandBuffer *dcb, cfile *cfh, 
     dcb_src_read_func read_func, 
     dcb_src_copy_func copy_func,
     unsigned char type, unsigned char flags)
 {
     cfile *dup;
-    int x;
+    EDCB_SRC_ID x;
 
     if(DCBUFFER_BUFFERLESS_TYPE == dcb->DCBtype) {
 	v1printf("registering volatile handle, free(%u)\n", flags);
@@ -261,7 +261,7 @@ internal_DCB_register_volatile_cfh_src(CommandBuffer *dcb, cfile *cfh,
 }
 	    
 
-int
+EDCB_SRC_ID
 internal_DCB_register_cfh_src(CommandBuffer *dcb, cfile *cfh, 
     dcb_src_read_func read_func, 
     dcb_src_copy_func copy_func,

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2003-2004 Brian Harring
+  Copyright (C) 2003-2005 Brian Harring
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -70,7 +70,7 @@ xdelta1EncodeDCBuffer(CommandBuffer *buffer, unsigned int version,
 }
 
 signed int 
-xdelta1ReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcbuff, 
+xdelta1ReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff, 
     unsigned int version)
 {
     cfile *add_cfh, *ctrl_cfh;
@@ -78,7 +78,7 @@ xdelta1ReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcb
     unsigned long len, offset, x, count, proc_count;
     unsigned long add_start, add_pos;
     unsigned char buff[32];
-    unsigned char ref_id, add_id;
+    EDCB_SRC_ID ref_id, add_id;
     unsigned char add_is_sequential, copy_is_sequential;
     cseek(patchf, XDELTA_MAGIC_LEN, CSEEK_FSTART);
     cread(patchf, buff, 4);

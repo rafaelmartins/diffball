@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2003-2004 Brian Harring
+  Copyright (C) 2003-2005 Brian Harring
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -26,6 +26,5 @@
 
 unsigned int check_bdiff_magic(cfile *patchf);
 signed int bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *out_cfh);
-//signed int bdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff);
-signed int bdiffReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcbuff);
+signed int bdiffReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff);
 #endif

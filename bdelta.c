@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2003-2004 Brian Harring
+  Copyright (C) 2003-2005 Brian Harring
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -142,13 +142,12 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *patchf)
 }
 
 signed int 
-//bdeltaReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff)
-bdeltaReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcbuff)
+bdeltaReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff)
 {
     unsigned int int_size;
     #define BUFF_SIZE 12
     unsigned int ver;
-    unsigned char ref_id, add_id;
+    EDCB_SRC_ID ref_id, add_id;
     unsigned char buff[BUFF_SIZE];
     unsigned long matches, add_len, copy_len, copy_offset;
     unsigned long size1, size2, or_mask=0, neg_mask;

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2003-2004 Brian Harring
+  Copyright (C) 2003-2005 Brian Harring
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -128,14 +128,14 @@ check_bsdiff_magic(cfile *patchf)
 
 /* note this currently only supports u32, no u64. yet */
 signed int 
-bsdiffReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcbuff)
+bsdiffReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff)
 {
     cfile ctrl_cfh, *diff_cfh, *extra_cfh = NULL;
 //  following variables are related to allowing conversion of bsdiff formats, 
 //  once a reference file option is added to convert_delta (if ever)
 //  note, this functionality is removed right now.  pull it from cvs when needed
 
-    int diff_id, extra_id = -1, ref_id;
+    EDCB_SRC_ID diff_id, extra_id = -1, ref_id;
     unsigned char ver;
     unsigned char buff[32];
     off_u32 len1, len2, diff_offset, extra_offset;

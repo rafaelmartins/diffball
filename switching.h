@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2003-2004 Brian Harring
+  Copyright (C) 2003-2005 Brian Harring
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -27,5 +27,5 @@
 unsigned int check_switching_magic(cfile *patchf);
 signed int switchingEncodeDCBuffer(CommandBuffer *buffer, 
     cfile *out_cfh);
-signed int switchingReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcbuff);
+signed int switchingReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff);
 #endif

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2003-2004 Brian Harring
+  Copyright (C) 2003-2005 Brian Harring
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -188,7 +188,7 @@ OneHalfPassCorrecting(CommandBuffer *dcb, RefHash *rh, unsigned char rid, cfile 
     free_adler32_seed(&ads);
     return 0;
 }
-	
+
 
 signed int
 MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, unsigned char ref_id,
@@ -208,14 +208,16 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, unsigned char ref_id,
     err = DCB_insert(buff);
     if(err)
 	return err;
-    v1printf("multipass, hash_size(%lu)\n", hash_size);
     if( ((DCB_llm *)buff->DCB)->main_head == NULL) {
 	seed_len = 512;
-	first_run=1;
     } else {
 	seed_len = 128;
     }
+    v1printf("multipass, hash_size(%lu)\n", hash_size);
     for(; seed_len >=16; seed_len /= 2) {
+	if( ((DCB_llm *)buff->DCB)->main_head == NULL) {
+	    first_run=1;
+	}
 	gap_req = seed_len;
 	v1printf("\nseed size(%lu)...\n\n", seed_len);
 	gap_total_len = 0;
@@ -252,7 +254,6 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, unsigned char ref_id,
 		RHash_insert_block(&rhash, ver_cfh, dc.offset, dc.len + 
 		    dc.offset);
 	    }
-v0printf("here\n");
 	    RHash_sort(&rhash);
 	    v1printf("looking for matches in reference file\n");
 	    err=RHash_find_matches(&rhash, ref_cfh, 0, cfile_len(ref_cfh));
@@ -291,7 +292,7 @@ v0printf("here\n");
 	    sample_rate = COMPUTE_SAMPLE_RATE(hash_size, cfile_len(ref_cfh));
 	    v1printf("using hash_size(%lu), sample_rate(%lu)\n", 
 		hash_size, sample_rate);
-	    err = rh_rbucket_hash_init(&rhash, ref_cfh, seed_len, sample_rate, hash_size);
+	    err = rh_bucket_hash_init(&rhash, ref_cfh, seed_len, sample_rate, hash_size);
 	    if(err)
 		return err;
 	    err = RHash_insert_block(&rhash, ref_cfh, 0L, cfile_len(ref_cfh));

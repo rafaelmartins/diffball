@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2003-2004 Brian Harring
+  Copyright (C) 2003-2005 Brian Harring
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -582,7 +582,8 @@ signed int
 rh_rbucket_insert_match(RefHash *rhash, ADLER32_SEED_CTX *ads, off_u64 offset)
 {
     bucket *hash = (bucket *)rhash->hash;
-    unsigned long index, chksum, pos;
+    unsigned long index, chksum;
+    signed long pos;
     chksum = get_checksum(ads);
     index = (chksum & 0xffff);
     chksum = ((chksum >> 16) & 0xffff);

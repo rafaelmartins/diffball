@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2003-2004 Brian Harring
+  Copyright (C) 2003-2005 Brian Harring
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -84,19 +84,6 @@ typedef struct _RefHash {
     cleanse_hash_func	cleanse_hash;
     hash_lookup_offset_func	lookup_offset;
     void *		hash;
-//    union {
-//	unsigned long	*mod;
-//        chksum_ent	*chk;
-//	buckets		bucket;
-//	struct {
-//	    unsigned char	*depth;
-//	    unsigned short	**chksum;
-//	    off_u64		**offset;
-//	    unsigned short	max_depth;
-//	} bucket;
-//
-
-//    } hash;
     unsigned int  sample_rate;
     cfile *ref_cfh;
     unsigned long inserts;

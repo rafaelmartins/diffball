@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2003-2004 Brian Harring
+  Copyright (C) 2003-2005 Brian Harring
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -28,7 +28,7 @@
 unsigned int check_bdelta_magic(cfile *patchf);
 signed int bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, 
     	cfile *out_cfh);
-signed int bdeltaReconstructDCBuff(unsigned char src_id, cfile *patchf, 
+signed int bdeltaReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, 
 	CommandBuffer *dcbuff);
 
 

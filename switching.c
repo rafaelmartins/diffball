@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2003-2004 Brian Harring
+  Copyright (C) 2003-2005 Brian Harring
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -233,11 +233,11 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 }
 
 signed int 
-switchingReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcbuff)
+switchingReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff)
 {
     const unsigned int buff_size = 4096;
     unsigned char buff[buff_size];
-    unsigned char ref_id, add_id;
+    EDCB_SRC_ID ref_id, add_id;
     unsigned long int len;
     unsigned long dc_pos=0;
     unsigned long int u_off;

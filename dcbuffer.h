@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2003-2004 Brian Harring
+  Copyright (C) 2003-2005 Brian Harring
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -36,6 +36,8 @@ extern unsigned int global_use_md5;
 #define DCBUFFER_MATCHES_TYPE		0x2
 #define DCBUFFER_LLMATCHES_TYPE		0x4
 #define DCBUFFER_BUFFERLESS_TYPE	0x8
+#define DCBUFFER_BUFFERLESS_LINE_TYPE	0x10
+#define DCBUFFER_LINE_TYPE		0x20
 
 #define DCB_LLM_FINALIZED		0x2
 
@@ -58,6 +60,8 @@ extern unsigned int global_use_md5;
 #define DCB_DCB_SRC			(char)0x40
 
 typedef unsigned char DCB_SRC_ID;
+//able to hold errors
+typedef signed int   EDCB_SRC_ID;
 
 // internal dcbuffer macros.
 #define LLM_VEND(l)  ((l)->ver_pos + (l)->len)

@@ -26,35 +26,47 @@ else
     hash_bins =
 endif
 
-lib_LTLIBRARIES = libdiffball.la
+if COMPILE_PROFILING_CFLAGS
+    lib_LTLIBRARIES = libdiffball.la
+else
+    lib_LTLIBRARIES =
+endif
 
 libdiffball_la_SOURCES = $(FORMATS) $(DIFF_FILES)
+
+if COMPILE_PROFILING_CFLAGS
+   DIFF_EXTRAS = ${DIFF_FILES} ${FORMATS}
+   DIFF_LIBS =
+else
+   DIFF_EXTRAS =
+   DIFF_LIBS = libdiffball.la
+endif
 
 bin_PROGRAMS = differ patcher diffball convert_delta ${cfile_bins} \
     ${hash_bins}
 
-patcher_LDADD	=	libdiffball.la
+patcher_LDADD	=	${DIFF_LIBS} 
 patcher_SOURCES = 	patcher.c	\
 			apply-patch.c	\
 			options.c	\
 			errors.c
 
-diffball_LDADD	= 	libdiffball.la
+diffball_LDADD	= 	${DIFF_LIBS} 
 diffball_SOURCES = 	diffball.c	\
 			string-misc.c	\
 			tar.c 		\
 			options.c 	\
-			errors.c
+			errors.c ${DIFF_EXTRAS}
 
-differ_LDADD	=	libdiffball.la
+differ_LDADD	=	${DIFF_LIBS}
 differ_SOURCES = 	differ.c 	\
 			options.c 	\
-			errors.c
+			errors.c  ${DIFF_EXTRAS}
 
-convert_delta_LDADD   =	libdiffball.la
+convert_delta_LDADD   =	${DIFF_LIBS}
 convert_delta_SOURCES = convert_delta.c	\
 			options.c 	\
-			errors.c
+			errors.c ${DIFF_EXTRAS}
 man_MANS = differ.1 diffball.1 patcher.1 convert_delta.1
 EXTRA_DIST = $(man_MANS)
 

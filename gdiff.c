@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2003-2004 Brian Harring
+  Copyright (C) 2003-2005 Brian Harring
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -189,8 +189,7 @@ gdiffEncodeDCBuffer(CommandBuffer *buffer,
 }
 
 signed int 
-//gdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff, 
-gdiffReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcbuff, 
+gdiffReconstructDCBuff(DCB_SRC_ID  src_id, cfile *patchf, CommandBuffer *dcbuff, 
 	unsigned int offset_type)
 {
     const unsigned int buff_size = 5;
@@ -199,7 +198,7 @@ gdiffReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcbuf
     unsigned long ver_pos=0, dc_pos=0;
     unsigned long int u_off=0;
     signed long int s_off=0;
-    unsigned char add_id, ref_id;
+    EDCB_SRC_ID add_id, ref_id;
     int off_is_sbytes, ob=0, lb=0;
 
     dcbuff->ver_size = 0;
