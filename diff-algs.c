@@ -32,13 +32,13 @@
 signed int 
 OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 {
-    unsigned long ver_len, ref_len;
+    off_u64 ver_len, ref_len;
     unsigned long x, index, len;
     unsigned long no_match=0, bad_match=0, good_match=0;
     off_u64 vc, va, vs, vm, rm, hash_offset;
     unsigned int const rbuff_size = 4096, vbuff_size = 4096;
     unsigned char rbuff[rbuff_size], vbuff[vbuff_size];
-    unsigned long rbuff_start=0, vbuff_start=0, rbuff_end=0, vbuff_end=0;
+    off_u64 rbuff_start=0, vbuff_start=0, rbuff_end=0, vbuff_end=0;
     ADLER32_SEED_CTX ads;
 
     init_adler32_seed(&ads, rhash->seed_len, 1);
@@ -229,7 +229,8 @@ MultiPassAlg(CommandBuffer *buff, cfile *src_cfh, cfile *ver_cfh,
     RefHash rhash;
     cfile ver_window;
     unsigned int type = RH_SORT_HASH;
-    unsigned long int seed_len, start=0, end=0, gap_req;
+    unsigned long int seed_len;
+    off_u64 start, end, gap_req;
     unsigned char hash_created;
 /*    v1printf("making initial 512 run\n");
     v1printf("initing hash, sample_rate(%f == %u)\n", 
@@ -246,7 +247,7 @@ MultiPassAlg(CommandBuffer *buff, cfile *src_cfh, cfile *ver_cfh,
     DCB_insert(buff);
     DCBufferReset(buff);
 
-    for(seed_len = 128; seed_len >=16; seed_len /= 2) {
+    for(seed_len = 512; seed_len >=16; seed_len /= 2) {
 	hash_created = 0;
 	gap_req = seed_len * MULTIPASS_GAP_KLUDGE;
 	v1printf("\nseed size(%lu)...\n\n", seed_len);
