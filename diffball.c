@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <search.h>
+#include <string.h>
 #include <fcntl.h>
 #include "tar.h"
 #include "data-structs.h"
@@ -114,6 +115,7 @@ int main(int argc, char **argv)
 	strncpy((char *)em->data, (char *)string, len);
 	em->data[len] = '\0';
 	em->count=0;
+	em->len=len;
 	em->prev = em->next = NULL;
 	return em;
     }
@@ -177,9 +179,10 @@ int main(int argc, char **argv)
 	int x = 0;
 	//printf("\nupdating\n");
 	for (ptr = *em; ptr != NULL; ptr = (struct str_dllist *)ptr->next, x++) {
-	    //printf("examining node(%u)\n", x);
-	    if(strcmp(ptr->data, value) == 0) {
-		//printf("match ptr(%lu), data(%s), current count(%lu)\n", ptr, ptr->data, ptr->count);
+	    //printf("examining node('%u'), '%s'=='%s'\n", x, ptr->data, value);
+	    /* this next statement likely could use some tweaking. */
+	    if(len == ptr->len && strncmp(ptr->data, value,len) == 0) {
+		//printf("match ptr(%lu), data('%s'), current count(%lu)\n", ptr, ptr->data, ptr->count);
 		ptr->count += 1;
 		while (ptr->prev != NULL
 		   && ptr->count > ptr->prev->count) {
@@ -200,10 +203,11 @@ int main(int argc, char **argv)
 		    *em = ptr;
 		break;
 	    } else if (ptr->next == NULL) {
-		//printf("adding llist value(%s)\n", value);
+		//printf("adding llist value('%s')\n", value);
 		ptr->next = init_str_dllist(value, len);
 		ptr->next->prev = ptr;
 		ptr->next->count += 1;
+		//printf("  new node data('%s')\n", ptr->data);
 		//printf("  c.p(%lu), c(%lu), c.n(%lu), n.p(%lu), n.n(%lu)\n",ptr->prev, ptr, ptr->next, ptr->next->prev, ptr->next->next);
 		break;
 	    }
@@ -236,10 +240,41 @@ int main(int argc, char **argv)
 	update_str_dllist(&trg_version_ll, target[x]->version, TAR_VERSION_LEN);
 	update_str_dllist(&trg_mtime_ll, target[x]->mtime, TAR_MTIME_LEN);
     }
-    /*printf("checking ldll\n");
-    for(ldll_ptr = trg_mode_ll; ldll_ptr != NULL; ldll_ptr = ldll_ptr->next) 
-	printf("value=%lu, count=%lu\n", ldll_ptr->data, ldll_ptr->count);*/
+    x=0;
+    printf("\ndumping mode\n");
+    for(ldll_ptr = trg_mode_ll, x=0; ldll_ptr != NULL; ldll_ptr = ldll_ptr->next, x++) 
+	printf("node (%lu), value=%lu, count=%lu\n", x, ldll_ptr->data, ldll_ptr->count);
+    printf("mode total count=%lu\n", x);
+    printf("\ndumping uid\n");
+    for(ldll_ptr = trg_uid_ll, x=0; ldll_ptr != NULL; ldll_ptr = ldll_ptr->next, x++) 
+	printf("value=%lu, count=%lu\n", ldll_ptr->data, ldll_ptr->count);
+    printf("uid total count=%lu\n", x);
+    printf("\ndumping gid\n");
+    for(ldll_ptr = trg_gid_ll, x=0; ldll_ptr != NULL; ldll_ptr = ldll_ptr->next, x++) 
+	printf("value=%lu, count=%lu\n", ldll_ptr->data, ldll_ptr->count);
+    printf("gid total count=%lu\n", x);
+    printf("\ndumping uname\n");
+    for(sdll_ptr = trg_uname_ll, x=0; sdll_ptr != NULL; sdll_ptr = sdll_ptr->next, x++) 
+	printf("value='%.*s', count=%lu\n", sdll_ptr->len, sdll_ptr->data, sdll_ptr->count);
+    printf("uname total count=%lu\n", x);
+    printf("\ndumping gname\n");
+    for(sdll_ptr = trg_gname_ll, x=0; sdll_ptr != NULL; sdll_ptr = sdll_ptr->next, x++) 
+	printf("value='%.*s', count=%lu\n", sdll_ptr->len, sdll_ptr->data, sdll_ptr->count);
+    printf("gname total count=%lu\n", x);
+    printf("\ndumping magic\n");
+    for(sdll_ptr = trg_magic_ll, x=0; sdll_ptr != NULL; sdll_ptr = sdll_ptr->next, x++) 
+	printf("value='%.*s', count=%lu\n", sdll_ptr->len, sdll_ptr->data, sdll_ptr->count);
+    printf("magic total count=%lu\n", x);
+    printf("\ndumping version\n");
+    for(sdll_ptr = trg_version_ll, x=0; sdll_ptr != NULL; sdll_ptr = sdll_ptr->next, x++) 
+	printf("value='%.*s', count=%lu\n", sdll_ptr->len, sdll_ptr->data, sdll_ptr->count);
+    printf("version total count=%lu\n", x);
+    printf("\ndumping mtime\n");
+    for(sdll_ptr = trg_mtime_ll, x=0; sdll_ptr != NULL; sdll_ptr = sdll_ptr->next, x++) 
+	printf("value='%.*s', count=%lu\n", sdll_ptr->len, sdll_ptr->data, sdll_ptr->count);
+    printf("mtime total count=%lu\n\n", x);
     printf("qsorting\n");
+    
     /* this next one is moreso for bsearch's, but it's prob useful for the common-prefix alg too */
     qsort((struct tar_entry **)target, target_count, sizeof(struct tar_entry *), cmp_tar_entries);
     printf("qsort done\n");

@@ -8,6 +8,7 @@ struct long_dllist {
 
 struct str_dllist {
     unsigned char *data;
+    unsigned char len;
     unsigned long int count;
     struct str_dllist *prev;
     struct str_dllist *next;

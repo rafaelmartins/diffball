@@ -43,6 +43,7 @@ struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, 
 
 struct tar_entry {
     unsigned char       *name;
+    unsigned short int  name_len;
     unsigned long int   mode;
     unsigned long int   uid;
     unsigned long int   gid;
@@ -52,10 +53,13 @@ struct tar_entry {
     unsigned long       chksum;
     unsigned char       typeflag;
     unsigned char       *linkname;
+    unsigned short int  linkname_len;
     unsigned char       magic[6];
     unsigned char       version[2];
     unsigned char       *uname;
+    unsigned short int  uname_len;
     unsigned char       *gname;
+    unsigned short int  gname_len;
     unsigned long int   devmajor;
     unsigned long int   devminor;
     unsigned char       prefix_len;
@@ -63,7 +67,9 @@ struct tar_entry {
     unsigned int        entry_num;
 /*concattenation of prefix and name, +1 extra for null, +1 for slash if prefix is not null */
     unsigned char       *fullname;
+    unsigned short int  fullname_len;
 /*used by common-dir alg, pts to fullname offset. */
-    unsigned char       *fullname_ptr;    
+    unsigned char       *fullname_ptr;
+    unsigned short int	fullname_ptr_len;
 };
 #endif
