@@ -4,7 +4,6 @@
 #include <search.h>
 #include <fcntl.h>
 
-
 #include "tar.c"
 
 struct tar_entry *read_fh_to_tar_entry(int src_fh, unsigned long *total_count, char *md5sum);
