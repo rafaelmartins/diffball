@@ -356,9 +356,16 @@ int main(int argc, char **argv)
     for(x=0; x< target_count; x++) {
         //entry=source[x];
 	//printf("checking '%s'\n", source[x]->fullname);
+		copen(&ver_window, trg_fh, (512 * target[x]->file_loc),
+        		(512 * target[x]->file_loc) + 512 + (target[x]->size==0 ? 0 :
+        			target[x]->size + 512 - (target[x]->size % 512==0 ? 512 : 
+        			target[x]->size % 512)),
+        			NO_COMPRESSOR, CFILE_RONLY);
         vptr = bsearch((const void **)&target[x], (const void **)source, source_count,
             sizeof(struct tar_entry **), cmp_tar_entries);
         if(vptr == NULL) {
+        	printf("didn't find a match for %.255s\n", target[x]->fullname_ptr);
+        	OneHalfPassCorrecting(&dcbuff, &rhash_full, &ver_window);
 	    	//_matches[x] = '0';
 	    	//printf("couldn't match '%.255s'\n",
 	    	//	target[x]->fullname_ptr + trg_common_len);
@@ -384,15 +391,9 @@ int main(int argc, char **argv)
         			tar_ptr->size + 512 - (tar_ptr->size % 512==0 ? 512 : 
         			tar_ptr->size % 512)),
         			NO_COMPRESSOR, CFILE_RONLY);
-        	copen(&ver_window, trg_fh, (512 * target[x]->file_loc),
-        		(512 * target[x]->file_loc) + 512 + (target[x]->size==0 ? 0 :
-        			target[x]->size + 512 - (target[x]->size % 512==0 ? 512 : 
-        			target[x]->size % 512)),
-        			NO_COMPRESSOR, CFILE_RONLY);
         	init_RefHash(&rhash_win, &ref_window, 16, ref_window.byte_len);
         	OneHalfPassCorrecting(&dcbuff, &rhash_win, &ver_window);
         	cclose(&ref_window);
-        	cclose(&ver_window);
 	    	/*printf("matched  '%s'\n", target[(struct tar_entry **)vptr - target]->fullname);
 		    printf("correct  '%s'\n\n", ((*(struct tar_entry **)vptr)->fullname));*/
 		    //source_matches[x] = '1';
@@ -402,6 +403,7 @@ int main(int argc, char **argv)
 		    //target_matches[((struct tar_entry *)
             //printf("'%s' found!\n", source[x]->fullname_ptr);
         }
+        cclose(&ver_window);
     }
     cclose(&ref_full);
     x= (target[target_count -1]->file_loc * 512) + 512 + 
