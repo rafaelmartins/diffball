@@ -284,7 +284,7 @@ int main(int argc, char **argv)
     
     copen(&ref_full, src_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     DCBufferInit(&dcbuff, 20000000);
-    init_RefHash(&rhash_full, &ref_full, 24, 6, ref_full.byte_len/6);
+    init_RefHash(&rhash_full, &ref_full, 16, 1, ref_full.byte_len);
     printf("looking for matching filenames in the archives...\n");
     for(x=0; x< target_count; x++) {
         //entry=source[x];
@@ -374,8 +374,8 @@ int main(int argc, char **argv)
     DCBufferCollapseAdds(&dcbuff);
     printf("outputing patch...\n");
     copen(&ver_full, trg_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
-//    offset_type= ENCODING_OFFSET_DC_POS;
-    offset_type= ENCODING_OFFSET_START;
+    offset_type= ENCODING_OFFSET_DC_POS;
+//    offset_type= ENCODING_OFFSET_START;
 //    rawEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
 //    switchingEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
     gdiffEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);

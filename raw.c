@@ -26,11 +26,11 @@
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
-unsigned int GET_CURRENT_COMMAND_TYPE(struct CommandBuffer *buff) {
+/*unsigned int GET_CURRENT_COMMAND_TYPE(struct CommandBuffer *buff) {
 	return (*buff->cb_tail & (1 << buff->cb_tail_bit));
-}
-//#define GET_CURRENT_COMMAND_TYPE(buff) \
-//	((*buff->cb_tail >> buff->cb_tail_bit) & 0x01)
+}*/
+#define GET_CURRENT_COMMAND_TYPE(buff) \
+	((*buff->cb_tail >> buff->cb_tail_bit) & 0x01)
 
 signed int rawEncodeDCBuffer(struct CommandBuffer *buffer, 
     unsigned int offset_type, /*unsigned char *ver */
@@ -69,6 +69,7 @@ signed int rawEncodeDCBuffer(struct CommandBuffer *buffer,
     while(count--) {
     	if(buffer->lb_tail->len!=0) {
 	    if ((*buffer->cb_tail & (1 << buffer->cb_tail_bit))==DC_ADD) {
+//	    if (GET_CURRENT_COMMAND_TYPE(buffer)==DC_ADD) {
     		total_add_len += buffer->lb_tail->len;
 		last_com = DC_ADD;
 	    } else {
@@ -92,6 +93,7 @@ signed int rawEncodeDCBuffer(struct CommandBuffer *buffer,
     count = buffer->count;
     while(count--) {
 	if(((*buffer->cb_tail & (1 << buffer->cb_tail_bit))==DC_ADD) &&
+//	if(GET_CURRENT_COMMAND_TYPE(buffer)==DC_ADD && 
 	    buffer->lb_tail->len!=0) {
 //	if (GET_CURRENT_COMMAND_TYPE(buffer)==DC_ADD && 
     		cseek(ver_cfh, buffer->lb_tail->offset, CSEEK_ABS);
@@ -127,6 +129,7 @@ signed int rawEncodeDCBuffer(struct CommandBuffer *buffer,
     while(command_count--){
 	if(buffer->lb_tail->len > 0) {
 	    if((*buffer->cb_tail & (1 << buffer->cb_tail_bit))==DC_ADD){
+//	    if(GET_CURRENT_COMMAND_TYPE(buffer)==DC_ADD) {
 		    adds_in_buff++;
 		    min_add_len = MIN(min_add_len, buffer->lb_tail->len);
 		    max_add_len = MAX(max_add_len, buffer->lb_tail->len);
