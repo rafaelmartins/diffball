@@ -1,5 +1,7 @@
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <errno.h>
 #include <openssl/evp.h>
 #include "tar.h"
@@ -49,7 +51,6 @@ struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, 
     unsigned long offset=0, array_size=100000;
     unsigned long count =0;
     unsigned int read_bytes;
-    int pipes[2];
     /* md5 stuff */
     EVP_MD_CTX mdctx;
     const EVP_MD *md;

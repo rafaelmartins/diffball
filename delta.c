@@ -1,8 +1,11 @@
 #include <stdlib.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
-#include "adler32.h"
+#include <string.h>
+//#include "adler32.h"
 #include "delta.h"
+#include "bit-functions.h"
 /* this is largely based on the algorithms detailed in randal burn's various papers.
    Obviously credit for the alg's go to him, although I'm the one who gets the dubious
    credit for bugs in the implementation of said algorithms... */
@@ -65,36 +68,7 @@ void DCBufferTruncate(struct CommandBuffer *buffer, unsigned long len)
     DCBufferIncr(buffer);
 }
 
-inline int bitsNeeded(long y)
-{
-    unsigned int x=1;
-    if (y == 0) {
-	//printf("no bytesneeded\n");
-	return 0;
-    }
-    while((y = y >>1) > 0)
-	x++;
-    return x;    
-}
 
-inline int unsignedBytesNeeded(long y)
-{
-    unsigned int x;
-    if (y == 0) {
-	//printf("no bytesneeded\n");
-	return 0;
-    }
-    x=bitsNeeded(y);
-    x= (x/8) + (x % 8 ? 1 : 0);
-    return x;
-}
-inline int signedBytesNeeded(signed long y)
-{
-    unsigned int x;
-    x=bitsNeeded(abs(y)) + 1;
-    x= (x/8) + (x % 8 ? 1 : 0);
-    return x;
-}
 
 void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
 {
@@ -103,7 +77,7 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
     //unsigned long offset;
     signed long s_off;
     unsigned long u_off;
-    unsigned long delta_pos=0;
+    unsigned long delta_pos=0, dc_pos=0;
     unsigned long copies=0, adds_in_buff=0, adds_in_file=0;
     int lb, ob;
     unsigned char type, out_buff[256];
@@ -111,6 +85,8 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
     buffer->lb_tail = buffer->lb_start;
     buffer->cb_tail = buffer->cb_head;
     buffer->cb_tail_bit = buffer->cb_head_bit;
+    *out_buff=1;
+    write(fh, out_buff, 1);
     while(buffer->count--){
 	if((*buffer->cb_tail & (1 << buffer->cb_tail_bit))>0) {
 	    ptr=ver + buffer->lb_tail->offset;
@@ -127,14 +103,31 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
 	    printf("add command, delta_pos(%lu), fh_pos(%lu), len(%lu), broken into '%lu' commands\n",
 		delta_pos, fh_pos, buffer->lb_tail->len, buffer->lb_tail->len/248 + (buffer->lb_tail->len % 248 ? 1 : 0));
 	    adds_in_buff++;
-	    u_off= buffer->lb_tail->len/248 > 0 ? 1 : 0;
+	    //u_off=buffer->lb_tail->len;
+	    u_off=MIN(buffer->lb_tail->len, 248);
+	    /*if(u_off > 246) {
+		if(u_off <= 0xffff) {
+		    clen=247;
+		} else {
+		    clen=248;
+		}
+	    } else {
+		clen=u_off;
+	    }
+	    write(fh, &clen, 1);
+	    if(clen > 246) {
+		if(clen==247){
+		    
+		} else if(clen==248) {
+		    
+		}
+	    }*/
 	    while(buffer->lb_tail->len){
 		adds_in_file++;
-		clen=MIN(buffer->lb_tail->len, 248);
+		clen=MIN(buffer->lb_tail->len, 248);//modded
 		if(u_off)
-		    printf("    writing add command offset(%lu), len(%lu)\n", buffer->lb_tail->offset, clen);
-		write(fh, &clen, 1);
-		write(fh, ver + buffer->lb_tail->offset, clen);
+		    printf("    writing add command offset(%lu), len(%u)\n", buffer->lb_tail->offset, clen);
+		write(fh, ver + buffer->lb_tail->offset, u_off);
 		//offset+=clen;
 		fh_pos+=clen;
 		delta_pos += clen + 1;
@@ -144,7 +137,7 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
 	    break;
 	case DC_COPY:
 	    copies++;
-	    s_off = (signed long)buffer->lb_tail->offset - (signed long)fh_pos;
+	    s_off = (signed long)buffer->lb_tail->offset - (signed long)dc_pos;
 	    u_off = abs(s_off);
 	    //printf("s_offset(%d) ob: ");
 	    ob=signedBytesNeeded(s_off);
@@ -164,7 +157,7 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
 		clen=254;
 	    else
 		clen=255;
-	    printf("writing copy command delta_pos(%lu), fh_pos(%lu), type(%u), offset(%d), len(%lu)\n",
+	    printf("writing copy command delta_pos(%lu), fh_pos(%lu), type(%u), offset(%ld), len(%lu)\n",
 		delta_pos, fh_pos, clen, s_off, buffer->lb_tail->len);
 	    write(fh, &clen, 1);
 	    delta_pos++;
@@ -219,7 +212,7 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
 		delta_pos+=4;
 	    }
 	    fh_pos += buffer->lb_tail->len;
-	    /* note this doesn't handle anything larger in length the int.  needs a lot of work. */
+	    dc_pos += s_off;
 	    break;
 	}
 	//DCBufferDecr(buffer);
@@ -227,9 +220,9 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
     }
     out_buff[0]=0;
     write(fh, out_buff, 1);
-    printf("Buffer statistics- copies(%lu), adds(%lu)\n    copy ratio=(%f\%), add ratio(%f\%)\n",
+    printf("Buffer statistics- copies(%lu), adds(%lu)\n    copy ratio=(%f%%), add ratio(%f%%)\n",
 	copies, adds_in_buff, ((float)copies)/((float)(copies + adds_in_buff))*100,
-	((float)adds_in_buff)/((float)(copies + adds_in_buff))*100);
+	((float)adds_in_buff)/((float)copies + (float)adds_in_buff)*100);
     printf("adds in file(%lu), average # of commands per add(%f)\n", adds_in_file,
 	((float)adds_in_file)/((float)(adds_in_buff)));
 }
@@ -284,9 +277,9 @@ char *OneHalfPassCorrecting(unsigned char *ref, unsigned long ref_len,
     }
     printf("reference run:\n");
     printf("chksum array(%lu) genned\n", ref_len-seed_len);
-    printf("load factor=%f\%\n", ((float)empties)/(float)(ref_len-seed_len-good_collisions)*(float)100);
-    printf("bad collisions=%f\%\n", ((float)bad_collisions) / (float)(ref_len-seed_len-good_collisions)*(float)100);
-    printf("good collisions=%f\%\n", ((float)good_collisions)/(float)(ref_len-seed_len)*100);
+    printf("load factor=%f%%\n", ((float)empties)/(float)(ref_len-seed_len-good_collisions)*(float)100);
+    printf("bad collisions=%f%%\n", ((float)bad_collisions) / (float)(ref_len-seed_len-good_collisions)*(float)100);
+    printf("good collisions=%f%%\n", ((float)good_collisions)/(float)(ref_len-seed_len)*100);
     /*for(x=0; x < ref_len - seed_len; x++){
 	if (hr[x])
 	    printf("hr[%u]='%lu'\n", x, hr[x]);
@@ -319,7 +312,7 @@ char *OneHalfPassCorrecting(unsigned char *ref, unsigned long ref_len,
 		vc++;
 		continue;
 	    }
-	    printf("good collision(%lu):", (unsigned char *)vc - (unsigned char*)ver);
+	    printf("good collision(%lu):", (unsigned long)((unsigned char *)vc - (unsigned char*)ver));
 	    good_collisions++;
 	    x=0;
 	    vm = vc;
@@ -335,23 +328,24 @@ char *OneHalfPassCorrecting(unsigned char *ref, unsigned long ref_len,
 		len++;
 	    }
 	    //printf("couldn't match %u==%u\n", vm[len], rm[len]);
-	    printf("vstart(%lu), rstart(%lu), len(%lu)\n", (unsigned char*)vm - (unsigned char*)ver,
-		rm -ref, len);
+	    printf("vstart(%lu), rstart(%lu), len(%lu)\n", (unsigned long)((unsigned char*)vm - (unsigned char*)ver),
+		(unsigned long)(rm -ref), len);
 	    if (vs <= vm) {
 		if (vs < vm) {
-		    printf("    adding vstart(%lu), len(%lu), vend(%lu): (vs < vm)\n", vs -ver, vm-vs, vm - ver);
+		    printf("    adding vstart(%lu), len(%lu), vend(%lu): (vs < vm)\n",
+			(unsigned long)(vs -ver), (unsigned long)(vm-vs), (unsigned long)(vm - ver));
 		    //DCBufferAddCmd(&buffer, DC_ADD, vs -ver, (vc-x) -vs);
 		    DCBufferAddCmd(&buffer, DC_ADD, vs -ver, vm - vs);
 		    adds++;
 		}
-		printf("    copying offset(%lu), len(%lu)\n", vm -ver, len);
+		printf("    copying offset(%lu), len(%lu)\n", (unsigned long)(vm -ver), len);
 		//DCBufferAddCmd(&buffer, DC_COPY, (vc-x) - ver, len);
 		//DCBufferAddCmd(&buffer, DC_COPY, hr[index] -x, len +x);
 		DCBufferAddCmd(&buffer, DC_COPY, rm - ref, len);
 	    } else if (vm < vs) {
-		printf("    truncating(%lu) bytes: (vm < vs)\n", vs - vm);
+		printf("    truncating(%lu) bytes: (vm < vs)\n", (unsigned long)(vs - vm));
 		DCBufferTruncate(&buffer, vs - vm);
-		printf("    replacement copy: offset(%lu), len(%lu)\n", rm - ref, len);
+		printf("    replacement copy: offset(%lu), len(%lu)\n", (unsigned long)(rm - ref), len);
 		DCBufferAddCmd(&buffer, DC_COPY, rm -ref, len);
 		truncations++;
 	    } else {
@@ -369,8 +363,8 @@ char *OneHalfPassCorrecting(unsigned char *ref, unsigned long ref_len,
     if (vs -ver != ver_len)
 	DCBufferAddCmd(&buffer, DC_ADD, vs -ver, ver_len - (vs -ver));
     printf("version summary:\n");
-    printf("good collisions(%f\%)\n", (float)good_collisions/(float)(good_collisions+bad_collisions)*100);
-    printf("bad  collisions(%f\%)\n", (float)bad_collisions/(float)(good_collisions+bad_collisions)*100);
+    printf("good collisions(%f%%)\n", (float)good_collisions/(float)(good_collisions+bad_collisions)*100);
+    printf("bad  collisions(%f%%)\n",(float)bad_collisions/(float)(good_collisions+bad_collisions)*100);
     printf("commands in buffer, copies(%lu), adds(%lu), truncations(%lu)\n", copies, adds, truncations);
     printf("\n\nflushing command buffer...\n\n\n");
     DCBufferFlush(&buffer, ver, out_fh);

@@ -51,4 +51,5 @@ int main(int argc, char **argv)
     read(trg_fh, trg, trg_stat.st_size);
     OneHalfPassCorrecting(src, (unsigned long)src_stat.st_size,
 	trg, trg_stat.st_size, 16, out_fh);
+    return 0;
 }

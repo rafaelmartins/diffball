@@ -49,8 +49,8 @@ void DCBufferAddCmd(struct CommandBuffer *buffer, int type, unsigned long offset
 void DCBufferTruncate(struct CommandBuffer *buffer, unsigned long len);
 void DCBufferInit(struct CommandBuffer *buffer, unsigned long max_commands);
 void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh);
-inline int bitsNeeded(long y);
+/*inline int bitsNeeded(long y);
 inline int unsignedBytesNeeded(long y);
-inline int signedBytesNeeded(signed long y);
+inline int signedBytesNeeded(signed long y);*/
 
 #endif
