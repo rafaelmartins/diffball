@@ -330,7 +330,12 @@ cfile_window *
 prev_page(cfile *cfh)
 {
     /* possibly due an error check or something here */
-    cseek(cfh, -cfh->data.size, CSEEK_CUR);
-    crefill(cfh);
+    if(cfh->data.offset ==0) {
+	cfh->data.end=0;
+	cfh->data.pos=0;
+    } else {
+	cseek(cfh, -cfh->data.size, CSEEK_CUR);
+	crefill(cfh);
+    }
     return &cfh->data;
 }

@@ -27,6 +27,7 @@
 #include "dcbuffer.h"
 #include "apply-patch.h"
 
+#include "udiff.h"
 #include "gdiff.h"
 #include "bdiff.h"
 #include "switching.h"
