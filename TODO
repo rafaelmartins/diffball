@@ -25,12 +25,18 @@ STARTED	* start enabling checking of returned values.  Basically start cleaning
 DONE	* relevant man pages
 DONE	* have a basic (not necessarily cleanest/best) gzip compressor setup so 
 	  compressed xdelta can be handled.
-	* add a set of functions for pulling add len/offset pairs for formats
+STARTED	* add a set of functions for pulling add len/offset pairs for formats
 	  reasonning being, make it a default function so I can move optimizing
 	  multiple adds (from diffball) into a single add command in the format
 	  encoding.
 0.41			Oct/Nov 2003
 STARTED	* write *GOOD* man pages
+DONE	* DCBuffer should be a general struct, with different ways of 
+	  storing entries.  Full for patching/conversion, matches for
+	  standard differencing (difference is it eliminates storing 
+	  add's in memory, saving memory), llmatches for 
+	  multipass/insert support.  llmatches is a linked list variant 
+	  of the matches struct.
 	* add patch info functions, for polling info on existant patches.
 	  possibly a new binary, although might be overkill.
 STARTED	* bsdiff support, possibly included into 0.4.
@@ -61,8 +67,13 @@ STARTED	* have working compression support in cfile.  Not saying it be'll
 	  on/off (correcting basically allows for correction (duh))- although 
 	  correcting does slow things down (maybe not by much), possibly give 
 	  them (user/dev) the option?
-	* xdelta style alg?
-	* bdelta style alg?
+	* xdelta style alg?  basically an rsync style pass setup?
+DONE	* multipass support
+DONE	* verified hash.  Basically, scan the version file for chksum's 
+	  needed, then scan the reference file for said chksum's.  Doing 
+	  this allows for a hash entry to be verified, eg mark it such 
+	  that these two chksum's match.  Way of cutting down on bad 
+	  matches/worthless seeks.
 	* possibly adjust formats (encoding/decoding) such that they are 
 	  multiple functions... eg, attempt to make it such that the needed 
 	  command space (CommandBuffer) can be optimized down, so that it 

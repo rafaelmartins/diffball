@@ -1,0 +1,53 @@
+diffball is a general purpose delta compression/binary differencing 
+suite.  As of 0.4, it currently supports the follow formats
+
+---FORMATS---
+
+Format		Read		Encode	Conversion
+bdiff		yes	yes	yes
+bdelta		yes	yes	yes, although not guranteed the 
+				resultant delta will be processable by 
+				bpatch.
+gdiff v4	yes	yes	yes
+gdiff v4
+  (tweaked)	yes	yes	yes
+switching	yes	yes	yes
+unified diff	yes*	no	beta, but yes.
+				*only non-recursive patches.
+xdelta-1.1.0	yes	no	yes
+
+---BINARIES---
+
+differ 		general purpose differencing program, 
+diffball 	specific implementation for processing tarball's (producing 
+		smaller deltas then differ typically does for a 
+		tarball)
+patcher		reconstruction program, if a format has read support 
+		patcher can reconstruct the target file.
+convert_delta	program for converting between formats, if write support 
+		is supported for the target format, and read support for 
+		the source, it can convert between the two producing a 
+		correct patch.  Caveat is bdelta's format, due to it 
+		storing file size information in it.
+
+-----SETUP-----
+
+To configure and install diffball, first run the 'configure' script 
+which will create a makefile along w/ a config.h appropriate to how you 
+wanted it configured.  From there, just type "make".
+
+
+-----BUGS------
+
+None are currently known.  If you've found weird behavior, email a bug 
+report to me at bdharring@wisc.edu .
+
+---COPYRIGHT---
+
+The diffball suite is releaed under the GPL v2
+Look in the file COPYING if you're curious of the specifics.
+
+--AVAILABILITY-
+
+For the foreseeable future diffball will be hosted through sourceforge, 
+http://sourceforge.net/projects/diffball
