@@ -65,6 +65,8 @@ identify_format(cfile *patchf)
 	format = XDELTA1_FORMAT;
     } else if ((val=check_bsdiff_magic(patchf))) {
 	format = BSDIFF_FORMAT;
+    } else if ((val=check_fdtu_magic(patchf))) {
+	format = FDTU_FORMAT;
     }
     v2printf("identify_format, val=%lu, format=%lu\n", val, format);
     if(format==0) {

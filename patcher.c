@@ -156,6 +156,8 @@ main(int argc, char **argv)
 	recon_val = bdeltaReconstructDCBuff(&patch_cfh, &dcbuff);
     } else if(BSDIFF_FORMAT == patch_id) {
 	recon_val = bsdiffReconstructDCBuff(&patch_cfh, &dcbuff);
+    } else if(FDTU_FORMAT == patch_id) {
+	recon_val = fdtuReconstructDCBuff(&patch_cfh, &dcbuff);
 //    } else if(UDIFF_FORMAT == patch_id) {
 //	recon_val = udiffReconstructDCBuff(&patch_cfh, &src_cfh, NULL, &dcbuff);
     }

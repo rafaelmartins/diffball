@@ -23,6 +23,8 @@
 #include "gdiff.h"
 #include "switching.h"
 #include "xdelta1.h"
+#include "fdtu.h"
+#include "bsdiff.h"
 
 #define GDIFF4_FORMAT		0x1
 #define GDIFF5_FORMAT		0x2
@@ -34,6 +36,7 @@
 #define BDELTA_FORMAT		0x8
 #define GNUDIFF_FORMAT		0x9
 #define BSDIFF_FORMAT		0xa
+#define FDTU_FORMAT		0xb
 #define DEFAULT_PATCH_ID	SWITCHING_FORMAT
 
 #define UNDETECTED_COMPRESSOR	NO_COMPRESSOR
