@@ -27,6 +27,7 @@
 #include "gdiff.h"
 #include "switching.h"
 #include "raw.h"
+#include "xdelta1.h"
 #include "dcbuffer.h"
 #include "apply-patch.h"
 
@@ -74,11 +75,12 @@ int main(int argc, char **argv)
     printf("here goes...\n");
 //    offset_type = ENCODING_OFFSET_START;
     offset_type = ENCODING_OFFSET_DC_POS;
-	DCBufferInit(&dcbuff, 1000000);
+	DCBufferInit(&dcbuff, 2000000);
 //	switchingReconstructDCBuff(&delta_cfh, &dcbuff, offset_type);
 //   	gdiffReconstructDCBuff(&delta_cfh, &dcbuff, offset_type, 4);
 //	rawReconstructDCBuff(&delta_cfh, &dcbuff, offset_type);
-	bdiffReconstructDCBuff(&delta_cfh, &dcbuff);
+//	bdiffReconstructDCBuff(&delta_cfh, &dcbuff);
+	xdelta1ReconstructDCBuff(&delta_cfh, &dcbuff, 1);
    	printf("reconstructing target file based off of dcbuff commands...\n");
    	reconstructFile(&dcbuff, &src_cfh, &delta_cfh, &out_cfh);
    	printf("reconstruction done.  calling close.\n");

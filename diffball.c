@@ -32,6 +32,7 @@
 #include "gdiff.h"
 #include "switching.h"
 #include "raw.h"
+#include "bdiff.h"
 
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -378,7 +379,8 @@ int main(int argc, char **argv)
 //    offset_type= ENCODING_OFFSET_START;
 //    rawEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
 //    switchingEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
-    gdiffEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
+//    gdiffEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
+    bdiffEncodeDCBuffer(&dcbuff, &ver_full, &out_cfh);
     cclose(&ver_full);
     cclose(&out_cfh);
     close(src_fh);

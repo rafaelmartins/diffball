@@ -280,22 +280,19 @@ unsigned long cseek(struct cfile *cfile, signed long offset, int offset_type)
 	switch(cfile->compressor_type)
 	{
 	case NO_COMPRESSOR:
-		/*if(cfile->state_flags & CFILE_MEM_ALIAS) {
-			if(offset_type==CSEEK_FSTART) {
-				cfile->raw_pos = cfile->raw_buff + raw_offset;
-			} else if(offset_type==CSEEK_CUR) {
-				raw_offset = (unsigned long)(cfile->raw_fh_pos - 
-		*/
-				
-		if(offset_type==CSEEK_ABS || offset_type==CSEEK_FSTART)
+		if(offset_type==CSEEK_END) {
+		    raw_offset = cfile->raw_fh_start + cfile->byte_len + offset;
+		} else if(offset_type==CSEEK_ABS || offset_type==CSEEK_FSTART) {
 			raw_offset = (offset_type==CSEEK_FSTART ? cfile->raw_fh_start : 0)
 				+ (unsigned long)offset;
-		else if (offset_type==CSEEK_CUR)
+		} else if (offset_type==CSEEK_CUR) {
 			raw_offset = (unsigned long)(cfile->raw_fh_pos + (cfile->raw_pos -
 				cfile->raw_buff) + offset);
-		else
+		} else {
 			/*not implemented yet*/
 			raw_offset=cfile->raw_fh_start;
+		}
+
 		/*printf("cseek info: raw_fh_pos(%lu), buff_pos(%u) calc(%lu), offset(%d)\n", cfile->raw_fh_pos,
 			cfile->raw_pos - cfile->raw_buff, cfile->raw_fh_pos + 
 			(cfile->raw_pos - cfile->raw_buff), offset);
