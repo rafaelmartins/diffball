@@ -24,13 +24,15 @@
 #include <unistd.h>
 #include "string-misc.h"
 #include "cfile.h"
-#include "gdiff.h"
-#include "switching.h"
-#include "raw.h"
-#include "xdelta1.h"
 #include "dcbuffer.h"
 #include "apply-patch.h"
 
+#include "gdiff.h"
+#include "bdiff.h"
+#include "switching.h"
+#include "raw.h"
+#include "xdelta1.h"
+#include "bdelta.h"
 
 //offset = fh_pos + readSignedBytes(cpy_buff, ctmp);
 //len = readUnsignedBytes(cpy_buff+ctmp, clen);
@@ -73,14 +75,15 @@ int main(int argc, char **argv)
     copen(&delta_cfh, delta_fh, 0, delta_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
     printf("here goes...\n");
-//    offset_type = ENCODING_OFFSET_START;
-    offset_type = ENCODING_OFFSET_DC_POS;
+    offset_type = ENCODING_OFFSET_START;
+//    offset_type = ENCODING_OFFSET_DC_POS;
 	DCBufferInit(&dcbuff, 2000000);
 //	switchingReconstructDCBuff(&delta_cfh, &dcbuff, offset_type);
 //   	gdiffReconstructDCBuff(&delta_cfh, &dcbuff, offset_type, 4);
 //	rawReconstructDCBuff(&delta_cfh, &dcbuff, offset_type);
 //	bdiffReconstructDCBuff(&delta_cfh, &dcbuff);
-	xdelta1ReconstructDCBuff(&delta_cfh, &dcbuff, 1);
+//	xdelta1ReconstructDCBuff(&delta_cfh, &dcbuff, 1);
+	bdeltaReconstructDCBuff(&delta_cfh, &dcbuff);
    	printf("reconstructing target file based off of dcbuff commands...\n");
    	reconstructFile(&dcbuff, &src_cfh, &delta_cfh, &out_cfh);
    	printf("reconstruction done.  calling close.\n");

@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <assert.h>
 #include "dcbuffer.h"
 #include "raw.h"
 #include "cfile.h"
@@ -26,17 +27,10 @@
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
-/*unsigned int GET_CURRENT_COMMAND_TYPE(struct CommandBuffer *buff) {
-	return (*buff->cb_tail & (1 << buff->cb_tail_bit));
-}*/
-#define GET_CURRENT_COMMAND_TYPE(buff) \
-	((*buff->cb_tail >> buff->cb_tail_bit) & 0x01)
-
-signed int rawEncodeDCBuffer(struct CommandBuffer *buffer, 
-    unsigned int offset_type, /*unsigned char *ver */
+signed int bdeltaEncodeDCBuffer(struct CommandBuffer *buffer, 
     struct cfile *ver_cfh, /*int fh*/ struct cfile *out_fh)
 {
-    unsigned char clen;
+/*    unsigned char clen;
     unsigned long fh_pos=0;
     signed long s_off;
     unsigned long u_off;
@@ -83,8 +77,8 @@ signed int rawEncodeDCBuffer(struct CommandBuffer *buffer,
     	DCBufferIncr(buffer);
     }
     printf("count=%lu, command_count=%lu\n", buffer->count, command_count);
-    writeUBytesBE(out_buff, command_count, 4);
-    writeUBytesBE(out_buff + 4, total_add_len, 4);
+    convertUBytesChar(out_buff, command_count, 4);
+    convertUBytesChar(out_buff + 4, total_add_len, 4);
     cwrite(out_fh, out_buff, 8);
     delta_pos += 8;
     buffer->lb_tail = buffer->lb_start;
@@ -133,7 +127,7 @@ signed int rawEncodeDCBuffer(struct CommandBuffer *buffer,
 		    adds_in_buff++;
 		    min_add_len = MIN(min_add_len, buffer->lb_tail->len);
 		    max_add_len = MAX(max_add_len, buffer->lb_tail->len);
-		    writeUBytesBE(out_buff, buffer->lb_tail->len, 4);
+		    convertUBytesChar(out_buff, buffer->lb_tail->len, 4);
 		    cwrite(out_fh, out_buff, 4);
 		    printf("writing add, pos(%lu), len(%lu)\n", delta_pos, buffer->lb_tail->len);
 		    delta_pos += 4;
@@ -143,7 +137,7 @@ signed int rawEncodeDCBuffer(struct CommandBuffer *buffer,
 		    if(DC_COPY==last_com) {
 			printf("last command was a copy, outputing blank add\n", 
 			    last_com, DC_COPY);
-			writeUBytesBE(out_buff, 0, 4);
+			convertUBytesChar(out_buff, 0, 4);
 			cwrite(out_fh, out_buff, 4);
 			delta_pos+=4;
 		    }
@@ -160,12 +154,12 @@ signed int rawEncodeDCBuffer(struct CommandBuffer *buffer,
 		    } else {
 			u_off = buffer->lb_tail->offset;
 		    }
-		    writeUBytesBE(out_buff, buffer->lb_tail->len, 4);
+		    convertUBytesChar(out_buff, buffer->lb_tail->len, 4);
 		    if(offset_type==ENCODING_OFFSET_DC_POS) {
 		    	dc_pos += s_off;
-			writeSBytesBE(out_buff + 4, s_off, 4);
+			convertSBytesChar(out_buff + 4, s_off, 4);
 		    } else {
-			writeUBytesBE(out_buff + 4, u_off, 4);
+			convertUBytesChar(out_buff + 4, u_off, 4);
 		    } 
 		    cwrite(out_fh, out_buff, 8);
 		    printf("writing copy delta_pos(%lu), fh_pos(%lu), offset(%ld), len(%lu)\n",
@@ -186,58 +180,82 @@ signed int rawEncodeDCBuffer(struct CommandBuffer *buffer,
     ((float)total_copy_len)/((float)copies), 
     ((float)total_add_len)/((float)adds_in_buff));
     printf("Buffer statistics: max_copy(%lu), min_copy(%lu), max_add(%lu), min_add(%lu)\n",
-	max_copy_len, min_copy_len, max_add_len, min_add_len);
+	max_copy_len, min_copy_len, max_add_len, min_add_len);*/
     return 0;
 }
 
-signed int rawReconstructDCBuff(struct cfile *patchf, struct CommandBuffer *dcbuff, 
-    unsigned int offset_type) {
-    const unsigned int buff_size = 8;
-    unsigned char buff[buff_size];
-    unsigned long int len;
-    unsigned long dc_pos=0;
-    unsigned long int u_off, add_off, com_start;
-    unsigned int last_com;
-    unsigned int off_is_sbytes;
-    unsigned long command_count, add_block_len;
-    if(offset_type==ENCODING_OFFSET_DC_POS) {
-	off_is_sbytes = 1;
-    } else {
-	off_is_sbytes = 0;
+signed int bdeltaReconstructDCBuff(struct cfile *patchf, 
+struct CommandBuffer *dcbuff){
+
+    unsigned int int_size;
+    #define BUFF_SIZE 12
+    unsigned int ver;
+    unsigned char buff[BUFF_SIZE];
+    unsigned long matches, add_len, copy_len, copy_offset;
+    unsigned long size1, size2, or_mask=0;
+    unsigned long ver_pos = 0, add_pos;
+    unsigned long add_start;
+    cseek(patchf, 3, CSEEK_FSTART);
+    cread(patchf, buff, 2);
+    ver = readUBytesLE(buff, 2);
+    printf("ver=%u\n", ver);
+    cread(patchf, buff, 1);
+    int_size = buff[0];
+    printf("int_size=%u\n", int_size);
+    /* yes, this is an intentional switch fall through. */
+    switch(int_size) {
+	case 1: or_mask |= 0x0000ff00;
+	case 2: or_mask |= 0x00ff0000;
+	case 3: or_mask |= 0xff000000;
     }
-    cread(patchf, buff, 8);
-    command_count = readUBytesBE(buff, 4);
-    com_start = readUBytesBE(buff + 4, 4);
-    cseek(patchf, com_start, CSEEK_CUR);
-    dc_pos = 8 + com_start;
-    add_off = 8;
-    last_com=DC_COPY;
-    while(command_count-- && cread(patchf, buff, 4)==4) {
-	len = readUBytesBE(buff, 4);
-	printf("command(%lu), len(%lu)\n", command_count + 1, len);
-	if(last_com==DC_COPY) { //eg it's an add
-	    last_com = DC_ADD;
-	    if(len) {
-		printf("adding len(%lu)\n", len);
-		DCBufferAddCmd(dcbuff, DC_ADD, add_off, len);
-		add_off += len;
-	    }
-	} else {
-	    last_com = DC_COPY;
-	    if(cread(patchf, buff, 4)!=4) {
-		abort();
-	    }
-	    if(len) {
-		if(off_is_sbytes) {
-		    u_off = dc_pos + readSBytesBE(buff, 4);
-		} else {
-		    u_off = readUBytesBE(buff, 4);
-		}
-		printf("copying len(%lu)\n", len);
-		DCBufferAddCmd(dcbuff, DC_COPY, u_off, len);
-	    }
+    cread(patchf, buff, 3 * int_size);
+    size1 = readUBytesLE(buff, int_size);
+    size2 = readUBytesLE(buff + int_size, int_size);
+    matches = readUBytesLE(buff + (2 * int_size), int_size);
+    printf("size1=%lu, size2=%lu\nmatches=%lu\n", size1, size2, matches);
+    /* add_pos = header info, 3 int_size's (size(1|2), num_match) */
+    add_pos = 3 + 2 + 1 + 3 * int_size;
+    /* add block starts after control data. */
+    add_pos += (matches * 3 * int_size);
+    add_start = add_pos;
+    printf("add block starts at %lu\nprocessing commands\n", add_pos);
+    while(matches--){
+	cread(patchf, buff, 3 * int_size);
+	copy_offset = readUBytesLE(buff, int_size);
+	add_len = readUBytesLE(buff + int_size, int_size);
+	copy_len = readUBytesLE(buff + int_size * 2, int_size);
+    	if(add_len) {
+	    printf("add  len(%lu)\n", add_len);
+	    DCBufferAddCmd(dcbuff, DC_ADD, add_pos, add_len);
+	    add_pos += add_len;
 	}
+	/* hokay, this is screwed up.  Course bdelta seems like it's got 
+	a possible problem w/ files produced on one's complement systems when
+	read on a 2's complement system. */
+	if(buff[0] & 0x80) {
+	    copy_offset |= or_mask;
+	    copy_offset = ~copy_offset;
+	    copy_offset += 1;
+	    printf("and it's negative, off(%lu), ver_pos(%lu), ",
+		copy_offset, ver_pos);
+	    ver_pos -= copy_offset;
+	    printf("ver_pos now(%lu)\n", ver_pos);
+	} else {
+	    printf("positive offset\n", copy_offset);
+	    ver_pos += copy_offset;
+	}
+	/* an attempt to ensure things aren't whacky. */
+	assert(ver_pos <= size1);
+	if(copy_len) {
+	    printf("copy len(%lu), pos(%lu)\n", copy_len, ver_pos);
+	    DCBufferAddCmd(dcbuff, DC_COPY, ver_pos, copy_len);
+	    ver_pos += copy_len;
+	}
+//	ver_pos += add_len;
     }
+    assert(ctell(patchf, CSEEK_FSTART)==add_start);
+    printf("finished reading.  ver_pos=%lu, add_pos=%lu\n",
+	ver_pos, add_pos);
     return 0;
 }
 

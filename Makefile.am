@@ -6,11 +6,14 @@ diffball_SOURCES = diffball.c diff-algs.c string-misc.c tar.c primes.c \
 	raw.c bdiff.c
 
 diffball_LDADD = -lssl -lcrypto
-patcher_SOURCES = patcher.c cfile.c dcbuffer.c gdiff.c bit-functions.c \
-	apply-patch.c switching.c raw.c bdiff.c xdelta1.c
+patcher_SOURCES = patcher.c cfile.c dcbuffer.c bit-functions.c apply-patch.c \
+	gdiff.c bdiff.c switching.c xdelta1.c raw.c bdelta.c
+#switching.c raw.c bdiff.c xdelta1.c
 
 differ_SOURCES = differ.c diff-algs.c dcbuffer.c dcbuffer.h cfile.c \
-	bit-functions.c gdiff.c switching.c adler32.c primes.c bdiff.c
+	bit-functions.c primes.c adler32.c gdiff.c bdiff.c \
+	switching.c xdelta1.c raw.c
+#switching.c bdiff.c
 convert_delta_SOURCES = convert_delta.c cfile.c dcbuffer.c gdiff.c \
 	switching.c raw.c bdiff.c bit-functions.c
 

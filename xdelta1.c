@@ -58,13 +58,13 @@ signed int xdelta1ReconstructDCBuff(struct cfile *patchf, struct CommandBuffer *
     unsigned char add_is_sequential, copy_is_sequential;
     cseek(patchf, 8, CSEEK_FSTART);
     cread(patchf, buff, 4);
-    flags = readUnsignedBytes(buff, 4);
+    flags = readUBytesBE(buff, 4);
     cread(patchf, buff, 4);
-    add_start = 32 + readUnsignedBytes(buff, 2) + 
-	readUnsignedBytes(buff + 2, 2);
+    add_start = 32 + readUBytesBE(buff, 2) + 
+	readUBytesBE(buff + 2, 2);
     cseek(patchf, -12, CSEEK_END);
     cread(patchf, buff, 4);
-    control_offset = readUnsignedBytes(buff,4);
+    control_offset = readUBytesBE(buff,4);
 //    printf("got a control_offset of %lu\n", control_offset);
     cseek(patchf, control_offset, CSEEK_FSTART);
     /* kludge. skipping 8 byte unknown, and to_file md5.*/

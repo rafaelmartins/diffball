@@ -48,14 +48,15 @@ signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer,
     buffer->lb_tail = buffer->lb_start;
     buffer->cb_tail = buffer->cb_head;
     buffer->cb_tail_bit = buffer->cb_head_bit;
-    convertUBytesChar(out_buff, GDIFF_MAGIC, GDIFF_MAGIC_LEN);
+    writeUBytesBE(out_buff, GDIFF_MAGIC, GDIFF_MAGIC_LEN);
+//    convertUBytesChar(out_buff, GDIFF_MAGIC, GDIFF_MAGIC_LEN);
     cwrite(out_fh, out_buff, GDIFF_MAGIC_LEN);
     if(offset_type==ENCODING_OFFSET_START)
-    	convertUBytesChar(out_buff, GDIFF_VER4, GDIFF_VER_LEN);
+	writeUBytesBE(out_buff, GDIFF_VER4, GDIFF_VER_LEN);
     else if(offset_type==ENCODING_OFFSET_VERS_POS)
-		convertUBytesChar(out_buff, GDIFF_VER5, GDIFF_VER_LEN);
+	writeUBytesBE(out_buff, GDIFF_VER5, GDIFF_VER_LEN);
     else if(offset_type==ENCODING_OFFSET_DC_POS)
-		convertUBytesChar(out_buff, GDIFF_VER6, GDIFF_VER_LEN);
+	writeUBytesBE(out_buff, GDIFF_VER6, GDIFF_VER_LEN);
     else {
 		printf("wtf, gdiff doesn't know offset_type(%u). bug.\n",offset_type);
 		exit(1);
@@ -82,19 +83,25 @@ signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer,
 		    u_off=buffer->lb_tail->len;
 		    adds_in_file++;
 		    if(buffer->lb_tail->len <= 246) {
-				convertUBytesChar(out_buff, buffer->lb_tail->len, 1);
+			out_buff[0] = buffer->lb_tail->len;
+//			writeUBytesBE(out_buff, buffer->lb_tail->len, 1);
+//				convertUBytesChar(out_buff, buffer->lb_tail->len, 1);
 				cwrite(out_fh, out_buff, 1);
 				delta_pos+=1;
 //				printf("type(%lu)\n", buffer->lb_tail->len);
 		    } else if (buffer->lb_tail->len <= 0xffff) {
-				convertUBytesChar(out_buff, 247, 1);
-				convertUBytesChar(out_buff + 1, buffer->lb_tail->len, 2);
+			out_buff[0] = 247;
+			writeUBytesBE(out_buff + 1, buffer->lb_tail->len, 2);
+//				convertUBytesChar(out_buff, 247, 1);
+//				convertUBytesChar(out_buff + 1, buffer->lb_tail->len, 2);
 				cwrite(out_fh, out_buff, 3);
 				delta_pos+=3;
 //				printf("type(%u)\n", 247);
 		    } else if (buffer->lb_tail->len <= 0xffffffff) {
-				convertUBytesChar(out_buff, 248, 1);
-				convertUBytesChar(out_buff + 1, buffer->lb_tail->len, 4);
+			out_buff[0] = 248;
+			writeUBytesBE(out_buff + 1, buffer->lb_tail->len, 4);
+//				convertUBytesChar(out_buff, 248, 1);
+//				convertUBytesChar(out_buff + 1, buffer->lb_tail->len, 4);
 				cwrite(out_fh, out_buff, 5);
 				delta_pos+=5;
 //				printf("type(%u)\n", 248);
@@ -169,11 +176,14 @@ signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer,
 				out_buff[0]=255;
 		    }
 		    if(off_is_sbytes)
-				convertSBytesChar(out_buff + clen, s_off, ob);
+			writeSBytesBE(out_buff + clen, s_off, ob);
+//				convertSBytesChar(out_buff + clen, s_off, ob);
 		    else 
-				convertUBytesChar(out_buff + clen, u_off, ob);
+			writeUBytesBE(out_buff + clen, u_off, ob);
+//				convertUBytesChar(out_buff + clen, u_off, ob);
 		    clen+= ob;
-		    convertUBytesChar(out_buff + clen, buffer->lb_tail->len, lb);
+		    writeUBytesBE(out_buff + clen, buffer->lb_tail->len, lb);
+//		    convertUBytesChar(out_buff + clen, buffer->lb_tail->len, lb);
 		    clen+=lb;
 		    printf("writing copy delta_pos(%lu), fh_pos(%lu), type(%u), offset(%ld), len(%lu)\n",
 			delta_pos, fh_pos, out_buff[0], (off_is_sbytes ? s_off: u_off), buffer->lb_tail->len);
@@ -187,7 +197,8 @@ signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer,
 		}
 		DCBufferIncr(buffer);
     }
-    convertUBytesChar(out_buff, 0, 1);
+    out_buff[0] = 0;
+//    convertUBytesChar(out_buff, 0, 1);
     cwrite(out_fh, out_buff, 1);
     printf("Buffer statistics- copies(%lu), adds(%lu)\n    copy ratio=(%f%%), add ratio(%f%%)\n",
 	copies, adds_in_buff, ((float)copies)/((float)(copies + adds_in_buff))*100,
@@ -233,7 +244,7 @@ signed int gdiffReconstructDCBuff(struct cfile *patchf, struct CommandBuffer *dc
 					printf("shite, error reading.  \n");
 					exit(1);
 				}
-	        	len= readUnsignedBytes(buff, lb);
+	        	len= readUBytesBE(buff, lb);
 	        } else
 	        	len=*buff;
 			printf("len(%lu)\n", len);
@@ -269,13 +280,13 @@ signed int gdiffReconstructDCBuff(struct cfile *patchf, struct CommandBuffer *dc
 		    }
 		    //cptr++;
 		    if(off_is_sbytes) {
-				s_off=readSignedBytes(buff + 1, ob);
+				s_off=readSBytesBE(buff + 1, ob);
 				//convertSBytesChar(out_buff + 1, s_off, ob);
 		    } else {
 				//convertUBytesChar(out_buff + 1, u_off, ob);
-				u_off=readUnsignedBytes(buff + 1, ob);
+				u_off=readUBytesBE(buff + 1, ob);
 		    }
-		    len = readUnsignedBytes(buff + 1 + ob, lb);
+		    len = readUBytesBE(buff + 1 + ob, lb);
 		    if(offset_type!=ENCODING_OFFSET_START) {
 				if(offset_type==ENCODING_OFFSET_VERS_POS)
 				    u_off = ver_pos + s_off;

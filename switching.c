@@ -26,29 +26,27 @@
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
-unsigned long add_len_start[] = {
+const unsigned long add_len_start[] = {
     0x0,
-   	0x40, 
-   	0x40 + 0x4000, 
-   	0x40 + 0x4000 + 0x400000}; 
-   	//0x40 + 0x4000 + 0x400000 + 0x40000000};
-unsigned long copy_len_start[] = {
-   	0x0,
-   	0x10, 
-   	0x10 + 0x1000, 
-   	0x10 + 0x1000 + 0x100000}; 
-   	//0x10 + 0x1000 + 0x100000 + 0x10000000};
-unsigned long copy_off_start[] = {
-   	0x00,
-   	0x100,
-   	0x100 + 0x10000,
-   	0x100 + 0x10000 + 0x1000000};
-unsigned long copy_soff_start[] = {
-	0x00,
-	0x80,
-	0x80 + 0x8000,
-	0x80 + 0x8000,
-	0x80 + 0x8000 + 0x800000};
+    0x40, 
+    0x40 + 0x4000, 
+    0x40 + 0x4000 + 0x400000}; 
+const unsigned long copy_len_start[] = {
+    0x0,
+    0x10, 
+    0x10 + 0x1000, 
+    0x10 + 0x1000 + 0x100000}; 
+const unsigned long copy_off_start[] = {
+    0x00,
+    0x100,
+    0x100 + 0x10000,
+    0x100 + 0x10000 + 0x1000000};
+const unsigned long copy_soff_start[] = {
+    0x00,
+    0x80,
+    0x80 + 0x8000,
+    0x80 + 0x8000,
+    0x80 + 0x8000 + 0x800000};
 
 signed int switchingEncodeDCBuffer(struct CommandBuffer *buffer, 
     unsigned int offset_type, /*unsigned char *ver */
@@ -72,13 +70,13 @@ signed int switchingEncodeDCBuffer(struct CommandBuffer *buffer,
     unsigned long min_add_len=0xffffffff, min_copy_len=0xffffffff;
     unsigned int last_com;
     unsigned int is_neg = 0;
-    unsigned long *copy_off_array;
+    unsigned const long *copy_off_array;
 
     if(offset_type==ENCODING_OFFSET_DC_POS) {
-		copy_off_array = copy_soff_start;
+	copy_off_array = copy_soff_start;
     } else {
-		copy_off_array = copy_off_start;
-	}
+	copy_off_array = copy_off_start;
+    }
 //    printf("commands in buffer(%lu)\n", buffer->count);
     count = buffer->count;
     buffer->lb_tail = buffer->lb_start;
@@ -91,7 +89,8 @@ signed int switchingEncodeDCBuffer(struct CommandBuffer *buffer,
     	}
     	DCBufferIncr(buffer);
     }
-    convertUBytesChar(out_buff, total_add_len, 4);
+    writeUBytesBE(out_buff, total_add_len, 4);
+//    convertUBytesChar(out_buff, total_add_len, 4);
     cwrite(out_fh, out_buff, 4);
     delta_pos += 4;
     count = buffer->count;
@@ -163,7 +162,7 @@ signed int switchingEncodeDCBuffer(struct CommandBuffer *buffer,
 		    }
 		    temp_len -= add_len_start[temp];
 		    //printf("ubits prior(%u): ", out_buff[0]);
-		    convertUBitsChar(out_buff, temp_len, lb);
+		    writeUBitsBE(out_buff, temp_len, lb);
 		    //printf("after(%u): ", out_buff[0]);
 		    out_buff[0] |= (temp << 6); 
 		    cwrite(out_fh, out_buff, temp + 1);
@@ -210,7 +209,7 @@ signed int switchingEncodeDCBuffer(struct CommandBuffer *buffer,
 		    }
 		    //printf("len(%lu) falls into cat(%u) for copy_len\n", temp_len, temp);
 		    temp_len -= copy_len_start[temp];
-		    convertUBitsChar(out_buff, temp_len, lb);
+		    writeUBitsBE(out_buff, temp_len, lb);
 		    //out_buff[0] = (temp_len >> (temp * 8)) & 0x0f;
 		    //printf("encoding as %u,%u,%u,%u\n", out_buff[0], out_buff[1], out_buff[2], out_buff[3]);
 		    //printf("out[0] was(%u): ", out_buff[0]);
@@ -245,13 +244,13 @@ signed int switchingEncodeDCBuffer(struct CommandBuffer *buffer,
 						is_neg = 1;
 					}
 				}
-				convertSBytesChar(out_buff + lb, s_off, temp + 1);
+				writeSBytesBE(out_buff + lb, s_off, temp + 1);
 				if(is_neg) 
 					out_buff[lb] |= 0x80;
 		    	is_neg=0;
 		    } else {
 				u_off -= copy_off_array[temp];
-				convertUBytesChar(out_buff + lb, u_off, temp + 1);
+				writeUBytesBE(out_buff + lb, u_off, temp + 1);
 			} 
 			cwrite(out_fh, out_buff, lb + temp + 1);
 		    printf("writing copy delta_pos(%lu), fh_pos(%lu), offset(%ld), len(%lu)\n",
@@ -265,7 +264,7 @@ signed int switchingEncodeDCBuffer(struct CommandBuffer *buffer,
  		}
 		DCBufferIncr(buffer);
     }
-    convertUBytesChar(out_buff, 0, 2);
+    writeUBytesBE(out_buff, 0, 2);
     if(last_com==DC_COPY) {
     	cwrite(out_fh, out_buff,1);
     	delta_pos++;
@@ -296,7 +295,7 @@ signed int switchingReconstructDCBuff(struct cfile *patchf, struct CommandBuffer
     unsigned long add_off, com_start;
     unsigned int off_is_sbytes, ob, lb;
     unsigned int end_of_patch =0;
-    unsigned long *copy_off_array;
+    unsigned const long *copy_off_array;
     if(offset_type==ENCODING_OFFSET_DC_POS) {
     	printf("using ENCODING_OFFSET_DC_POS\n");
        	copy_off_array = copy_soff_start;
@@ -310,7 +309,7 @@ signed int switchingReconstructDCBuff(struct cfile *patchf, struct CommandBuffer
     dc_pos=0;
     printf("starting pos=%lu\n", ctell(patchf, CSEEK_ABS));
     cread(patchf, buff, 4);
-    com_start = readUnsignedBytes(buff, 4);
+    com_start = readUBytesBE(buff, 4);
     cseek(patchf, com_start, CSEEK_CUR);
     add_off=4;
 	last_com=DC_COPY;
@@ -323,7 +322,7 @@ signed int switchingReconstructDCBuff(struct cfile *patchf, struct CommandBuffer
 	    	len = buff[0] & 0x3f;
 	    	if(lb) {
 	    		cread(patchf, buff, lb);
-	    		len = (len << (lb * 8)) + readUnsignedBytes(buff, lb);
+	    		len = (len << (lb * 8)) + readUBytesBE(buff, lb);
 	    		len += add_len_start[lb];
 	    	}
 	    	if(len) {
@@ -339,7 +338,7 @@ signed int switchingReconstructDCBuff(struct cfile *patchf, struct CommandBuffer
 	    	len = buff[0] & 0x0f;
 	    	if(lb) {
 	    		cread(patchf, buff, lb);
-	    		len = (len << (lb * 8)) + readUnsignedBytes(buff, lb);
+	    		len = (len << (lb * 8)) + readUBytesBE(buff, lb);
 	    		//printf("adding(%lu): ", copy_len_start[lb]);
 	    		len += copy_len_start[lb];
 	    	}
@@ -347,7 +346,7 @@ signed int switchingReconstructDCBuff(struct cfile *patchf, struct CommandBuffer
 	    	printf("ob(%u): ", ob);
 	    	cread(patchf, buff, ob + 1);
 	    	if (offset_type == ENCODING_OFFSET_DC_POS) {
-	    		s_off = readSignedBytes(buff, ob + 1);
+	    		s_off = readSBytesBE(buff, ob + 1);
 			// positive or negative 0?  Yes, for this, there is a difference... 
 	    		if(buff[0] & 0x80) {
 	    			s_off -= copy_off_array[ob];
@@ -359,7 +358,7 @@ signed int switchingReconstructDCBuff(struct cfile *patchf, struct CommandBuffer
 					u_off, dc_pos, s_off);
 				dc_pos = u_off;
 	    	} else {
-	    		u_off = readUnsignedBytes(buff, ob + 1);
+	    		u_off = readUBytesBE(buff, ob + 1);
 	    		u_off += copy_off_start[ob];
 	    	}
 	    	if(lb==0 && ob==0 && len==0 && u_off==0) {
