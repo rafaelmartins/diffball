@@ -42,7 +42,7 @@ int main(int argc, char **argv)
     int src_fh, delta_fh, out_fh;
     signed long offset;
     unsigned long len;
-    unsigned long fh_pos;
+    unsigned long fh_pos, delta_pos=0;
     unsigned int buff_filled;
     unsigned int clen, ctmp;
     unsigned char buffer[1024], cpy_buff[12];
@@ -73,26 +73,35 @@ int main(int argc, char **argv)
 	printf("Couldn't create\truncate output file.\n");
 	exit(EXIT_FAILURE);
     }
-    if((buff_filled=read(delta_fh, commands, 512))==0){
+    /*if((buff_filled=read(delta_fh, commands, 512))==0){
 	printf("ahem.  the delta file is empty?\n");
 	exit(EXIT_FAILURE);
-    }
+    }*/
     fh_pos=0;
-    //printf("read buff_filled(%lu)\ncommands='%*s'\n", buff_filled, buff_filled, commands);
-    cptr=commands;
+    cptr=commands + 512;
+    buff_filled=512;
     while(*cptr != 0) {
-	if(*cptr > 0 && *cptr <= 248) {
+	if(cptr == commands + buff_filled) {
+	    printf("refreshing buffer: cptr(%u)==buff_filled(%u)\n", cptr - commands, buff_filled);
+	    if((buff_filled=read(delta_fh, commands, 512))==0){
+		printf("ahem.  the delta file is empty?\n");
+		exit(EXIT_FAILURE);
+	    }
+	    cptr=commands;
+	} else if(*cptr > 0 && *cptr <= 248) {
 	    //add command
-	    printf("add command fh_pos(%lu), len(%lu)\n", fh_pos, *cptr);
-	    clen = MIN(buff_filled - (cptr + 1 - commands), *cptr);
+	    ccom = *cptr;
+	    cptr++;
+	    printf("add command fh_pos(%lu), len(%lu)\n", fh_pos, ccom);
+	    clen = MIN(buff_filled - (cptr - commands), ccom);
 	    //printf("len(%lu), clen(%lu)\n", *cptr, clen);
-	    if(write(out_fh, cptr + 1, clen)!= clen){
-		printf("eh?  Tried writing(%u) bytes, but failed\n", *cptr);
+	    if(write(out_fh, cptr, clen)!= clen){
+		printf("eh?  Tried writing(%u) bytes, but failed\n", ccom);
 		exit(1);
 	    }
-	    fh_pos += *cptr;
-	    if(*cptr != clen){
-		clen=*cptr - clen;;
+	    fh_pos += ccom;
+	    if(ccom != clen){
+		clen=ccom - clen;
 		if((buff_filled=read(delta_fh, commands, 512))==0){
 		    printf("ahem.  eof encountered earlier then expected...\n");
 		    exit(EXIT_FAILURE);
@@ -103,8 +112,9 @@ int main(int argc, char **argv)
 		}
 		cptr= commands + clen;
 	    } else {
-		cptr+=clen + 1;
+		cptr+=ccom;
 	    }
+	    delta_pos +=ccom + 1;
 	} else if(*cptr >= 249 ) {
 	    //copy command
 	    ccom=*cptr;
@@ -150,8 +160,9 @@ int main(int argc, char **argv)
 		clen=2;
 	    else
 		clen=4;
+	    delta_pos += clen + ctmp + 1;
 	    len = readUnsignedBytes(cpy_buff+ctmp, clen);
-	    printf("copy command fh_pos(%lu), type(%u), offset(%d), fh_off(%lu) len(%lu)\n",
+	    printf("copy command fh_pos(%lu), type(%u), offset(%d), ref_pos(%lu) len(%lu)\n",
 		fh_pos, ccom, offset, fh_pos + offset, len);
 	    printf("    source fh_pos(%lu)\n", fh_pos + offset);
 	    if(lseek(src_fh, fh_pos + offset, SEEK_SET)!= fh_pos + offset) {
@@ -175,4 +186,5 @@ int main(int argc, char **argv)
 	}
     }
     printf("end was found(%u)\n", *cptr==0 ? 1 : 0);
+    printf("processed bytes(%lu) of bytes(%lu) available\n", delta_pos + (*cptr==0 ? 1: 0), delta_stat.st_size);
 }

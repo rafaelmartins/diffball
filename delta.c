@@ -136,7 +136,7 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
 {
     unsigned char *ptr, clen;
     unsigned long fh_pos=0;
-    unsigned long offset;
+    //unsigned long offset;
     signed long s_off;
     unsigned long u_off;
     unsigned long copies=0, adds_in_buff=0, adds_in_file=0;
@@ -160,19 +160,20 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
 	switch(type)
 	{
 	case DC_ADD:
-	    offset=0;
+	    //offset=0;
 	    printf("add command, fh_pos(%lu), len(%lu), broken into '%lu' commands\n",
 		fh_pos, buffer->lb_tail->len, buffer->lb_tail->len/248 + (buffer->lb_tail->len % 248 ? 1 : 0));
 	    adds_in_buff++;
 	    while(buffer->lb_tail->len){
 		adds_in_file++;
 		clen=MIN(buffer->lb_tail->len, 248);
-		//printf("    writing add command offset(%lu), len(%lu)\n", buffer->lb_tail->offset + offset, len);
+		printf("    writing add command offset(%lu), len(%lu)\n", buffer->lb_tail->offset, clen);
 		write(fh, &clen, 1);
-		write(fh, ver + offset, clen);
-		offset+=clen;
+		write(fh, ver + buffer->lb_tail->offset, clen);
+		//offset+=clen;
 		fh_pos+=clen;
 		buffer->lb_tail->len -=clen;
+		buffer->lb_tail->offset += clen;
 	    }
 	    break;
 	case DC_COPY:
@@ -356,14 +357,16 @@ char *OneHalfPassCorrecting(unsigned char *ref, unsigned long ref_len,
 		rm--;
 	    }
 	    len = (vc - vm) + seed_len;
-	    while(vm + len < ver + ver_len && rm + len < ref + ref_len && vm[len+1] == rm[len+1]) {
+	    //printf("prefix len(%lu), ",len-seed_len);
+	    while(vm + len < ver + ver_len && rm + len < ref + ref_len && vm[len] == rm[len]) {
 		len++;
 	    }
+	    //printf("couldn't match %u==%u\n", vm[len], rm[len]);
 	    printf("vstart(%lu), rstart(%lu), len(%lu)\n", (unsigned char*)vm - (unsigned char*)ver,
 		rm -ref, len);
 	    if (vs <= vm) {
 		if (vs < vm) {
-		    printf("    adding offset(%lu), len(%lu): (vs < vm)\n", vs -ver, vm-vs);
+		    printf("    adding vstart(%lu), len(%lu), vend(%lu): (vs < vm)\n", vs -ver, vm-vs, vm - ver);
 		    //DCBufferAddCmd(&buffer, DC_ADD, vs -ver, (vc-x) -vs);
 		    DCBufferAddCmd(&buffer, DC_ADD, vs -ver, vm - vs);
 		    adds++;
@@ -375,7 +378,7 @@ char *OneHalfPassCorrecting(unsigned char *ref, unsigned long ref_len,
 	    } else if (vm < vs) {
 		printf("    truncating(%lu) bytes: (vm < vs)\n", vs - vm);
 		DCBufferTruncate(&buffer, vs - vm);
-		printf("    replacement copy: offset(%lu), len(%lu)\n", vm - ver, len);
+		printf("    replacement copy: offset(%lu), len(%lu)\n", rm - ref, len);
 		DCBufferAddCmd(&buffer, DC_COPY, rm -ref, len);
 		truncations++;
 	    } else {
@@ -383,8 +386,8 @@ char *OneHalfPassCorrecting(unsigned char *ref, unsigned long ref_len,
 		exit(EXIT_FAILURE);
 	    }
 	    copies++;
-	    vs = vm + len + 1;
-	    vc = vs;
+	    vs = vm + len ;
+	    vc = vs -1;
 	} else {
 	    //printf("no match(%lu)\n", vc -ver);
 	}
