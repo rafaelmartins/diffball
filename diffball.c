@@ -20,8 +20,7 @@ int main(int argc, char **argv)
     unsigned long int source_count, target_count;
     unsigned long int x;
     char src_common[256], trg_common[256];  /* common dir's... */
-    unsigned int src_common_len=0, trg_common_len=0;
-    char *text = "debianutils-1.16.7/which.1";
+    unsigned long int src_common_len=0, trg_common_len=0;
 
     printf("sizeof struct tar_entry=%u, sizeof *tar_entry=%u, size of **tar_entry=%u\n",
         sizeof(struct tar_entry), sizeof(struct tar_entry *), sizeof(struct tar_entry**));
@@ -73,7 +72,7 @@ int main(int argc, char **argv)
     trg_common[trg_common_len] = '\0';  /* null delimit it */
     for (x=0; x < target_count; x++) {
         if (strncmp((const char *)trg_common, (const char *)target[x]->fullname, trg_common_len) !=0) {
-            printf("found a breaker(%s) at pos(%lu), loc(%lu)\n", target[x]->fullname, x, target[x]->file_loc);
+            //printf("found a breaker(%s) at pos(%lu), loc(%lu)\n", target[x]->fullname, x, target[x]->file_loc);
             char *p;
             /* null the / at trg_common_len-1, and attempt rindex again. */
             trg_common[trg_common_len -1]='\0';
@@ -103,7 +102,7 @@ int main(int argc, char **argv)
         if(vptr == NULL) {
             printf("'%s' not found!\n", source[x]->fullname_ptr);
         } else {
-            printf("'%s' found!\n", source[x]->fullname_ptr);
+            //printf("'%s' found!\n", source[x]->fullname_ptr);
         }
     }
 
@@ -175,7 +174,7 @@ struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long int *total_cou
 {
     struct tar_entry **file, *entry;
     char *entry_char[512];
-    unsigned long offset=0, array_size=100000;
+    unsigned long offset=0, array_size=50000;
     unsigned long count =0;
     unsigned int read_bytes;
     int pipes[2];
@@ -220,6 +219,7 @@ struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long int *total_cou
         perror("Shit.\nNo explanation, just Shit w/ a capital S.\n");
         exit(EXIT_FAILURE);
     }
+    printf("array's mem size is: %lu\n", sizeof(file)*count);
     if(read_bytes>0) { /*finish outputing the file for md5summing */
         write(pipes[1], entry_char, read_bytes);
         while((read_bytes = read(src_fh, entry_char, 512))>0)

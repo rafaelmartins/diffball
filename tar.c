@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
 
 int verify_str_chksum(const char *entry);
 struct tar_entry *convert_str_tar_entry(char *block);
@@ -63,6 +65,7 @@ struct tar_entry *convert_str_tar_entry(char *block/*[512]*/)
     char tmp12[13];
     struct tar_entry *t;
     unsigned long chksum;
+    unsigned int memuse=0;
     /* = (struct tar_entry *)malloc(sizeof(struct tar_entry)); */
     //t.name = *char[100];
     /* find out why the fuck it's bitching about god damned type conversions when the type is right.*/
@@ -77,6 +80,7 @@ struct tar_entry *convert_str_tar_entry(char *block/*[512]*/)
         printf("Shite.  Couldn't allocate needed memory...\n");
         exit(EXIT_FAILURE);
     }
+   memuse=sizeof(struct tar_entry);
     /* I'm using strncpy purely so that things get null padded for sure.  memcpy elsewhere most likely */
     //strncpy((char *)t->name, (const char *)block, 100);
     block = block +100;
@@ -99,6 +103,7 @@ struct tar_entry *convert_str_tar_entry(char *block/*[512]*/)
         perror("not enough memory.\n");
         exit(EXIT_FAILURE);
     }
+    memuse+=l+1;
     if(l != 0)
         strncpy((char *)t->linkname, (const char *)block,100);
     t->linkname[l]='\0';
@@ -107,16 +112,17 @@ struct tar_entry *convert_str_tar_entry(char *block/*[512]*/)
     strncpy((char *)t->version, (const char *)block, 2);     block+=2;
     l=strnlen(block,32);
     if((t->uname = (char *)calloc(sizeof(char), l+1))==NULL) {
-        perror("not enough memory.\n");
+        perror("not enough memory: sec0\n");
         exit(EXIT_FAILURE);
     }
+    memuse+=l+1;
     if(l != 0)
         strncpy((char *)t->uname, (const char *)block, 32);
     t->uname[l]='\0';
     block+=32;
     l=strnlen(block, 32);
     if((t->gname = (char *)calloc(sizeof(char), l+1))==NULL) {
-        perror("not enough memory.\n");
+        perror("not enough memory: sec1\n");
         exit(EXIT_FAILURE);
     }
     if(l != 0)
@@ -129,21 +135,24 @@ struct tar_entry *convert_str_tar_entry(char *block/*[512]*/)
     t->devminor = strtol((char *)tmp8, NULL, 8);            block+=8;
     if ( (t->prefix_len = strnlen(block, 155)) == 0) { /* ergo prefix is nothing */
         if( (t->fullname_ptr = t->fullname = (char *)calloc(sizeof(char), strnlen(block-345, 100) + 1)) == NULL) {
-            perror("not enough memory.\n");
+            perror("not enough memory:sec2\n");
             exit(EXIT_FAILURE);
         }
+	memuse+=(int)sizeof(char)*(strnlen((char*)(block-345), 100)+1) ;
         strncpy((char *)t->fullname, (char *)(block -345), 100);
         t->name=(char *)t->fullname;
     } else {
-        if( (t->fullname_ptr = t->fullname=(char *)calloc(sizeof(char), l + strnlen(block-345, 100) + 2)) == NULL) {
-            perror("not enough memory.\n");
+        if( (t->fullname_ptr = t->fullname=(char *)calloc(sizeof(char), t->prefix_len + strnlen(block-345, 100) + 2)) == NULL) {
+            perror("not enough memory:sec3\n");
             exit(EXIT_FAILURE);
         }
+	memuse+=sizeof(char)*(strnlen((char *)(block-345), 100) +t->prefix_len +3);
         strncpy((char *)t->fullname_ptr, (char *)block, t->prefix_len);
         t->fullname_ptr[t->prefix_len + 1]=(char)'/';
         t->name = (char *)(t->fullname_ptr + t->prefix_len + 2);
         strncpy((char *)t->name, (char *)(block -345), 100);
         t->fullname_ptr[strnlen((char *)t->fullname_ptr, 255) +1] = '\0';
     }
+    printf("%5u:%s\n", memuse, t->fullname);
     return t;
 }
