@@ -24,6 +24,29 @@
 #include "bit-functions.h"
 #include "xdelta1.h"
 
+unsigned int
+check_xdelta1_magic(cfile *patchf)
+{
+    unsigned char buff[XDELTA_MAGIC_LEN];
+    if(XDELTA_MAGIC_LEN != cread(patchf, buff, XDELTA_MAGIC_LEN)) {
+	return 0;
+    }
+    if(memcmp(buff, XDELTA_110_MAGIC, XDELTA_MAGIC_LEN)==0) {
+	return 2;
+    } else if (memcmp(buff, XDELTA_104_MAGIC, XDELTA_MAGIC_LEN)==0) {
+	return 1;
+    } else if (memcmp(buff, XDELTA_100_MAGIC, XDELTA_MAGIC_LEN)==0) {
+	return 1;
+    } else if (memcmp(buff, XDELTA_020_MAGIC, XDELTA_MAGIC_LEN)==0) {
+	return 1;
+    } else if (memcmp(buff, XDELTA_018_MAGIC, XDELTA_MAGIC_LEN)==0) {
+	return 1;
+    } else if (memcmp(buff, XDELTA_014_MAGIC, XDELTA_MAGIC_LEN)==0) {
+	return 1;
+    }
+    return 0;
+}
+
 unsigned long inline 
 readXDInt(cfile *patchf, unsigned char *buff)
 {
@@ -57,7 +80,7 @@ xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
     unsigned long add_pos;
     unsigned char buff[32];
     unsigned char add_is_sequential, copy_is_sequential;
-    cseek(patchf, 8, CSEEK_FSTART);
+    cseek(patchf, XDELTA_MAGIC_LEN, CSEEK_FSTART);
     cread(patchf, buff, 4);
     flags = readUBytesBE(buff, 4);
     cread(patchf, buff, 4);

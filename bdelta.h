@@ -17,8 +17,13 @@
 */
 #ifndef _HEADER_BDELTA
 #define _HEADER_BDELTA 1
+#include "dcbuffer.h"
 #include "cfile.h"
 
+#define BDELTA_MAGIC "BDT"
+#define BDELTA_MAGIC_LEN 3
+
+unsigned int check_bdelta_magic(cfile *patchf);
 signed int bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, 
     	cfile *ver_cfh, cfile *out_fh);
 signed int bdeltaReconstructDCBuff(cfile *patchf, 

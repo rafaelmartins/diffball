@@ -122,7 +122,7 @@ main(int argc, char **argv)
     DCBufferCollapseAdds(&dcbuff);
     printf("outputing patch...\n");
 //    gdiffEncodeDCBuffer(&dcbuff, offset_type, &in_cfh, &out_cfh);
-    switchingEncodeDCBuffer(&dcbuff, offset_type, &in_cfh, &out_cfh);
+    switchingEncodeDCBuffer(&dcbuff, &in_cfh, &out_cfh);
     printf("finished.\n");
     DCBufferFree(&dcbuff);
     cclose(&in_cfh);

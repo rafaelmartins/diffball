@@ -18,12 +18,13 @@
 #ifndef _HEADER_BDIFF
 #define _HEADER_BDIFF 1
 #define BDIFF_MAGIC "BDIFF"
-#define BDIFF_LEN_MAGIC 5
+#define BDIFF_MAGIC_LEN 5
 #define BDIFF_VERSION 'a'
 #define BDIFF_DEFAULT_MAXBLOCKSIZE (1<<20)
 #include "diff-algs.h"
 #include "cfile.h"
 
+unsigned int check_bdiff_magic(cfile *patchf);
 signed int bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh, 
 	cfile *out_cfh);
 signed int bdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff);

@@ -27,11 +27,13 @@
 #define GDIFF4_FORMAT		0x1
 #define GDIFF5_FORMAT		0x2
 #define BDIFF_FORMAT		0x3
-#define XDELTA_FORMAT		0x4
+#define XDELTA1_FORMAT		0x4
 #define SWITCHING_FORMAT	0x5
 #define BDELTA_FORMAT		0x6
 #define GNUDIFF_FORMAT		0x7
 
+unsigned long int check_for_format(char *format_name, unsigned int len);
+unsigned long int identify_format(cfile *patchf);
 
 #endif
 

@@ -24,6 +24,19 @@
 #include "bit-functions.h"
 #include "bdelta.h"
 
+unsigned int
+check_bdelta_magic(cfile *patchf)
+{
+    unsigned char buff[BDELTA_MAGIC_LEN + 1];
+    cseek(patchf, 0, CSEEK_FSTART);
+    if(BDELTA_MAGIC_LEN != cread(patchf, buff, BDELTA_MAGIC_LEN)) {
+	return 0;
+    } else if (memcmp(buff, BDELTA_MAGIC, BDELTA_MAGIC_LEN)!=0) {
+	return 0;
+    }
+    return 2;
+}
+
 signed int 
 bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *ver_cfh, 
     cfile *patchf)

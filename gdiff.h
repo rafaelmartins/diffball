@@ -19,9 +19,8 @@
 #define _HEADER_GDIFF 1
 #define GDIFF_MAGIC 0xd1ffd1ff
 #define GDIFF_MAGIC_LEN 4
-#define GDIFF_VER4 4
-#define GDIFF_VER5 5
-#define GDIFF_VER6 6
+#define GDIFF_VER4_MAGIC 4
+#define GDIFF_VER5_MAGIC 5
 #define GDIFF_VER_LEN 1
 #include "diff-algs.h"
 //#include "pdbuff.h"
@@ -49,6 +48,9 @@
     magic=0xd1ffd1ff
     version is one byte.
     */
+
+unsigned int check_gdiff4_magic(cfile *patchf);
+unsigned int check_gdiff5_magic(cfile *patchf);
 
 signed int gdiffEncodeDCBuffer(CommandBuffer *buffer, 
     unsigned int offset_type, cfile *ver_cfh, cfile *out_cfh);

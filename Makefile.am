@@ -1,15 +1,15 @@
 
-AM_CFLAGS = -ftest-coverage -fprofile-arcs -pg -ftest-coverage -Wall 
-#AM_CFLAGS = -Wall 
+#AM_CFLAGS = -ftest-coverage -fprofile-arcs -pg -ftest-coverage -Wall 
+AM_CFLAGS = -Wall 
 
 FORMATS = dcbuffer.c cfile.c bit-functions.c gdiff.c switching.c bdiff.c \
-    bdelta.c udiff.c line-util.c
+    bdelta.c xdelta1.c udiff.c line-util.c
 DIFF_FILES = diff-algs.c adler32.c primes.c
 
 bin_PROGRAMS = differ patcher diffball convert_delta ctest
 
 ctest_SOURCES = ctest.c cfile.c
-patcher_SOURCES = patcher.c apply-patch.c options.c $(FORMATS)
+patcher_SOURCES = patcher.c apply-patch.c options.c formats.c $(FORMATS)
 diffball_SOURCES = diffball.c string-misc.c tar.c options.c \
     $(DIFF_FILES) $(FORMATS) 
 differ_SOURCES = differ.c $(DIFF_FILES) options.c $(FORMATS)

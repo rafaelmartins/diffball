@@ -21,6 +21,22 @@
 #include "bdiff.h"
 #include "bit-functions.h"
 
+unsigned int
+check_bdiff_magic(cfile *patchf)
+{
+    unsigned char buff[BDIFF_MAGIC_LEN + 1];
+    if(BDIFF_MAGIC_LEN + 1 != cread(patchf, buff, BDIFF_MAGIC_LEN + 1)) {
+	return 0;
+    }
+    if(memcmp(buff, BDIFF_MAGIC, BDIFF_MAGIC_LEN)!=0) {
+	return 0;
+    }
+    if(buff[BDIFF_MAGIC_LEN]==BDIFF_VERSION) {
+	return 2;
+    }
+    return 1;
+}
+
 signed int 
 bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh, cfile *out_cfh)
 {
@@ -30,13 +46,13 @@ bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh, cfile *out_cfh)
     unsigned long count, fh_pos, delta_pos=0;
     unsigned int lb;
     count = DCBufferReset(buffer);
-    memcpy(buff, BDIFF_MAGIC, BDIFF_LEN_MAGIC);
-    buff[BDIFF_LEN_MAGIC] = BDIFF_VERSION;
+    memcpy(buff, BDIFF_MAGIC, BDIFF_MAGIC_LEN);
+    buff[BDIFF_MAGIC_LEN] = BDIFF_VERSION;
     /* I haven't studied the author of bdiff's alg well enough too know what
     MaxBlockSize is for.  Either way, throwing in the default. */
-    writeUBytesBE(buff + BDIFF_LEN_MAGIC + 1,
+    writeUBytesBE(buff + BDIFF_MAGIC_LEN + 1,
 	(BDIFF_DEFAULT_MAXBLOCKSIZE), 4);
-    cwrite(out_cfh, buff, BDIFF_LEN_MAGIC + 5);
+    cwrite(out_cfh, buff, BDIFF_MAGIC_LEN + 5);
     delta_pos = 10;
     fh_pos = 0;
     while(count--) {

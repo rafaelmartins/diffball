@@ -22,7 +22,42 @@
 #include "gdiff.h"
 #include "bit-functions.h"
 
-signed int gdiffEncodeDCBuffer(CommandBuffer *buffer, 
+unsigned int
+check_gdiff4_magic(cfile *patchf)
+{
+    unsigned char buff[GDIFF_MAGIC_LEN + 1];
+    cseek(patchf, 0, CSEEK_FSTART);
+    if(GDIFF_MAGIC_LEN != cread(patchf, buff, GDIFF_MAGIC_LEN)) {
+	return 0;
+    } else if (memcmp(GDIFF_MAGIC, buff, GDIFF_MAGIC_LEN)!=0) {
+	return 0;
+    } else if (GDIFF_VER_LEN!=cread(patchf, buff, GDIFF_VER_LEN)) {
+	return 0;
+    } else if (memcmp(buff, GDIFF_VER4_MAGIC, GDIFF_VER_LEN)==0) {
+	return 2;
+    }
+    return 0;
+}
+
+unsigned int
+check_gdiff5_magic(cfile *patchf)
+{
+    unsigned char buff[GDIFF_MAGIC_LEN + 1];
+    cseek(patchf, 0, CSEEK_FSTART);
+    if(GDIFF_MAGIC_LEN != cread(patchf, buff, GDIFF_MAGIC_LEN)) {
+	return 0;
+    } else if (memcmp(GDIFF_MAGIC, buff, GDIFF_MAGIC_LEN)!=0) {
+	return 0;
+    } else if (GDIFF_VER_LEN!=cread(patchf, buff, GDIFF_VER_LEN)) {
+	return 0;
+    } else if (memcmp(buff, GDIFF_VER5_MAGIC, GDIFF_VER_LEN)==0) {
+	return 2;
+    }
+    return 0;
+}
+
+signed int 
+gdiffEncodeDCBuffer(CommandBuffer *buffer, 
     unsigned int offset_type, cfile *ver_cfh, cfile *out_cfh)
 {
     unsigned char /* *ptr,*/ clen;
@@ -41,12 +76,12 @@ signed int gdiffEncodeDCBuffer(CommandBuffer *buffer,
     writeUBytesBE(out_buff, GDIFF_MAGIC, GDIFF_MAGIC_LEN);
     cwrite(out_cfh, out_buff, GDIFF_MAGIC_LEN);
     if(offset_type==ENCODING_OFFSET_START)
-	writeUBytesBE(out_buff, GDIFF_VER4, GDIFF_VER_LEN);
-    else if(offset_type==ENCODING_OFFSET_VERS_POS)
-	writeUBytesBE(out_buff, GDIFF_VER5, GDIFF_VER_LEN);
+	writeUBytesBE(out_buff, GDIFF_VER4_MAGIC, GDIFF_VER_LEN);
     else if(offset_type==ENCODING_OFFSET_DC_POS)
+	writeUBytesBE(out_buff, GDIFF_VER5_MAGIC, GDIFF_VER_LEN);
+/*    else if(offset_type==ENCODING_OFFSET_DC_POS)
 	writeUBytesBE(out_buff, GDIFF_VER6, GDIFF_VER_LEN);
-    else {
+*/    else {
 	v2printf("wtf, gdiff doesn't know offset_type(%u). bug.\n",offset_type);
 	exit(1);
     }
@@ -159,7 +194,8 @@ signed int gdiffEncodeDCBuffer(CommandBuffer *buffer,
     return 0;
 }
 
-signed int gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff, 
+signed int 
+gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff, 
 	unsigned int offset_type, unsigned int gdiff_version)
 {
     const unsigned int buff_size = 5;

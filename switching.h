@@ -17,21 +17,16 @@
 */
 #ifndef _HEADER_SWITCHING
 #define _HEADER_SWITCHING 1
-/*#define GDIFF_MAGIC 0xd1ffd1ff
-#define GDIFF_MAGIC_LEN 4
-#define GDIFF_VER4 4
-#define GDIFF_VER5 5
-#define GDIFF_VER6 6
-#define GDIFF_VER_LEN 1
-*/
-#include "diff-algs.h"
-//#include "pdbuff.h"
 #include "cfile.h"
 
+#define SWITCHING_MAGIC "%SWITCHD%"
+#define SWITCHING_MAGIC_LEN 8
+#define SWITCHING_VERSION 0x00
+#define SWITCHING_VERSION_LEN 1
+
+unsigned int check_switching_magic(cfile *patchf);
 signed int switchingEncodeDCBuffer(CommandBuffer *buffer, 
-    unsigned int offset_type, cfile *ver_cfh, cfile *out_cfh);
-signed int switchingReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff, 
-    unsigned int offset_type);
-
-
+    /*unsigned int offset_type,*/ cfile *ver_cfh, cfile *out_cfh);
+signed int switchingReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff /*, 
+    unsigned int offset_type*/);
 #endif
