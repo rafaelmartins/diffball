@@ -52,6 +52,7 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 	abort();
     s_lastoff = 0;
     s_lastline = 1;
+    DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL);
     while(cfile_len(patchf)!= ctell(patchf, CSEEK_FSTART)) {
 	cread(patchf, buff, 4);
 	if('\\'==buff[0]) {
@@ -133,8 +134,7 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 		v2printf("skipping a line in patch\n");
 		skip_lines_forward(patchf, 1);
 		len = (ctell(patchf, CSEEK_FSTART)) - offset;
-		DCB_add_add(dcbuff, offset, len);
-//		DCBufferAddCmd(dcbuff, DC_ADD, offset, len);
+		DCB_add_add(dcbuff, offset, len, 0);
 		line_count++;
 	    } else if('-'==buff[0]) {
 		v2printf("got a source  tweak(-): ");
@@ -142,8 +142,6 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 		    offset = ctell(src_cfh, CSEEK_FSTART);
 		    v2printf("adding copy for add_copy: ");
 		    DCB_add_copy(dcbuff, s_lastoff, 0, offset - s_lastoff);
-//		    DCBufferAddCmd(dcbuff, DC_COPY, s_lastoff, 
-//			offset - s_lastoff);
 		    add_copy=0;
 		}
 		v2printf("skipping a line in patch\n");
@@ -173,7 +171,6 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
     if(ctell(src_cfh, CSEEK_FSTART)!=cfile_len(src_cfh))
 	DCB_add_copy(dcbuff, s_lastoff, 0, cfile_len(src_cfh) - s_lastoff);
 //	DCBufferAddCmd(dcbuff, DC_COPY, s_lastoff, cfile_len(src_cfh) - s_lastoff);
-    DCBUFFER_REGISTER_ADD_CFH(dcbuff, patchf);
     return 0;
 
     TRUNCATED_PATCH:

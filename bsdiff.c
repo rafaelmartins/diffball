@@ -18,8 +18,57 @@
 #include <stdlib.h>
 #include "defs.h"
 #include <string.h>
-#include "bsdiff.h"
+#include "dcbuffer.h"
 #include "bit-functions.h"
+#include "bsdiff.h"
+
+unsigned long 
+bsdiff_overlay_add(CommandBuffer *dcb, DCommand *dc, 
+    cfile *out_cfh)
+{
+    unsigned char buff1[CFILE_DEFAULT_BUFFER_SIZE];
+    unsigned char buff2[CFILE_DEFAULT_BUFFER_SIZE];
+    cfile *src_cfh, *diff_cfh;
+    off_u32 len;
+    unsigned int x;
+    src_cfh = dcb->copy_src_cfh[0];
+    diff_cfh = dcb->add_src_cfh[dc->src_id];
+    len = dc->loc.len;
+    off_u32 *src_offsets;
+
+    assert(src_cfh != NULL);
+    assert(diff_cfh != NULL);
+    assert(dcb->extra_patch_data != NULL);
+
+    src_offsets = (off_u32 *)dcb->extra_patch_data;
+    if(src_offsets[dcb->DCB.full.add_index -1] != 
+	cseek(src_cfh, 	src_offsets[dcb->DCB.full.add_index -1], CSEEK_FSTART)) {
+	    abort();
+	return 0;
+    } else if(dc->loc.offset != cseek(diff_cfh, dc->loc.offset, CSEEK_FSTART)) {
+	return 0;
+    }
+    while(len) {
+	x = MIN(CFILE_DEFAULT_BUFFER_SIZE, len);
+	if(x!=cread(src_cfh, buff1, x)) {
+	    return dc->loc.len - len;
+	}
+	if(x!=cread(diff_cfh, buff2, x)) {
+	    return dc->loc.len - len;
+	}	
+	while(x) {
+	    buff1[x - 1] = ((buff1[x - 1] + buff2[x - 1]) & 0xff);
+	    x--;
+	}
+	x = MIN(CFILE_DEFAULT_BUFFER_SIZE, len);
+	if(x!=cwrite(out_cfh, buff1, x)) {
+	    return dc->loc.len - len;
+	}
+	len -= x;
+    }
+    return dc->loc.len - len;
+}
+
 
 unsigned int
 check_bsdiff_magic(cfile *patchf)
@@ -29,138 +78,182 @@ check_bsdiff_magic(cfile *patchf)
     if(BSDIFF_MAGIC_LEN != cread(patchf, buff, BSDIFF_MAGIC_LEN)) {
 	return 0;
     }
-    if(memcmp(buff, BSDIFF_4_MAGIC, BSDIFF_MAGIC_LEN)!=0 && 
-	memcmp(buff, BSDIFF_3_MAGIC, BSDIFF_MAGIC_LEN)!=0 && 
+    if(memcmp(buff, BSDIFF4_MAGIC, BSDIFF_MAGIC_LEN)!=0 && 
+	memcmp(buff, BSDIFF3_MAGIC, BSDIFF_MAGIC_LEN)!=0 && 
 	memcmp(buff, BSDIFF_QS_MAGIC, BSDIFF_MAGIC_LEN)!=0) {
 	return 0;
     }
-    return 1;
+    return 2;
+}
+
+/* note this currently only supports u32, no u64. yet */
+signed int 
+bsdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
+{
+    cfile ctrl_cfh, *diff_cfh, *extra_cfh;
+    cfile_window *cfw;
+    unsigned char ver, processing_add;
+    unsigned char buff[32];
+    off_u32 len1, len2, diff_offset, extra_offset;
+    off_s32 seek;
+    off_u32 add_start;
+    off_u32 *src_offsets;
+    unsigned long src_offset_size = 1000, src_offset_count=0;
+    off_u32 diff_len, ctrl_len;
+    off_u32 ver_size;
+    off_u32 ver_pos, src_pos;
+    if(cread(patchf, buff, 32)!=32) {
+	abort();
+    }
+    if(memcmp(buff, BSDIFF4_MAGIC, BSDIFF_MAGIC_LEN)==0) {
+	ver = 4;
+    } else if (memcmp(buff, BSDIFF3_MAGIC, BSDIFF_MAGIC_LEN) == 0 || 
+	memcmp(buff, BSDIFF_QS_MAGIC, BSDIFF_MAGIC_LEN) == 0) {
+	ver = 3;
+    } else {
+	abort();
+    }
+
+    if((diff_cfh = (cfile *)malloc(sizeof(cfile)))==NULL ||
+	(ver == 4 && (extra_cfh = (cfile *)malloc(sizeof(cfile)))==NULL)) {
+
+	abort();
+    }
+    ctrl_len = readUBytesLE(buff + 8, 4);
+    diff_len = readUBytesLE(buff + 16, 4);
+    ver_size = readUBytesLE(buff + 24, 4);
+    if(copen_child_cfh(&ctrl_cfh, patchf, 32, ctrl_len + 32,
+	BZIP2_COMPRESSOR, CFILE_RONLY)) {
+	abort();
+    } else if (copen_child_cfh(diff_cfh, patchf, ctrl_len + 32, 
+	diff_len + ctrl_len + 32, BZIP2_COMPRESSOR, 
+	CFILE_RONLY)) {
+	abort();
+    } else if(ver  == 4 && copen_child_cfh(extra_cfh, patchf, 
+	ctrl_len + diff_len + 32, cfile_len(patchf),
+	BZIP2_COMPRESSOR, CFILE_RONLY)) {
+	abort();
+    }
+    
+    if((src_offsets = (off_u32 *)malloc(sizeof(off_u32) * src_offset_size))==NULL) {
+	perror("Couldn't alloc needed memory.\n");
+	abort();
+    }
+
+    DCBUFFER_REGISTER_ADD_SRC(dcbuff, diff_cfh, &bsdiff_overlay_add);
+    if(ver == 4) {
+	DCBUFFER_REGISTER_ADD_SRC(dcbuff, extra_cfh, NULL);
+    }
+    ver = (ver -1) *8;
+    src_pos = ver_pos = 0;
+    diff_offset = extra_offset = 0;
+    len2 = 0;
+    src_offset_count = 0;
+    while(cread(&ctrl_cfh, buff, ver)==ver) {
+	if(src_offset_size == src_offset_count) {
+	    src_offset_size += 1000;
+	    if((src_offsets = (off_u32 *)realloc(src_offsets, 
+		sizeof(off_u32) * src_offset_size + 1000))==NULL) {
+		abort();
+	    }
+	}
+	len1 = readUBytesLE(buff, 4);
+	if(ver > 16) {
+	    len2 = readUBytesLE(buff + 8, 4);
+	    seek = readUBytesLE(buff + 16, 4);
+	    if(buff[23] & 0x80) {
+		seek = -seek;
+	    }
+	} else {
+	    seek = readUBytesLE(buff + 8, 4);
+	    if(buff[15] & 0x80) {
+		seek = -seek;
+	    }
+	}
+	if(len1) {
+	    cfw = expose_page(diff_cfh);
+	    add_start = cfw->pos + cfw->offset;
+	    processing_add =0;
+
+	unsigned long int y=0;
+	    assert(diff_offset == cfw->offset + cfw->pos);
+	    while(len1 + diff_offset != cfw->offset + cfw->pos) {
+		if(cfw->pos == cfw->end) {
+		    cfw = next_page(diff_cfh);
+		    if(cfw->end==0) {
+			abort();
+		    }
+		}
+
+
+		if(cfw->buff[cfw->pos]==0 && processing_add) {
+		    DCB_add_add(dcbuff, add_start, cfw->offset +
+			cfw->pos - add_start, 0);
+		    y+= cfw->offset + cfw->pos - add_start;
+		    processing_add = 0;
+		    add_start = cfw->pos + cfw->offset;
+		} else if(cfw->buff[cfw->pos]!=0 && processing_add==0){ 
+		    DCB_add_copy(dcbuff, add_start - diff_offset + src_pos, 0,//dcbuff->reconstruct_pos, 
+			cfw->offset + cfw->pos - add_start);
+		    y += cfw->pos + cfw->offset - add_start; 
+		    processing_add=1;
+		    src_offsets[src_offset_count++] = cfw->pos + cfw->offset - diff_offset + src_pos;
+		    add_start = cfw->pos + cfw->offset;
+		    if(src_offset_size == src_offset_count) {
+			src_offset_size += 1000;
+			if((src_offsets = (off_u32 *)realloc(src_offsets,
+			    sizeof(off_u32) * src_offset_size))==NULL) {
+			    abort();
+			}
+		    }
+		}
+		cfw->pos++;
+	    }
+	    if(processing_add) {
+		DCB_add_add(dcbuff, add_start, cfw->pos + cfw->offset  - add_start, 0);
+		y+=cfw->offset + cfw->pos - add_start;
+	    } else {
+		DCB_add_copy(dcbuff, add_start - diff_offset + src_pos, 0,//dcbuff->reconstruct_pos, 
+		    diff_offset + len1 - add_start);
+		y+= diff_offset + len1 - add_start;
+	    }
+	    if(len1 != y) {abort();};
+	    diff_offset += len1;
+	    src_pos += len1;
+	    ver_pos += len1;
+	}
+	if(len2) {
+	    src_offsets[src_offset_count++] = 0;
+	    if(src_offset_size == src_offset_count) {
+		src_offset_size += 1000;
+		if((src_offsets = (off_u32 *)realloc(src_offsets,
+		    sizeof(off_u32) * src_offset_size))==NULL) {\
+		    abort();
+		}
+	    }
+	    DCB_add_add(dcbuff, extra_offset, len2, 1);
+	    extra_offset+=len2;
+	    ver_pos += len2;
+	}
+	src_pos += seek;
+	assert(ver_pos == dcbuff->reconstruct_pos);
+	assert(ver_pos <= ver_size);
+    }
+    v1printf("ver_pos=%lu, size=%lu, extra_pos=%lu, diff_pos=%lu, ctrl_pos=%lu, recon=%lu\n", ver_pos, ver_size, 
+	extra_offset, diff_offset, ctrl_cfh.data.pos + ctrl_cfh.data.offset, 
+	dcbuff->reconstruct_pos);
+    if(ver_pos != ver_size) {
+	printf("bitch...\n");
+	abort();
+    }
+    DCB_REGISTER_EXTRA_PATCH_DATA(dcbuff, src_offsets);
+    return 0;
 }
 
 signed int 
 bsdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh, cfile *out_cfh)
 {
-#define BUFFER_SIZE 1024
-//    unsigned char src_md5[16], ver_md5[16];
-/*    unsigned char buff[BUFFER_SIZE];
-    unsigned long count, fh_pos, delta_pos;
-    unsigned int lb;
-    DCommand dc;
-    DCBufferReset(buffer);
-    memcpy(buff, BDIFF_MAGIC, BDIFF_MAGIC_LEN);
-    buff[BDIFF_MAGIC_LEN] = BDIFF_VERSION;
-    writeUBytesBE(buff + BDIFF_MAGIC_LEN + 1,
-	(BDIFF_DEFAULT_MAXBLOCKSIZE), 4);
-    cwrite(out_cfh, buff, BDIFF_MAGIC_LEN + 5);
-    delta_pos = 10;
-    fh_pos = 0;
-    count=0;
-    while(DCB_commands_remain(buffer)) {
-//    while(count--) {
-	DCB_get_next_command(buffer, &dc);
-	if(DC_COPY == dc.type) {
-	    v2printf("copy command, out_cfh(%lu), fh_pos(%lu), offset(%lu), len(%lu)\n",
-		delta_pos, fh_pos, dc.loc.offset, dc.loc.len);
-	    fh_pos += dc.loc.len;
-	    lb = 5;
-	    buff[0] = 0;
-	    writeUBytesBE(buff + 1, dc.loc.offset, 4);
-	    if(dc.loc.len > 5 && dc.loc.len <= 5 + 0x3f) {
-		buff[0] = dc.loc.len -5 ;
-	    } else {
-		writeUBytesBE(buff + 5, dc.loc.len, 4);
-		lb += 4;
-	    }
-	    delta_pos += lb;
-	    cwrite(out_cfh, buff, lb);
-	} else {
-	    v2printf("add  command, out_cfh(%lu), fh_pos(%lu), len(%lu)\n", 
-		delta_pos, fh_pos, dc.loc.len);
-	    fh_pos += dc.loc.len;
-	    buff[0] = 0x80;
-	    lb = 1;
-	    if(dc.loc.len > 5 && dc.loc.len <= 5 + 0x3f) {
-		buff[0] |= dc.loc.len - 5;
-	    } else {
-		writeUBytesBE(buff + 1, dc.loc.len, 4);
-		lb += 4;
-	    }
-	    delta_pos += lb + dc.loc.len;
-	    cwrite(out_cfh, buff, lb);
-	    if(dc.loc.len != copy_cfile_block(out_cfh, ver_cfh, dc.loc.offset, 
-		dc.loc.len))
-		abort();
-	}
-    }*/
     return 0;
 }
 
-signed int 
-bsdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
-{
-    
 
-/*    unsigned char src_md5[16], ver_md5[16], buff[17];
-    unsigned long len, offset, maxlength;
-    unsigned long fh_pos;
-    memset(src_md5, 0, 16);
-    memset(ver_md5, 0, 16);
-    cseek(patchf, 6, CSEEK_ABS);
-    cread(patchf, buff, 4);
-    maxlength = readUBytesBE(buff, 4);
-    fh_pos = 0;
-    while(1 == cread(patchf, buff, 1)) {
-	v2printf("got command(%u): ", buff[0]);
-	if((buff[0] >> 6)==00) {
-	    buff[0] &= 0x3f;
-	    v2printf("got a copy at %lu, fh_pos(%lu): ", 
-		ctell(patchf, CSEEK_FSTART), fh_pos);
-	    if(4 != cread(patchf, buff + 1, 4)) {
-		abort();
-	    }
-	    offset = readUBytesBE(buff + 1, 4);
-	    if(buff[0]) {
-		len = readUBytesBE(buff, 1) + 5;
-	    } else {
-		if(4 != cread(patchf, buff, 4)) {
-		    abort();
-		}
-		len = readUBytesBE(buff, 4);
-	    }
-	    fh_pos += len;
-	    v2printf(" offset(%lu), len=%lu\n", offset, len);
-	    DCB_add_copy(dcbuff, offset, 0, len);
-	} else if ((buff[0] >> 6)==2) {
-	    buff[0] &= 0x3f;
-	    v2printf("got an add at %lu, fh_pos(%lu):", 
-		ctell(patchf, CSEEK_FSTART), fh_pos);
-	    if(buff[0]) {
-		len = readUBytesBE(buff, 1) + 5;
-	    } else {
-		if(4 != cread(patchf, buff, 4)) {
-		    abort();
-		}
-		len = readUBytesBE(buff, 4);
-	    }
-	    fh_pos += len;
-	    v2printf(" len=%lu\n", len);
-	    DCB_add_add(dcbuff, ctell(patchf, CSEEK_FSTART), len);
-	    cseek(patchf, len, CSEEK_CUR);
-	} else if((buff[0] >> 6)==1) {
-	    buff[0] &= 0x3f;
-	    v2printf("got a checksum at %lu\n", ctell(patchf, CSEEK_FSTART));
-	    if(buff[0] <= 1) {
-		if(16 != cread(patchf, buff + 1, 16)) 
-		    abort();
-		if(buff[0]==0) 
-		    memcpy(src_md5, buff + 1, 16);
-		else 
-		    memcpy(ver_md5, buff + 1, 16);
-	    } else {
-		abort();
-	    }
-	}
-    }
-    DCBUFFER_REGISTER_ADD_CFH(dcbuff, patchf);*/
-    return 0;
-}

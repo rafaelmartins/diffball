@@ -25,7 +25,6 @@
 #include "cfile.h"
 
 unsigned int check_bdiff_magic(cfile *patchf);
-signed int bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh, 
-	cfile *out_cfh);
+signed int bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *out_cfh);
 signed int bdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff);
 #endif

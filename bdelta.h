@@ -27,7 +27,7 @@
 
 unsigned int check_bdelta_magic(cfile *patchf);
 signed int bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, 
-    	cfile *ver_cfh, cfile *out_fh);
+    	cfile *out_cfh);
 signed int bdeltaReconstructDCBuff(cfile *patchf, 
 	CommandBuffer *dcbuff);
 

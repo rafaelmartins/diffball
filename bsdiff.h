@@ -17,8 +17,9 @@
 */
 #ifndef _HEADER_BSDIFF
 #define _HEADER_BSDIFF 1
-#define BSDIFF_4_MAGIC		"BSDIFF40"
-#define BSDIFF_3_MAGIC		"BSDIFF30"
+
+#define BSDIFF4_MAGIC		"BSDIFF40"
+#define BSDIFF3_MAGIC		"BSDIFF30"
 #define BSDIFF_QS_MAGIC		"QSUFDIFF"
 #define BSDIFF_MAGIC_LEN 8
 #include "diff-algs.h"
@@ -28,4 +29,5 @@ unsigned int check_bsdiff_magic(cfile *patchf);
 signed int bsdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh, 
 	cfile *out_cfh);
 signed int bsdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff);
+
 #endif

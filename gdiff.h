@@ -53,11 +53,11 @@ unsigned int check_gdiff4_magic(cfile *patchf);
 unsigned int check_gdiff5_magic(cfile *patchf);
 
 signed int gdiffEncodeDCBuffer(CommandBuffer *buffer, 
-    unsigned int offset_type, cfile *ver_cfh, cfile *out_cfh);
-#define gdiff4EncodeDCBuffer(buff, vcfh, ocfh)			\
-    gdiffEncodeDCBuffer((buff), ENCODING_OFFSET_START, (vcfh), (ocfh))
-#define gdiff5EncodeDCBuffer(buff, vcfh, ocfh)			\
-    gdiffEncodeDCBuffer((buff), ENCODING_OFFSET_DC_POS, (vcfh), (ocfh))
+    unsigned int offset_type, cfile *out_cfh);
+#define gdiff4EncodeDCBuffer(buff, ocfh)			\
+    gdiffEncodeDCBuffer((buff), ENCODING_OFFSET_START, (ocfh))
+#define gdiff5EncodeDCBuffer(buff, ocfh)			\
+    gdiffEncodeDCBuffer((buff), ENCODING_OFFSET_DC_POS, (ocfh))
 
 signed int gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff, 
     unsigned int offset_type);

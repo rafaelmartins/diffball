@@ -38,8 +38,7 @@ check_bdelta_magic(cfile *patchf)
 }
 
 signed int 
-bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *ver_cfh, 
-    cfile *patchf)
+bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *patchf)
 {
     unsigned long dc_pos, total_count, count, maxnum, matches;
     unsigned long add_len, copy_len, copy_offset;
@@ -136,9 +135,9 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *ver_cfh,
 //    while(count--) {
 	DCB_get_next_command(dcbuff, &dc);
 	if(DC_ADD == dc.type) {
-	    if(dc.loc.len != copy_cfile_block(patchf, ver_cfh, 
-		dc.loc.offset, dc.loc.len))
+	    if(dc.loc.len != copyDCB_add_src(dcbuff, &dc, patchf)) {
 		abort();
+	    }
 	}
 //	DCBufferIncr(dcbuff);
     }
@@ -186,6 +185,7 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
     /* add block starts after control data. */
     add_pos += (matches * (3 * int_size));
     add_start = add_pos;
+    DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL);
     v2printf("add block starts at %lu\nprocessing commands\n", add_pos);
     unsigned long match_orig = matches;
     if(size1==0) {
@@ -201,7 +201,7 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 	copy_len = readUBytesLE(buff + int_size * 2, int_size);
     	if(add_len) {
 	    v2printf("add  len(%lu)\n", add_len);
-	    DCB_add_add(dcbuff, add_pos, add_len);
+	    DCB_add_add(dcbuff, add_pos, add_len, 0);
 //	    DCBufferAddCmd(dcbuff, DC_ADD, add_pos, add_len);
 	    add_pos += add_len;
 	}
@@ -227,7 +227,6 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 	}
     }
     assert(ctell(patchf, CSEEK_FSTART)==add_start);
-    DCBUFFER_REGISTER_ADD_CFH(dcbuff, patchf);
     v2printf("finished reading.  ver_pos=%lu, add_pos=%lu\n",
 	ver_pos, add_pos);
     return 0;

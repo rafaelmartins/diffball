@@ -34,7 +34,7 @@
 
 unsigned int check_xdelta1_magic(cfile *patchf);
 signed int xdelta1EncodeDCBuffer(CommandBuffer *buffer, 
-    unsigned int version, cfile *ver_cfh, cfile *out_cfh);
+    unsigned int version, cfile *out_cfh);
 signed int xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff, 
     unsigned int version);
 

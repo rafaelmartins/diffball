@@ -58,7 +58,7 @@ check_gdiff5_magic(cfile *patchf)
 
 signed int 
 gdiffEncodeDCBuffer(CommandBuffer *buffer, 
-    unsigned int offset_type, cfile *ver_cfh, cfile *out_cfh)
+    unsigned int offset_type, cfile *out_cfh)
 {
     unsigned char /* *ptr,*/ clen;
     unsigned long fh_pos=0;
@@ -116,9 +116,9 @@ gdiffEncodeDCBuffer(CommandBuffer *buffer,
 		v2printf("wtf, encountered an offset larger then int size.  croaking.\n");
 		exit(1);
 	    }
-	    if(dc.loc.len != copy_cfile_block(out_cfh, ver_cfh, dc.loc.offset,
-		dc.loc.len))
+	    if(dc.loc.len != copyDCB_add_src(buffer, &dc, out_cfh)) {
 		abort();
+	    }
 
 	    delta_pos += dc.loc.len;
 	    fh_pos += dc.loc.len;
@@ -211,6 +211,7 @@ gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 	off_is_sbytes=0;
     assert(DCBUFFER_FULL_TYPE == dcbuff->DCBtype);
     cseek(patchf, 5, CSEEK_CUR);
+    DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL);
     while(cread(patchf, buff, 1)==1 && *buff != 0) {
 	if(*buff > 0 && *buff <= 248) {
 	    //add command
@@ -227,9 +228,8 @@ gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 	        len= readUBytesBE(buff, lb);
 	    } else
 		len=*buff;
-	    DCB_add_add(dcbuff, ctell(patchf, CSEEK_FSTART), len);
+	    DCB_add_add(dcbuff, ctell(patchf, CSEEK_FSTART), len, 0);
 	    v2printf("len(%lu)\n", len);
-//	    DCBufferAddCmd(dcbuff, DC_ADD, ctell(patchf, CSEEK_FSTART), len);
 	    cseek(patchf, len, CSEEK_CUR);
 	} else if(*buff >= 249 ) {
 	    //copy command
@@ -275,7 +275,6 @@ gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 		ver_pos+=len;
 	    }
     }
-    DCBUFFER_REGISTER_ADD_CFH(dcbuff, patchf);
     v2printf("closing command was (%u)\n", *buff);
     v2printf("cread fh_pos(%lu)\n", ctell(patchf, CSEEK_ABS)); 
     v2printf("ver_pos(%lu)\n", ver_pos);

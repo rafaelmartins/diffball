@@ -66,7 +66,7 @@ readXDInt(cfile *patchf, unsigned char *buff)
 
 signed int 
 xdelta1EncodeDCBuffer(CommandBuffer *buffer, unsigned int version, 
-    cfile *ver_cfh, cfile *out_cfh)
+    cfile *out_cfh)
 {
     return -1;
 }
@@ -94,12 +94,13 @@ xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
     control_offset = readUBytesBE(buff,4);
     //add_end = control_offset;
     cseek(patchf, control_offset, CSEEK_FSTART);
+
     if(flags & XD_COMPRESSED_FLAG) {
 	v2printf("compressed segments detected\n");
 	if((ctrl_cfh = (cfile *)malloc(sizeof(cfile)))==NULL) {
 	    abort();
 	}
-	copen(ctrl_cfh, patchf->raw_fh, control_offset, control_end, 
+	copen_child_cfh(ctrl_cfh, patchf, control_offset, control_end, 
 	    GZIP_COMPRESSOR, CFILE_RONLY);
     } else {
 	ctrl_cfh = patchf;
@@ -141,8 +142,16 @@ xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 	count, ctell(ctrl_cfh, CSEEK_FSTART));
     if(flags & XD_COMPRESSED_FLAG) {
 	add_pos = 0;
+	if((add_cfh = (cfile *)malloc(sizeof(cfile)))==NULL) {
+	    abort();
+	}
+	copen_child_cfh(add_cfh, patchf, add_start, control_offset, 
+	    GZIP_COMPRESSOR, CFILE_RONLY);
+	DCBUFFER_REGISTER_ADD_SRC(dcbuff, add_cfh, NULL);
+	DCBUFFER_FREE_ADD_CFH_FLAG(dcbuff);
     } else {
 	add_pos = add_start;
+	DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL);
     }
     while(proc_count++ != count) {
 	x = readXDInt(ctrl_cfh, buff);
@@ -150,7 +159,6 @@ xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 	len = readXDInt(ctrl_cfh, buff);
 	if(x==XD_INDEX_COPY) {
 	    DCB_add_copy(dcbuff, offset, 0, len);
-//	    DCBufferAddCmd(dcbuff, DC_COPY, offset, len);
 	} else {
 	    if(add_is_sequential != 0) {
 		offset += add_pos; 
@@ -158,23 +166,14 @@ xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 	    } else {
 		offset += add_pos;
 	    }
-	    DCB_add_add(dcbuff, offset, len);
-//	    DCBufferAddCmd(dcbuff, DC_ADD, offset, len);
+	    DCB_add_add(dcbuff, offset, len, 0);
 	}
     }
     v2printf("finishing position was %lu\n", ctell(ctrl_cfh, CSEEK_FSTART));
     v2printf("processed %lu of %lu commands\n", proc_count, count);
     if(flags & XD_COMPRESSED_FLAG) {
+	cclose(ctrl_cfh);
 	free(ctrl_cfh);
-	if((add_cfh = (cfile *)malloc(sizeof(cfile)))==NULL) {
-	    abort();
-	}
-	copen(add_cfh, patchf->raw_fh, add_start, control_offset, 
-	    GZIP_COMPRESSOR, CFILE_RONLY);
-	DCBUFFER_REGISTER_ADD_CFH(dcbuff, add_cfh);
-	DCBUFFER_FREE_ADD_CFH_FLAG(dcbuff);
-    } else {
-	DCBUFFER_REGISTER_ADD_CFH(dcbuff, patchf);
     }
     return 0;
 }
