@@ -15,14 +15,13 @@
   along with this program; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, US 
 */
-#include <string.h>
 #include <stdio.h>
+#include "string-misc.h"
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
 #include "defs.h"
 #include "tar.h"
-#include "string-misc.h"
 
 int check_str_chksum(const char *block)
 {
@@ -67,7 +66,8 @@ struct tar_entry
 	exit(EXIT_FAILURE);
     }
     extra_size=0;
-    while((read_bytes=read(src_fh, block, 512))==512 /*&& strnlen(block)!=0*/) {
+    while((read_bytes=read(src_fh, block, 512))==512 
+/*&& strnlen(block)!=0*/) {
 	if(strnlen(block, 512)==0)  {
 	    break;
 	}
