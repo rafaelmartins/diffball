@@ -27,9 +27,9 @@ else
 endif
 
 if COMPILE_PROFILING_CFLAGS
-    lib_LTLIBRARIES = libdiffball.la
+    lib_LTLIBRARIES = 
 else
-    lib_LTLIBRARIES =
+    lib_LTLIBRARIES = libdiffball.la
 endif
 
 libdiffball_la_SOURCES = $(FORMATS) $(DIFF_FILES)
