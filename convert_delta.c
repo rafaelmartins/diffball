@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
+#include <string.h>
 #include "cfile.h"
 #include "dcbuffer.h"
 #include "formats.h"
@@ -34,16 +35,6 @@ unsigned int output_to_stdout = 0;
 unsigned int use_md5 = 0;
 char *src_format, *trg_format;
 
-//enum {OVERSION=100, OVERBOSE, OFORMAT, OBZIP2, OGZIP};
-
-/*struct poptOption options[] = {
-    {"version",		'V', POPT_ARG_NONE, 0, OVERSION,0, 0},
-    {"verbose",		'v', POPT_ARG_NONE, 0, OVERBOSE,0, 0},
-    {"format",		'f', POPT_ARG_STRING, &patch_format, 0,0,0},
-    {"ignore-md5",	'm', POPT_ARG_NONE, &use_md5, 0,0, 0},
-    {"stdout",		'c', POPT_ARG_NONE, &output_to_stdout, 0, 0, 1},
-    {"bzip2-compress",	'j', POPT_ARG_NONE, 0, OBZIP2,0,0},
-    {"gzip-compress",	'z', POPT_ARG_NONE, 0, OGZIP, 0, 0},*/
 struct poptOption options[] = {
     STD_OPTIONS(output_to_stdout),
     FORMAT_OPTIONS("src-format", 's', src_format),
@@ -62,7 +53,9 @@ main(int argc, char **argv)
     cfile in_cfh, out_cfh;
     poptContext p_opt;
     signed long optr;
-    char *src_file, *out_file;
+    char *src_file, *trg_file;
+    unsigned long int src_format_id, trg_format_id;
+    signed long recon_val=0, encode_result=0;
 
     p_opt = poptGetContext("convert_delta", argc, (const char **)argv, 
 	options, 0);
@@ -94,10 +87,10 @@ main(int argc, char **argv)
     if(output_to_stdout) {
 	out_fh = 0;
     } else {
-	if((out_file = poptGetArg(p_opt))==NULL)
+	if((trg_file = poptGetArg(p_opt))==NULL)
 	    usage(p_opt, 1, "Must specify a name for the new patch.", NULL);
-        if((out_fh = open(out_file, O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1){
-	    fprintf(stderr, "error creating output file '%s'\n", out_file);
+        if((out_fh = open(trg_file, O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1){
+	    fprintf(stderr, "error creating output file '%s'\n", trg_file);
 	    exit(1);
 	}
     }
@@ -105,25 +98,71 @@ main(int argc, char **argv)
 	usage(p_opt, 1, poptBadOption(p_opt, POPT_BADOPTION_NOALIAS),
 	    "unknown option");
     }
-    poptFreeContext(p_opt);
     if((in_fh = open(src_file, O_RDONLY, 0))==-1) {
 	fprintf(stderr, "error opening patch '%s'\n", src_file);
 	exit(EXIT_FAILURE);
     }
     copen(&in_cfh, in_fh, 0, in_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
-    copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
+    if(src_format == NULL) {
+	src_format_id = identify_format(&in_cfh);
+	if(src_format_id==0) {
+	    fprintf(stderr, "Couldn't identify the patch format, aborting\n");
+	    exit(EXIT_FAILURE);
+	} else if((src_format_id >> 16)==1) {
+	    fprintf(stderr, "Unsupported format version\n");
+	    exit(EXIT_FAILURE);
+	}
+	src_format_id >>= 16;
+    } else {
+	src_format_id = check_for_format(src_format, strlen(src_format));
+	if(src_format_id==0) {
+	    fprintf(stderr, "Unknown format '%s'\n", src_format);
+	    exit(1);
+	}
+    }
+    if(trg_format==NULL) {
+	usage(p_opt, 1, "new files format is required\n", NULL);
+    } else {
+	trg_format_id = check_for_format(trg_format, strlen(trg_format));
+	if(trg_format_id==0) {
+	    fprintf(stderr, "Unknown format '%s'\n", trg_format);
+	    exit(1);
+	}
+    }
+    poptFreeContext(p_opt);
     DCBufferInit(&dcbuff, 1000000,0,0);
-//    offset_type = ENCODING_OFFSET_START;
-    offset_type = ENCODING_OFFSET_DC_POS;
-    printf("reconstructing dcbuffer...\n");
-//    switchingReconstructDCBuff(&in_cfh, &dcbuff, offset_type);
-    gdiffReconstructDCBuff(&in_cfh, &dcbuff, offset_type, 4);
-//    bdiffReconstructDCBuff(&in_cfh, &dcbuff);
-    DCBufferCollapseAdds(&dcbuff);
-    printf("outputing patch...\n");
-//    gdiffEncodeDCBuffer(&dcbuff, offset_type, &in_cfh, &out_cfh);
-    switchingEncodeDCBuffer(&dcbuff, &in_cfh, &out_cfh);
-    printf("finished.\n");
+    if(SWITCHING_FORMAT == src_format_id) {
+        recon_val = switchingReconstructDCBuff(&in_cfh, &dcbuff);
+    } else if(GDIFF4_FORMAT == src_format_id) {
+        recon_val = gdiff4ReconstructDCBuff(&in_cfh, &dcbuff);
+    } else if(GDIFF5_FORMAT == src_format_id) {
+        recon_val = gdiff5ReconstructDCBuff(&in_cfh, &dcbuff);       
+    } else if(BDIFF_FORMAT == src_format_id) {
+        recon_val = bdiffReconstructDCBuff(&in_cfh, &dcbuff);       
+    } else if(XDELTA1_FORMAT == src_format_id) {
+        recon_val = xdelta1ReconstructDCBuff(&in_cfh, &dcbuff, 1);
+    } else if(BDELTA_FORMAT == src_format_id) {
+        recon_val = bdeltaReconstructDCBuff(&in_cfh, &dcbuff);
+//    } else if(UDIFF_FORMAT == src_format_id) {
+//      recon_val = udiffReconstructDCBuff(&in_cfh, &src_cfh, NULL, &dcbuff);
+    }
+    v1printf("reconstruction return=%ld\n", recon_val);
+    copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
+    v1printf("outputing patch...\n");
+    v1printf("there were %lu commands\n", dcbuff.buffer_count);
+    if(GDIFF4_FORMAT == trg_format_id) {
+        encode_result = gdiff4EncodeDCBuffer(&dcbuff, &in_cfh, &out_cfh);
+    } else if(GDIFF5_FORMAT == trg_format_id) {
+        encode_result = gdiff5EncodeDCBuffer(&dcbuff, &in_cfh, &out_cfh);
+    } else if(BDIFF_FORMAT == trg_format_id) {
+        encode_result = bdiffEncodeDCBuffer(&dcbuff, &in_cfh, &out_cfh);
+    } else if(SWITCHING_FORMAT == trg_format_id) {
+        encode_result = switchingEncodeDCBuffer(&dcbuff, &in_cfh, &out_cfh);
+    } else if (BDELTA_FORMAT == trg_format_id) {
+        encode_result = bdeltaEncodeDCBuffer(&dcbuff, &in_cfh, &out_cfh);
+    }
+    v1printf("encoding return=%ld\n", encode_result);
+    v1printf("finished.\n");
     DCBufferFree(&dcbuff);
     cclose(&in_cfh);
     cclose(&out_cfh);

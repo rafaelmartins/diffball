@@ -45,18 +45,6 @@ unsigned int patch_to_stdout = 0;
 unsigned int use_md5 = 0;
 char  *patch_format;
 
-    /*lname,sname, info, ptr, val, desc, args */
-/*struct poptOption options[] = {
-    {"version",		'V', POPT_ARG_NONE, 0, OVERSION,0, 0},
-    {"verbose",		'v', POPT_ARG_NONE, 0, OVERBOSE,0, 0},
-    {"format",		'f', POPT_ARG_STRING, &patch_format,  0,0,  0},
-    {"seed-len",		'b', POPT_ARG_INT,  &seed_len, 0,0, 0},
-    {"sample-rate",	's', POPT_ARG_LONG,  &sample_rate, 0,0, 0},
-    {"hash-size",		'a', POPT_ARG_LONG,  &hash_size, 0,0, 0},
-    {"stdout",		'c', POPT_ARG_NONE, &patch_to_stdout, 0,0, 0},
-    {"ignore-md5",	'm', POPT_ARG_NONE, &use_md5, 0,0, 0},
-    {"bzip2-compress",	'j', POPT_ARG_NONE, 0, OBZIP2,0, 0},
-    {"gzip-compress",	'z', POPT_ARG_NONE, 0, OGZIP, 0,0},*/
 struct poptOption options[] = {
     STD_OPTIONS(patch_to_stdout),
     DIFF_OPTIONS(seed_len, sample_rate, hash_size),
@@ -76,7 +64,7 @@ int main(int argc, char **argv)
     void *vptr;
     unsigned char source_md5[32], target_md5[32];
     unsigned long source_count, target_count;
-    unsigned long x;
+    unsigned long x, patch_format_id, encode_result;
     char src_common[512], trg_common[512], *p;  /* common dir's... */
     //unsigned int src_common_len=0, trg_common_len=0;
     unsigned long match_count;
@@ -128,6 +116,15 @@ int main(int argc, char **argv)
     if( ((trg_file=(char *)poptGetArg(p_opt))==NULL) || 
 	(stat(trg_file, &ver_stat)) )
 	usage(p_opt, 1, "Must specify an existing target file.", NULL);
+    if(patch_format==NULL) {
+	patch_format_id = DEFAULT_PATCH_ID;
+    } else {
+	patch_format_id = check_for_format(patch_format, strlen(patch_format));
+	if(patch_format_id==0) {
+	    fprintf(stderr, "Unknown format '%s'\n", patch_format);
+	    exit(1);
+	}
+    }
     if(patch_to_stdout != 0) {
 	out_fh = 0;
     } else {
@@ -154,6 +151,7 @@ int main(int argc, char **argv)
     if(seed_len==0) {
 	seed_len = DEFAULT_SEED_LEN;
     }
+    v1printf("using patch format %lu\n", patch_format_id);
     v1printf("using seed_len(%lu), sample_rate(%lu), hash_size(%lu)\n", 
 	seed_len, sample_rate, hash_size);
     v1printf("verbosity level(%u)\n", verbosity);
@@ -167,15 +165,15 @@ int main(int argc, char **argv)
     }
     copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY | CFILE_OPEN_FH);
     source = read_fh_to_tar_entry(src_fh, &source_count, source_md5);
-    printf("source file md5sum=%.32s, count(%lu)\n", source_md5, source_count);
+    v1printf("source file md5sum=%.32s, count(%lu)\n", source_md5, source_count);
     target = read_fh_to_tar_entry(trg_fh, &target_count, target_md5);
-    printf("target file md5sum=%.32s, count(%lu)\n", target_md5, target_count);
+    v1printf("target file md5sum=%.32s, count(%lu)\n", target_md5, target_count);
     v1printf("count(%lu)\n", source_count);
     /* this next one is moreso for bsearch's, but it's prob useful for the common-prefix alg too */
     
-    printf("qsorting\n");
+    v1printf("qsorting\n");
     qsort((struct tar_entry **)source, source_count, sizeof(struct tar_entry *), cmp_tar_entries);
-    printf("qsort done\n");
+    v1printf("qsort done\n");
     
     /* alg to basically figure out the common dir prefix... eg, if everything is in dir 
     	debianutils-1.16.3*/
@@ -198,14 +196,14 @@ int main(int argc, char **argv)
             }
         }
     }
-    printf("final src_common='%.*s'\n", src_common_len, src_common);
+    v1printf("final src_common='%.*s'\n", src_common_len, src_common);
     trg_common_len=(char *)rindex(
         (const char *)target[0]->fullname, '/') - (char *)target[0]->fullname+1;
     strncpy((char *)trg_common, (char *)target[0]->fullname,trg_common_len);
     trg_common[trg_common_len] = '\0';  /* null delimit it */
     for (x=0; x < target_count; x++) {
         if (strncmp((const char *)trg_common, (const char *)target[x]->fullname, trg_common_len) !=0) {
-            printf("found a breaker(%s) at pos(%lu), loc(%lu)\n", target[x]->fullname, x, target[x]->file_loc);
+            v1printf("found a breaker(%s) at pos(%lu), loc(%lu)\n", target[x]->fullname, x, target[x]->file_loc);
             /* null the / at trg_common_len-1, and attempt rindex again. */
             trg_common[trg_common_len -1]='\0';
             if((p = rindex(trg_common, '/'))==NULL){
@@ -217,7 +215,7 @@ int main(int argc, char **argv)
             }
         }
     }
-    printf("final trg_common='%.*s'\n", trg_common_len, trg_common);
+    v1printf("final trg_common='%.*s'\n", trg_common_len, trg_common);
 
     for (x=0; x < source_count; x++) {
         source[x]->working_name += src_common_len;
@@ -319,7 +317,7 @@ int main(int argc, char **argv)
     		512 - ( target[target_count -1]->size % 512==0 ? 512 :
     			target[target_count -1]->size % 512));
     	if(x!= ver_stat.st_size) {
-    	printf("must be a null padded tarball. processing the remainder.\n");
+    	v1printf("must be a null padded tarball. processing the remainder.\n");
     	DCBufferAddCmd(&dcbuff, DC_ADD, x, ver_stat.st_size - x);
     }
 //    printf("matched(%lu), couldn't match(%lu) of entry count(%lu).\n", 
@@ -336,15 +334,25 @@ int main(int argc, char **argv)
     }
     free(target);
     free(source);
-//    printf("collapsing adds.\n");
-//    DCBufferCollapseAdds(&dcbuff);
-    printf("outputing patch...\n");
     copen(&ver_full, trg_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
-    offset_type= ENCODING_OFFSET_DC_POS;
+    v1printf("outputing patch...\n");
+    v1printf("there were %lu commands\n", dcbuff.buffer_count);
+    if(GDIFF4_FORMAT == patch_format_id) { 
+        encode_result = gdiff4EncodeDCBuffer(&dcbuff, &ver_full, &out_cfh);
+    } else if(GDIFF5_FORMAT == patch_format_id) {
+        encode_result = gdiff5EncodeDCBuffer(&dcbuff, &ver_full, &out_cfh);
+    } else if(BDIFF_FORMAT == patch_format_id) {
+        encode_result = bdiffEncodeDCBuffer(&dcbuff, &ver_full, &out_cfh);
+    } else if(SWITCHING_FORMAT == patch_format_id) {
+        encode_result = switchingEncodeDCBuffer(&dcbuff, &ver_full, &out_cfh);
+    } else if (BDELTA_FORMAT == patch_format_id) {
+        encode_result = bdeltaEncodeDCBuffer(&dcbuff, &ver_full, &out_cfh);
+    }
+//    offset_type= ENCODING_OFFSET_DC_POS;
 //    offset_type= ENCODING_OFFSET_START;
 //    rawEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
 //    switchingEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
-    gdiffEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
+//    gdiffEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
 //    bdiffEncodeDCBuffer(&dcbuff, &ver_full, &out_cfh);
 //    bdeltaEncodeDCBuffer(&dcbuff, &ver_full, &out_cfh);
     DCBufferFree(&dcbuff);
@@ -357,7 +365,6 @@ int main(int argc, char **argv)
 
 int cmp_tar_entries(const void *te1, const void *te2)
 {
-    //printf("in cmp_tar_entries\n");
     struct tar_entry *p1=*((struct tar_entry **)te1);
     struct tar_entry *p2=*((struct tar_entry **)te2);
     return(strcmp((char *)(p1->working_name), 

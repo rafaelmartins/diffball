@@ -20,7 +20,7 @@
 #include "cfile.h"
 
 #define SWITCHING_MAGIC "%SWITCHD%"
-#define SWITCHING_MAGIC_LEN 8
+#define SWITCHING_MAGIC_LEN 9
 #define SWITCHING_VERSION 0x00
 #define SWITCHING_VERSION_LEN 1
 

@@ -25,6 +25,7 @@ unsigned int
 check_bdiff_magic(cfile *patchf)
 {
     unsigned char buff[BDIFF_MAGIC_LEN + 1];
+    cseek(patchf, 0, CSEEK_FSTART);
     if(BDIFF_MAGIC_LEN + 1 != cread(patchf, buff, BDIFF_MAGIC_LEN + 1)) {
 	return 0;
     }

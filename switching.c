@@ -26,7 +26,8 @@
 unsigned int
 check_switching_magic(cfile *patchf)
 {
-    unsigned char buff[SWITCHING_MAGIC_LEN];
+    unsigned char buff[SWITCHING_MAGIC_LEN + 1];
+    cseek(patchf, 0, CSEEK_FSTART);
     if(SWITCHING_MAGIC_LEN!=cread(patchf, buff, SWITCHING_MAGIC_LEN)) {
 	return 0;
     } else if(memcmp(buff, SWITCHING_MAGIC, SWITCHING_MAGIC_LEN)!=0) {
@@ -34,7 +35,7 @@ check_switching_magic(cfile *patchf)
     }
     if(SWITCHING_VERSION_LEN!=cread(patchf, buff, SWITCHING_VERSION_LEN)) {
 	return 0;
-    } else if (memcmp(buff, SWITCHING_VERSION, SWITCHING_VERSION_LEN)==0) {
+    } else if(readUBytesBE(buff, SWITCHING_VERSION_LEN)==SWITCHING_VERSION) {
 	return 2;
     }
     return 1;
@@ -78,15 +79,16 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
     unsigned int last_com, temp;
     unsigned int is_neg = 0;
     unsigned const long *copy_off_array;
-
-//    if(offset_type==ENCODING_OFFSET_DC_POS) {
+    unsigned int offset_type = ENCODING_OFFSET_DC_POS;
+    if(offset_type==ENCODING_OFFSET_DC_POS) {
 	copy_off_array = copy_soff_start;
-/*    } else {
+    } else {
 	copy_off_array = copy_off_start;
     }
-*/    count = DCBufferReset(buffer);
+    count = DCBufferReset(buffer);
     cwrite(out_cfh, SWITCHING_MAGIC, SWITCHING_MAGIC_LEN);
-    cwrite(out_cfh, SWITCHING_VERSION, SWITCHING_VERSION_LEN);
+    writeUBytesBE(out_buff, SWITCHING_VERSION, SWITCHING_VERSION_LEN);
+    cwrite(out_cfh, out_buff, SWITCHING_VERSION_LEN);
     total_add_len=0;
     while(count--) {
 	if(DC_ADD==current_command_type(buffer))
@@ -146,15 +148,15 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 		delta_pos++;
 	    }
 	    //yes this is a hack.  but it works.
-//	    if(offset_type == ENCODING_OFFSET_DC_POS) {
+	    if(offset_type == ENCODING_OFFSET_DC_POS) {
 		s_off = buffer->lb_tail->offset - dc_pos;
 		//u_off = 2 * (abs(s_off));
 	    	u_off = abs(s_off);
 	    	v2printf("off(%lu), dc_pos(%lu), u_off(%lu), s_off(%ld): ", 
 		    buffer->lb_tail->offset, dc_pos, u_off, s_off);
-/*	    } else {
+	    } else {
 		u_off = buffer->lb_tail->offset;
-	    }*/
+	    }
 	    temp_len = buffer->lb_tail->len;
 	    if(temp_len >= copy_len_start[3]) {
 	    	temp=3;
@@ -189,7 +191,7 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 	    	ob=8;
 	    }
 	    out_buff[0] |= (temp << 4);
-//	    if(offset_type==ENCODING_OFFSET_DC_POS) {
+	    if(offset_type==ENCODING_OFFSET_DC_POS) {
 	    	dc_pos += s_off;
 		if(temp) {
 		    if(s_off > 0) { 
@@ -206,10 +208,10 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 		if(is_neg) 
 		    out_buff[lb] |= 0x80;
 		is_neg=0;
-/*	    } else {
+	    } else {
 		u_off -= copy_off_array[temp];
 		writeUBytesBE(out_buff + lb, u_off, temp + 1);
-	    } */
+	    } 
 	    cwrite(out_cfh, out_buff, lb + temp + 1);
 	    v2printf("writing copy delta_pos(%lu), fh_pos(%lu), offset(%ld), len(%lu)\n",
 	    	delta_pos, fh_pos, (unsigned long)ENCODING_OFFSET_DC_POS,
@@ -234,9 +236,9 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 signed int switchingReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff /*, 
     unsigned int offset_type*/) {
     //unsigned char *cptr;
-	const unsigned int buff_size = 4096;
+    const unsigned int buff_size = 4096;
     unsigned char buff[buff_size];
-	unsigned long int len;
+    unsigned long int len;
     unsigned long ver_pos=0, dc_pos=0;
     unsigned long int u_off;
     signed long int s_off;
@@ -245,39 +247,42 @@ signed int switchingReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff /*,
     unsigned int ob, lb;
     unsigned int end_of_patch =0;
     unsigned const long *copy_off_array;
-//    if(offset_type==ENCODING_OFFSET_DC_POS) {
+    unsigned int offset_type = ENCODING_OFFSET_DC_POS;
+    if(offset_type==ENCODING_OFFSET_DC_POS) {
     	v2printf("using ENCODING_OFFSET_DC_POS\n");
        	copy_off_array = copy_soff_start;
-/*    } else if(offset_type==ENCODING_OFFSET_START) {
-		v2printf("using ENCODING_OFFSET_START\n");
-		copy_off_array = copy_off_start;
-	} else { 
-		v2printf("wtf, unknown offset_type for reconstruction(%u)\n",offset_type);
-		exit(1);
-    }*/
+    } else if(offset_type==ENCODING_OFFSET_START) {
+	v2printf("using ENCODING_OFFSET_START\n");
+	copy_off_array = copy_off_start;
+    } else { 
+	v2printf("wtf, unknown offset_type for reconstruction(%u)\n",offset_type);
+	exit(1);
+    }
     cseek(patchf, SWITCHING_MAGIC_LEN + SWITCHING_VERSION_LEN, CSEEK_FSTART);
+    assert(ctell(patchf, CSEEK_FSTART)==SWITCHING_MAGIC_LEN + 
+	SWITCHING_VERSION_LEN);
     dc_pos=0;
     v2printf("starting pos=%lu\n", ctell(patchf, CSEEK_ABS));
     cread(patchf, buff, 4);
     com_start = readUBytesBE(buff, 4);
     cseek(patchf, com_start, CSEEK_CUR);
-    add_off=4;
-	last_com=DC_COPY;
-	v2printf("add data block size(%lu), starting commands at pos(%lu)\n", com_start,
-		ctell(patchf, CSEEK_ABS));
+    add_off = SWITCHING_MAGIC_LEN + SWITCHING_VERSION_LEN + 4;
+    last_com=DC_COPY;
+    v2printf("add data block size(%lu), starting commands at pos(%lu)\n", com_start,
+	ctell(patchf, CSEEK_ABS));
     while(cread(patchf, buff, 1)==1 && end_of_patch==0) {
     	v2printf("processing(%u) at pos(%lu): ", buff[0], ctell(patchf, CSEEK_ABS) -1);
 	    if(last_com != DC_ADD) {
 	    	lb = (buff[0] >> 6) & 0x3;
 	    	len = buff[0] & 0x3f;
 	    	if(lb) {
-	    		cread(patchf, buff, lb);
-	    		len = (len << (lb * 8)) + readUBytesBE(buff, lb);
-	    		len += add_len_start[lb];
+		    cread(patchf, buff, lb);
+		    len = (len << (lb * 8)) + readUBytesBE(buff, lb);
+		    len += add_len_start[lb];
 	    	}
 	    	if(len) {
-	    		DCBufferAddCmd(dcbuff, DC_ADD, add_off, len);
-	    		add_off += len;
+		    DCBufferAddCmd(dcbuff, DC_ADD, add_off, len);
+		    add_off += len;
 	    	}
 	    	last_com = DC_ADD;
 	    	v2printf("add len(%lu)\n", len);
@@ -287,37 +292,37 @@ signed int switchingReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff /*,
 	    	//v2printf("lb(%u), len(%lu): ", lb, len);
 	    	len = buff[0] & 0x0f;
 	    	if(lb) {
-	    		cread(patchf, buff, lb);
-	    		len = (len << (lb * 8)) + readUBytesBE(buff, lb);
-	    		//v2printf("adding(%lu): ", copy_len_start[lb]);
-	    		len += copy_len_start[lb];
+	    	    cread(patchf, buff, lb);
+	    	    len = (len << (lb * 8)) + readUBytesBE(buff, lb);
+	    	    //v2printf("adding(%lu): ", copy_len_start[lb]);
+	    	    len += copy_len_start[lb];
 	    	}
 	    	//v2printf("len now(%lu): ", len);
 	    	v2printf("ob(%u): ", ob);
 	    	cread(patchf, buff, ob + 1);
-//	    	if (offset_type == ENCODING_OFFSET_DC_POS) {
-	    		s_off = readSBytesBE(buff, ob + 1);
-			// positive or negative 0?  Yes, for this, there is a difference... 
-	    		if(buff[0] & 0x80) {
-	    			s_off -= copy_off_array[ob];
-	    		} else {
-	    			s_off += copy_off_array[ob];
-	    		}
-				u_off = dc_pos + s_off;
-				v2printf("u_off(%lu), dc_pos(%lu), s_off(%ld): ", 
-					u_off, dc_pos, s_off);
-				dc_pos = u_off;
-/*	    	} else {
-	    		u_off = readUBytesBE(buff, ob + 1);
-	    		u_off += copy_off_start[ob];
-	    	}*/
+		if (offset_type == ENCODING_OFFSET_DC_POS) {
+	    	    s_off = readSBytesBE(buff, ob + 1);
+   // positive or negative 0?  Yes, for this, there is a difference... 
+	    	    if(buff[0] & 0x80) {
+	    		s_off -= copy_off_array[ob];
+	    	    } else {
+	    		s_off += copy_off_array[ob];
+	    	    }
+		    u_off = dc_pos + s_off;
+		    v2printf("u_off(%lu), dc_pos(%lu), s_off(%ld): ", 
+			u_off, dc_pos, s_off);
+		    dc_pos = u_off;
+		} else {
+	    	    u_off = readUBytesBE(buff, ob + 1);
+	    	    u_off += copy_off_start[ob];
+	    	}
 	    	if(lb==0 && ob==0 && len==0 && u_off==0) {
-	    		v2printf("zero length, zero offset copy found.\n");
-	    		end_of_patch=1;
-	    		continue;
+	    	    v2printf("zero length, zero offset copy found.\n");
+	    	    end_of_patch=1;
+	    	    continue;
 	    	}
 	    	if(len)
-		    	DCBufferAddCmd(dcbuff, DC_COPY, u_off, len);
+		    DCBufferAddCmd(dcbuff, DC_COPY, u_off, len);
 	    	last_com = DC_COPY;
 	    	v2printf("copy off(%ld), len(%lu)\n", u_off, len);
 	    }
@@ -326,6 +331,6 @@ signed int switchingReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff /*,
     v2printf("cread fh_pos(%lu)\n", ctell(patchf, CSEEK_ABS)); 
     v2printf("ver_pos(%lu)\n", ver_pos);
     
-	return 0;    
+    return 0;    
 }
 

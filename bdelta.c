@@ -46,10 +46,9 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *ver_cfh,
     unsigned char prev, current;
     unsigned int intsize;
     unsigned char buff[16];
-    buff[0] = 'B';
-    buff[1] = 'D';
-    buff[2] = 'T';
-    writeUBytesLE(buff + 3, 1, 2); //version
+    cwrite(patchf, BDELTA_MAGIC, BDELTA_MAGIC_LEN);
+    writeUBytesLE(buff, BDELTA_VERSION, BDELTA_VERSION_LEN);
+    cwrite(patchf, buff, BDELTA_VERSION);
     count = DCBufferReset(dcbuff);
     /* since this will be collapsing all adds... */
     current = DC_COPY;
@@ -147,7 +146,7 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
     unsigned long add_start;
     if(3!=cseek(patchf, 3, CSEEK_FSTART))
 	goto truncated_patch;
-    if(2!=cread(patchf, buff, 2))
+    if(2!=cread(patchf, buff, BDELTA_VERSION_LEN))
 	goto truncated_patch;
     ver = readUBytesLE(buff, 2);
     v2printf("ver=%u\n", ver);

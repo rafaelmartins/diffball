@@ -21,7 +21,8 @@
 
 void 
 usage(poptContext p_opt, int exitcode, const char *error, const char *addl)
-{    poptPrintUsage(p_opt, stderr, 0);
+{    
+    poptPrintUsage(p_opt, stderr, 0);
     if(error) {
 	if(addl)
 	    fprintf(stderr, "%s: %s\n", error,addl);

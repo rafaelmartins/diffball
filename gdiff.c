@@ -196,7 +196,7 @@ gdiffEncodeDCBuffer(CommandBuffer *buffer,
 
 signed int 
 gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff, 
-	unsigned int offset_type, unsigned int gdiff_version)
+	unsigned int offset_type)
 {
     const unsigned int buff_size = 5;
     unsigned char buff[buff_size];

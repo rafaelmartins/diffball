@@ -28,9 +28,11 @@
 #define GDIFF5_FORMAT		0x2
 #define BDIFF_FORMAT		0x3
 #define XDELTA1_FORMAT		0x4
-#define SWITCHING_FORMAT	0x5
+#define SWITCHING_FORMAT 	0x5
 #define BDELTA_FORMAT		0x6
 #define GNUDIFF_FORMAT		0x7
+
+#define DEFAULT_PATCH_ID	SWITCHING_FORMAT
 
 unsigned long int check_for_format(char *format_name, unsigned int len);
 unsigned long int identify_format(cfile *patchf);

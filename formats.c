@@ -16,6 +16,7 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, US 
 */
 #include <string.h>
+#include "defs.h"
 #include "formats.h"
 #include "cfile.h"
 
@@ -49,6 +50,8 @@ identify_format(cfile *patchf)
 	format = GDIFF4_FORMAT;
     } else if ((val=check_gdiff5_magic(patchf))) {
 	format = GDIFF5_FORMAT;
+    } else if((val=check_switching_magic(patchf))) {
+	format = SWITCHING_FORMAT;
     } else if ((val=check_bdelta_magic(patchf))) {
 	format = BDELTA_FORMAT;
     } else if ((val=check_bdiff_magic(patchf))) {
@@ -56,9 +59,9 @@ identify_format(cfile *patchf)
     } else if ((val=check_xdelta1_magic(patchf))) {
 	format = XDELTA1_FORMAT;
     }
-    printf("identify_format, val=%lu, format=%lu\n", val, format);
+    v2printf("identify_format, val=%lu, format=%lu\n", val, format);
     if(format==0) {
 	return 0;
     }
-    return ((val << 16) | format);
+    return ((format << 16) | format);
 }

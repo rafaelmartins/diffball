@@ -40,21 +40,6 @@ unsigned int patch_to_stdout = 0;
 unsigned int use_md5 = 0;
 char  *patch_format;
 
-//enum {OVERSION=100, OVERBOSE,OFORMAT,OSEED,OSAMPLE,OSTDOUT,OBZIP2,OGZIP};
-
-    /*lname,sname, info, ptr, val, desc, args */
-/*struct poptOption options[] = {
-    {"version",		'V', POPT_ARG_NONE, 0, OVERSION,0, 0},
-    {"verbose",		'v', POPT_ARG_NONE, 0, OVERBOSE,0, 0},
-    {"format",		'f', POPT_ARG_STRING, &patch_format,  0,0,  0},
-    {"seed-len",		'b', POPT_ARG_INT,  &seed_len, 0,0, 0},
-    {"sample-rate",	's', POPT_ARG_LONG,  &sample_rate, 0,0, 0},
-    {"hash-size",		'a', POPT_ARG_LONG,  &hash_size, 0,0, 0},
-    {"stdout",		'c', POPT_ARG_NONE, &patch_to_stdout, 0,0, 0},
-    {"ignore-md5",	'm', POPT_ARG_NONE, &use_md5, 0,0, 0},
-    {"bzip2-compress",	'j', POPT_ARG_NONE, 0, OBZIP2,0, 0},
-    {"gzip-compress",	'z', POPT_ARG_NONE, 0, OGZIP, 0,0},*/
-
 struct poptOption options[] = {
     STD_OPTIONS(patch_to_stdout),
     DIFF_OPTIONS(seed_len, sample_rate,hash_size),
@@ -78,6 +63,8 @@ int main(int argc, char **argv)
     char  *src_file;
     char  *trg_file;
     char  *patch_name;
+    unsigned long patch_id = 0;
+    signed long encode_result=0;
 
     p_opt = poptGetContext("differ", argc, (const char **)argv, options, 0);
     while((optr=poptGetNextOpt(p_opt)) != -1) {
@@ -128,17 +115,13 @@ int main(int argc, char **argv)
 	"unknown option");
     }
     poptFreeContext(p_opt);
-    unsigned long patch_id;
-    patch_id = check_for_format(patch_format, strlen(patch_format));
-    printf("patch_id=%lu\n",patch_id);
-    exit(0);
     if ((ref_fh = open(src_file, O_RDONLY,0)) == -1) {
-		fprintf(stderr, "error opening src_file\n");
-		exit(EXIT_FAILURE);
+	fprintf(stderr, "error opening src_file\n");
+	exit(EXIT_FAILURE);
     }
     if ((ver_fh = open(trg_file, O_RDONLY,0)) == -1) {
-		fprintf(stderr, "error opening trg_file\n");
-		exit(EXIT_FAILURE);
+	fprintf(stderr, "error opening trg_file\n");
+	exit(EXIT_FAILURE);
     }
     copen(&ref_cfh, ref_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     copen(&ver_cfh, ver_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
@@ -154,6 +137,16 @@ int main(int argc, char **argv)
     if(seed_len==0) {
 	seed_len = DEFAULT_SEED_LEN;
     }
+    if(patch_format==NULL) {
+	patch_id = DEFAULT_PATCH_ID;
+    } else {
+	patch_id = check_for_format(patch_format, strlen(patch_format));
+	if(patch_id==0) {
+	    fprintf(stderr, "Unknown format '%s'\n", patch_format);
+	    exit(1);
+	}
+    }
+    v1printf("using patch format %lu\n", patch_id);
     v1printf("using seed_len(%lu), sample_rate(%lu), hash_size(%lu)\n", 
 	seed_len, sample_rate, hash_size);
     v1printf("verbosity level(%u)\n", verbosity);
@@ -162,13 +155,25 @@ int main(int argc, char **argv)
     OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh);
     v1printf("outputing patch...\n");
     v1printf("there were %lu commands\n", buffer.buffer_count);
+    if(GDIFF4_FORMAT == patch_id) {
+	encode_result = gdiff4EncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
+    } else if(GDIFF5_FORMAT == patch_id) {
+	encode_result = gdiff5EncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
+    } else if(BDIFF_FORMAT == patch_id) {
+	encode_result = bdiffEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
+    } else if(SWITCHING_FORMAT == patch_id) {
+	encode_result = switchingEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
+    } else if (BDELTA_FORMAT == patch_id) {
+	encode_result = bdeltaEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
+    }
 //    offset_type = ENCODING_OFFSET_START;
-    offset_type = ENCODING_OFFSET_DC_POS;
+//    offset_type = ENCODING_OFFSET_DC_POS;
 //    bdiffEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
-    gdiffEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
+//    gdiffEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
 //    switchingEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
 //    rawEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
 //    bdeltaEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
+    v1printf("encode_result=%ld\n", encode_result);
     v1printf("exiting\n");
     free_RefHash(&rhash);
     DCBufferFree(&buffer);

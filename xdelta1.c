@@ -28,6 +28,7 @@ unsigned int
 check_xdelta1_magic(cfile *patchf)
 {
     unsigned char buff[XDELTA_MAGIC_LEN];
+    cseek(patchf, 0, CSEEK_FSTART);
     if(XDELTA_MAGIC_LEN != cread(patchf, buff, XDELTA_MAGIC_LEN)) {
 	return 0;
     }

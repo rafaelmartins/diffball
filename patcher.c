@@ -36,15 +36,6 @@ unsigned int output_to_stdout = 0;
 unsigned int use_md5 = 0;
 char  *patch_format;
 
-    /*lname,sname, info, ptr, val, desc, args */
-/*struct poptOption options[] = {
-    {"version",		'V', POPT_ARG_NONE, 0, OVERSION,0, 0},
-    {"verbose",		'v', POPT_ARG_NONE, 0, OVERBOSE,0, 0},
-    {"format",		'f', POPT_ARG_STRING, &patch_format,  0,0,  0},
-    {"stdout",		'c', POPT_ARG_NONE, &output_to_stdout, 0,0, 0},
-    {"ignore-md5",	'm', POPT_ARG_NONE, &use_md5, 0,0, 0},
-    {"bzip2-compress",	'j', POPT_ARG_NONE, 0, OBZIP2,0, 0},
-    {"gzip-compress",	'z', POPT_ARG_NONE, 0, OGZIP, 0,0},*/
 struct poptOption options[] = {
     STD_OPTIONS(output_to_stdout),
     FORMAT_OPTIONS("patch-format", 'f', patch_format),
@@ -66,6 +57,8 @@ main(int argc, char **argv)
     char  *src_name;
     char  *out_name;
     char  *patch_name;
+    unsigned long int patch_id=0;
+    signed int recon_val=0;
 
     p_opt = poptGetContext("patcher", argc, (const char **)argv, options, 0);
     while((optr=poptGetNextOpt(p_opt)) != -1) {
@@ -129,26 +122,50 @@ main(int argc, char **argv)
     copen(&src_cfh, src_fh, 0, src_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     copen(&patch_cfh, patch_fh, 0, patch_stat.st_size, 
 	NO_COMPRESSOR, CFILE_RONLY);
-    v1printf("patch_type=%lu\n", identify_format(&patch_cfh));
+    if(patch_format==NULL) {
+	patch_id = identify_format(&patch_cfh);
+	if(patch_id==0) {
+	    fprintf(stderr, "Couldn't identify the patch format, aborting\n");
+	    exit(EXIT_FAILURE);
+	} else if((patch_id >> 16)==1) {
+	    fprintf(stderr, "Unsupported format version\n");
+	    exit(EXIT_FAILURE);
+	}
+	patch_id >>=16;
+    } else {
+	patch_id = check_for_format(patch_format, strlen(patch_format));
+	if(patch_id==0) {
+	    fprintf(stderr, "Unknown format '%s'\n", patch_format);
+	    exit(1);
+	}
+    }
+    v1printf("patch_type=%lu\n", patch_id);
     cseek(&patch_cfh, 0, CSEEK_FSTART);
     copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
-//    offset_type = ENCODING_OFFSET_START;
-    offset_type = ENCODING_OFFSET_DC_POS;
 	DCBufferInit(&dcbuff, 2000000, 0, 0);
-//	switchingReconstructDCBuff(&patch_cfh, &dcbuff, offset_type);
-   	gdiffReconstructDCBuff(&patch_cfh, &dcbuff, offset_type, 4);
-//	rawReconstructDCBuff(&patch_cfh, &dcbuff, offset_type);
-//	bdiffReconstructDCBuff(&patch_cfh, &dcbuff);
-//	xdelta1ReconstructDCBuff(&patch_cfh, &dcbuff, 1);
-//	bdeltaReconstructDCBuff(&patch_cfh, &dcbuff);
-//	udiffReconstructDCBuff(&patch_cfh, &src_cfh, NULL, &dcbuff);
-   	v1printf("reconstructing target file based off of dcbuff commands...\n");
-   	reconstructFile(&dcbuff, &src_cfh, &patch_cfh, &out_cfh);
-   	v1printf("reconstruction done.\n");
-	DCBufferFree(&dcbuff);
-	cclose(&out_cfh);
-	cclose(&src_cfh);
-	cclose(&patch_cfh);
-	return 0;
+    if(SWITCHING_FORMAT == patch_id) {
+	recon_val = switchingReconstructDCBuff(&patch_cfh, &dcbuff);
+    } else if(GDIFF4_FORMAT == patch_id) {
+	recon_val = gdiff4ReconstructDCBuff(&patch_cfh, &dcbuff);
+    } else if(GDIFF5_FORMAT == patch_id) {
+	recon_val = gdiff5ReconstructDCBuff(&patch_cfh, &dcbuff);
+    } else if(BDIFF_FORMAT == patch_id) {
+	recon_val = bdiffReconstructDCBuff(&patch_cfh, &dcbuff);
+    } else if(XDELTA1_FORMAT == patch_id) {
+	recon_val = xdelta1ReconstructDCBuff(&patch_cfh, &dcbuff, 1);
+    } else if(BDELTA_FORMAT == patch_id) {
+	recon_val = bdeltaReconstructDCBuff(&patch_cfh, &dcbuff);
+//    } else if(UDIFF_FORMAT == patch_id) {
+//	recon_val = udiffReconstructDCBuff(&patch_cfh, &src_cfh, NULL, &dcbuff);
+    }
+    v1printf("reconstruction return=%ld\n", recon_val);
+    v1printf("reconstructing target file based off of dcbuff commands...\n");
+    reconstructFile(&dcbuff, &src_cfh, &patch_cfh, &out_cfh);
+    v1printf("reconstruction done.\n");
+    DCBufferFree(&dcbuff);
+    cclose(&out_cfh);
+    cclose(&src_cfh);
+    cclose(&patch_cfh);
+    return 0;
 }
 

@@ -20,8 +20,10 @@
 #include "dcbuffer.h"
 #include "cfile.h"
 
-#define BDELTA_MAGIC "BDT"
-#define BDELTA_MAGIC_LEN 3
+#define BDELTA_MAGIC		"BDT"
+#define BDELTA_MAGIC_LEN	3
+#define BDELTA_VERSION		0x2
+#define BDELTA_VERSION_LEN	2
 
 unsigned int check_bdelta_magic(cfile *patchf);
 signed int bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, 
