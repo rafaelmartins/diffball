@@ -63,34 +63,34 @@ bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *out_cfh)
 	DCB_get_next_command(buffer, &dc);
 	if(DC_COPY == dc.type) {
 	    v2printf("copy command, out_cfh(%lu), fh_pos(%lu), offset(%lu), len(%lu)\n",
-		delta_pos, fh_pos, dc.loc.offset, dc.loc.len);
-	    fh_pos += dc.loc.len;
+		delta_pos, fh_pos, dc.data.src_pos, dc.data.len);
+	    fh_pos += dc.data.len;
 	    lb = 5;
 	    buff[0] = 0;
-	    writeUBytesBE(buff + 1, dc.loc.offset, 4);
-	    if(dc.loc.len > 5 && dc.loc.len <= 5 + 0x3f) {
-		buff[0] = dc.loc.len -5 ;
+	    writeUBytesBE(buff + 1, dc.data.src_pos, 4);
+	    if(dc.data.len > 5 && dc.data.len <= 5 + 0x3f) {
+		buff[0] = dc.data.len -5 ;
 	    } else {
-		writeUBytesBE(buff + 5, dc.loc.len, 4);
+		writeUBytesBE(buff + 5, dc.data.len, 4);
 		lb += 4;
 	    }
 	    delta_pos += lb;
 	    cwrite(out_cfh, buff, lb);
 	} else {
 	    v2printf("add  command, out_cfh(%lu), fh_pos(%lu), len(%lu)\n", 
-		delta_pos, fh_pos, dc.loc.len);
-	    fh_pos += dc.loc.len;
+		delta_pos, fh_pos, dc.data.len);
+	    fh_pos += dc.data.len;
 	    buff[0] = 0x80;
 	    lb = 1;
-	    if(dc.loc.len > 5 && dc.loc.len <= 5 + 0x3f) {
-		buff[0] |= dc.loc.len - 5;
+	    if(dc.data.len > 5 && dc.data.len <= 5 + 0x3f) {
+		buff[0] |= dc.data.len - 5;
 	    } else {
-		writeUBytesBE(buff + 1, dc.loc.len, 4);
+		writeUBytesBE(buff + 1, dc.data.len, 4);
 		lb += 4;
 	    }
-	    delta_pos += lb + dc.loc.len;
+	    delta_pos += lb + dc.data.len;
 	    cwrite(out_cfh, buff, lb);
-	    if(dc.loc.len != copyDCB_add_src(buffer, &dc, out_cfh)) {
+	    if(dc.data.len != copyDCB_add_src(buffer, &dc, out_cfh)) {
 		return EOF_ERROR;
 	    }
 	}

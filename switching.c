@@ -95,7 +95,7 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
     while(DCB_commands_remain(buffer)) {
 	DCB_get_next_command(buffer, &dc);
 	if(DC_ADD==dc.type)
-    	    total_add_len += dc.loc.len;
+    	    total_add_len += dc.data.len;
     }
     writeUBytesBE(out_buff, total_add_len, 4);
     cwrite(out_cfh, out_buff, 4);
@@ -104,10 +104,10 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
     while(DCB_commands_remain(buffer)) {
 	DCB_get_next_command(buffer, &dc);
 	if(DC_ADD == dc.type) {
-	    if(dc.loc.len != copyDCB_add_src(buffer, &dc, out_cfh)) {
+	    if(dc.data.len != copyDCB_add_src(buffer, &dc, out_cfh)) {
 		return EOF_ERROR;
 	    }
-	    delta_pos += dc.loc.len;
+	    delta_pos += dc.data.len;
     	}
     }
     v1printf("output add block, len(%lu)\n", delta_pos);
@@ -116,11 +116,11 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
     dc_pos=0;
     while(DCB_commands_remain(buffer)) {
 	DCB_get_next_command(buffer, &dc);
-	if(dc.loc.len == 0) {
+	if(dc.data.len == 0) {
 	    continue;
 	}
 	if(DC_ADD == dc.type) {
-	    temp_len = dc.loc.len;
+	    temp_len = dc.data.len;
 	    if(temp_len >= add_len_start[3]) {
 	    	temp=3;
 	    	lb=30;
@@ -139,9 +139,9 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 	    out_buff[0] |= (temp << 6); 
 	    cwrite(out_cfh, out_buff, temp + 1);
 	    v2printf("writing add, pos(%lu), len(%lu)\n", delta_pos, 
-		dc.loc.len);
+		dc.data.len);
 	    delta_pos += temp + 1;
-	    fh_pos += dc.loc.len;
+	    fh_pos += dc.data.len;
 	    last_com = DC_ADD;
 	} else {
 	    if(last_com == DC_COPY) {
@@ -152,15 +152,15 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 	    }
 	    //yes this is a hack.  but it works.
 	    if(offset_type == ENCODING_OFFSET_DC_POS) {
-		s_off = dc.loc.offset - dc_pos;
+		s_off = dc.data.src_pos - dc_pos;
 		//u_off = 2 * (abs(s_off));
 	    	u_off = abs(s_off);
 	    	v2printf("off(%lu), dc_pos(%lu), u_off(%lu), s_off(%ld): ", 
-		    dc.loc.offset, dc_pos, u_off, s_off);
+		    dc.data.src_pos, dc_pos, u_off, s_off);
 	    } else {
-		u_off = dc.loc.offset;
+		u_off = dc.data.src_pos;
 	    }
-	    temp_len = dc.loc.len;
+	    temp_len = dc.data.len;
 	    if(temp_len >= copy_len_start[3]) {
 	    	temp=3;
 	    	lb=28;
@@ -219,8 +219,8 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 	    cwrite(out_cfh, out_buff, lb + temp + 1);
 	    v2printf("writing copy delta_pos(%lu), fh_pos(%lu), offset(%ld), len(%lu)\n",
 	    	delta_pos, fh_pos, (unsigned long)ENCODING_OFFSET_DC_POS,
-		dc.loc.len);
-	    fh_pos += dc.loc.len;
+		dc.data.len);
+	    fh_pos += dc.data.len;
 	    delta_pos += lb + temp + 1;
 	    last_com=DC_COPY;
  	}

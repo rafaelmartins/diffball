@@ -33,7 +33,7 @@ bsdiff_overlay_add(CommandBuffer *dcb, DCommand *dc,
     unsigned int x;
     src_cfh = dcb->copy_src_cfh[0];
     diff_cfh = dcb->add_src_cfh[dc->src_id];
-    len = dc->loc.len;
+    len = dc->data.len;
     off_u32 *src_offsets;
 
     assert(src_cfh != NULL);
@@ -45,16 +45,16 @@ bsdiff_overlay_add(CommandBuffer *dcb, DCommand *dc,
 	cseek(src_cfh, 	src_offsets[dcb->DCB.full.add_index -1], CSEEK_FSTART)) {
 	    return EOF_ERROR;
 	return 0;
-    } else if(dc->loc.offset != cseek(diff_cfh, dc->loc.offset, CSEEK_FSTART)) {
+    } else if(dc->data.src_pos != cseek(diff_cfh, dc->data.src_pos, CSEEK_FSTART)) {
 	return 0;
     }
     while(len) {
 	x = MIN(CFILE_DEFAULT_BUFFER_SIZE, len);
 	if(x!=cread(src_cfh, buff1, x)) {
-	    return dc->loc.len - len;
+	    return dc->data.len - len;
 	}
 	if(x!=cread(diff_cfh, buff2, x)) {
-	    return dc->loc.len - len;
+	    return dc->data.len - len;
 	}	
 	while(x) {
 	    buff1[x - 1] = ((buff1[x - 1] + buff2[x - 1]) & 0xff);
@@ -62,11 +62,11 @@ bsdiff_overlay_add(CommandBuffer *dcb, DCommand *dc,
 	}
 	x = MIN(CFILE_DEFAULT_BUFFER_SIZE, len);
 	if(x!=cwrite(out_cfh, buff1, x)) {
-	    return dc->loc.len - len;
+	    return dc->data.len - len;
 	}
 	len -= x;
     }
-    return dc->loc.len - len;
+    return dc->data.len - len;
 }
 
 

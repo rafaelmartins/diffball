@@ -61,7 +61,7 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *patchf)
 	DCB_get_next_command(dcbuff, &dc);
 	prev = current;
 	current = dc.type;
-	ver_size += dc.loc.len;
+	ver_size += dc.data.len;
 	if(! ((prev==DC_ADD && current==DC_COPY) ||
 	    (prev==DC_ADD && current==DC_ADD)) )
 	    matches++;
@@ -95,28 +95,28 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *patchf)
 	add_len=0;
 	if(DC_ADD==dc.type) {
 	    do {
-		add_len += dc.loc.len; //DCBF_cur_len(dcbuff);
+		add_len += dc.data.len;
 	    	count--;
 		DCB_get_next_command(dcbuff, &dc);
-//		DCBufferIncr(dcbuff);
 	    } while(count!=0 && DC_ADD == dc.type);
 	    v2printf("writing add len=%lu\n", add_len);
 	}
 	/* basically a fall through to copy, if count!=0 */
 	if(count != 0) {
-	    copy_len = dc.loc.len;
-	    if(dc_pos > dc.loc.offset) {
+	    copy_len = dc.data.len;
+//	    if(dc_pos > dc.loc.offset) {
+	    if(dc_pos > dc.data.src_pos) {
 		v2printf("negative offset, dc_pos(%lu), offset(%lu)\n",
-		    dc_pos, dc.loc.offset);
-		copy_offset = dc.loc.offset + (~dc_pos + 1);
+		    dc_pos, dc.data.src_pos);
+		copy_offset = dc.data.src_pos + (~dc_pos + 1);
 	    } else {
 		v2printf("positive offset, dc_pos(%lu), offset(%lu)\n",
-		    dc_pos, dc.loc.offset);
-		copy_offset = dc.loc.offset - dc_pos;
+		    dc_pos, dc.data.src_pos);
+		copy_offset = dc.data.src_pos - dc_pos;
 	    }
-	    dc_pos = dc.loc.offset + dc.loc.len;
+	    dc_pos = dc.data.src_pos + dc.data.len;
 	    v2printf("writing copy_len=%lu, offset=%lu, dc_pos=%lu\n",
-		copy_len, dc.loc.offset, dc_pos);
+		copy_len, dc.data.src_pos, dc_pos);
 	} else {
 	    copy_len = 0;
 	    copy_offset = 0;
@@ -133,7 +133,7 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *patchf)
     while(DCB_commands_remain(dcbuff)) {
 	DCB_get_next_command(dcbuff, &dc);
 	if(DC_ADD == dc.type) {
-	    if(dc.loc.len != copyDCB_add_src(dcbuff, &dc, patchf)) {
+	    if(dc.data.len != copyDCB_add_src(dcbuff, &dc, patchf)) {
 		return EOF_ERROR;
 	    }
 	}

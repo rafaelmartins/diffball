@@ -30,16 +30,20 @@ reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh)
     DCBufferReset(dcbuff);
     while(DCB_commands_remain(dcbuff)) {
 	DCB_get_next_command(dcbuff, &dc);
+//	if(cseek(out_cfh, dc.data.ver_pos, CSEEK_FSTART)!=dc.data.ver_pos) {
+//	    abort();
+//	}
+  
 	if(DC_COPY == dc.type) {
 	    v2printf("copy command, offset(%lu), len(%lu)\n",
-		dc.loc.offset, dc.loc.len);
-	    if(dc.loc.len != copyDCB_copy_src(dcbuff, &dc, out_cfh)) {
+		dc.data.src_pos, dc.data.len);
+	    if(dc.data.len != copyDCB_copy_src(dcbuff, &dc, out_cfh)) {
 		return EOF_ERROR;
 	    }
 	} else {
 	    v2printf("add command, offset(%lu), len(%lu)\n", 
-		dc.loc.offset, dc.loc.len);
-	    if(dc.loc.len != copyDCB_add_src(dcbuff, &dc, out_cfh)) {
+		dc.data.src_pos, dc.data.len);
+	    if(dc.data.len != copyDCB_add_src(dcbuff, &dc, out_cfh)) {
 		return EOF_ERROR;
 	    }
 	}

@@ -62,7 +62,8 @@ struct LL_DCLmatch {
 };
 
 typedef struct {
-    DCLoc loc;
+//    DCLoc loc;
+    DCLoc_match data;
     unsigned long src_id;
     unsigned char type;
 } DCommand;

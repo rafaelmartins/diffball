@@ -44,7 +44,7 @@ DCB_test_total_copy_len(CommandBuffer *buff)
     while(DCB_commands_remain(buff)) {
         DCB_get_next_command(buff, &dc);
         if(dc.type==DC_COPY)
-            computed_len += dc.loc.len;
+            computed_len += dc.data.len;
     }
     v0printf("dcbuffer test: copy_len(%lu==%lu)\n", buff->total_copy_len,
         computed_len);
@@ -117,8 +117,11 @@ DCB_get_next_command(CommandBuffer *buff, DCommand *dc)
 	} else {
 	    dc->src_id = 0;
 	}
-	dc->loc.offset = buff->DCB.full.lb_tail->offset;
-	dc->loc.len = buff->DCB.full.lb_tail->len;
+	dc->data.src_pos = buff->DCB.full.lb_tail->offset;
+	dc->data.ver_pos = buff->reconstruct_pos;
+	dc->data.len = buff->DCB.full.lb_tail->len;
+//	dc->loc.offset = buff->DCB.full.lb_tail->offset;
+//	dc->loc.len = buff->DCB.full.lb_tail->len;
 	DCBufferIncr(buff);
     } else if (DCBUFFER_MATCHES_TYPE == buff->DCBtype) {
 	dc->src_id = 0;
@@ -126,38 +129,54 @@ DCB_get_next_command(CommandBuffer *buff, DCommand *dc)
 	if((buff->DCB.matches.cur - buff->DCB.matches.buff) == 
 	    buff->DCB.matches.buff_count) {
 	    dc->type = DC_ADD;
-	    dc->loc.offset = buff->reconstruct_pos;
-	    dc->loc.len = buff->ver_size - buff->reconstruct_pos;
+	    dc->data.src_pos = dc->data.ver_pos = buff->reconstruct_pos;
+	    dc->data.len = buff->ver_size - buff->reconstruct_pos;
+//	    dc->loc.offset = buff->reconstruct_pos;
+//	    dc->loc.len = buff->ver_size - buff->reconstruct_pos;
 	} else if(buff->reconstruct_pos == buff->DCB.matches.cur->ver_pos) {
 	    dc->type = DC_COPY;
-	    dc->loc.offset = buff->DCB.matches.cur->src_pos;
-	    dc->loc.len = buff->DCB.matches.cur->len;
+	    dc->data.src_pos = buff->DCB.matches.cur->src_pos;
+	    dc->data.ver_pos = buff->DCB.matches.cur->ver_pos;
+	    dc->data.len = buff->DCB.matches.cur->len;
+//	    dc->loc.offset = buff->DCB.matches.cur->src_pos;
+//	    dc->loc.len = buff->DCB.matches.cur->len;
 	    DCBufferIncr(buff);
 	} else {
 	    dc->type = DC_ADD;
-	    dc->loc.offset = buff->reconstruct_pos;
-	    dc->loc.len= buff->DCB.matches.cur->ver_pos - buff->reconstruct_pos;
+	    dc->data.src_pos = dc->data.ver_pos = buff->reconstruct_pos;
+	    dc->data.len = buff->DCB.matches.cur->ver_pos - buff->reconstruct_pos;
+//	    dc->loc.offset = buff->reconstruct_pos;
+//	    dc->loc.len= buff->DCB.matches.cur->ver_pos - buff->reconstruct_pos;
 	}
-	buff->reconstruct_pos += dc->loc.len;
+//	buff->reconstruct_pos += dc->loc.len;
     } else if(DCBUFFER_LLMATCHES_TYPE == buff->DCBtype) {
 	dc->src_id = 0;
 	assert(buff->flags & DCB_LLM_FINALIZED);
 	if(buff->DCB.llm.main == NULL) {
 	    dc->type = DC_ADD;
-	    dc->loc.offset = buff->reconstruct_pos;
-	    dc->loc.len = buff->ver_size - buff->reconstruct_pos;
+	    dc->data.src_pos = dc->data.ver_pos  = buff->reconstruct_pos;
+	    dc->data.len = buff->ver_size - buff->reconstruct_pos;
+//	    dc->loc.offset = buff->reconstruct_pos;
+//	    dc->loc.len = buff->ver_size - buff->reconstruct_pos;
 	} else if(buff->reconstruct_pos == buff->DCB.llm.main->ver_pos) {
 	    dc->type = DC_COPY;
-	    dc->loc.offset = buff->DCB.llm.main->src_pos;
-	    dc->loc.len = buff->DCB.llm.main->len;
+	    dc->data.src_pos = buff->DCB.llm.main->src_pos;
+	    dc->data.ver_pos = buff->reconstruct_pos;
+	    dc->data.len = buff->DCB.llm.main->len;
+//	    dc->loc.offset = buff->DCB.llm.main->src_pos;
+//	    dc->loc.len = buff->DCB.llm.main->len;
 	    DCBufferIncr(buff);
 	} else {
 	    dc->type = DC_ADD;
-	    dc->loc.offset = buff->reconstruct_pos;
-	    dc->loc.len = buff->DCB.llm.main->ver_pos - buff->reconstruct_pos;
+	    dc->data.src_pos = dc->data.ver_pos = buff->reconstruct_pos;
+	    dc->data.len = buff->DCB.llm.main->ver_pos - buff->reconstruct_pos;
+//	    dc->loc.offset = buff->reconstruct_pos;
+//	    dc->loc.len = buff->DCB.llm.main->ver_pos - buff->reconstruct_pos;
 	}
-	buff->reconstruct_pos += dc->loc.len;
-    }	
+//	buff->reconstruct_pos += dc->loc.len;
+    }
+    buff->reconstruct_pos += dc->data.len;
+
 }
 
 void 
@@ -762,13 +781,15 @@ unsigned long
 default_dcb_copy_func(CommandBuffer *dcb, DCommand *dc, cfile *out_cfh)
 {
     return copy_cfile_block(out_cfh, dcb->copy_src_cfh[dc->src_id], 
-	(unsigned long)dc->loc.offset, dc->loc.len);
+//	(unsigned long)dc->loc.offset, dc->loc.len);
+	(unsigned long)dc->data.src_pos, dc->data.len);
 }
 
 unsigned long 
 default_dcb_add_func(CommandBuffer *dcb, DCommand *dc, cfile *out_cfh)
 {
     return copy_cfile_block(out_cfh, dcb->add_src_cfh[dc->src_id], 
-	(unsigned long)dc->loc.offset, dc->loc.len);
+//	(unsigned long)dc->loc.offset, dc->loc.len);
+	(unsigned long)dc->data.src_pos, dc->data.len);
 }
 

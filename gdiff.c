@@ -89,47 +89,47 @@ gdiffEncodeDCBuffer(CommandBuffer *buffer,
     count=0;
     while(DCB_commands_remain(buffer)) {
 	DCB_get_next_command(buffer, &dc);
-	if(dc.loc.len==0) {
+	if(dc.data.len==0) {
 	    DCBufferIncr(buffer);
 	    continue;
 	}
 	if(dc.type == DC_ADD) {
 	    v2printf("add command, delta_pos(%lu), fh_pos(%lu), len(%lu)\n",
-		delta_pos, fh_pos, dc.loc.len);
-	    u_off = dc.loc.len;
-	    if(dc.loc.len <= 246) {
-		out_buff[0] = dc.loc.len;
+		delta_pos, fh_pos, dc.data.len);
+	    u_off = dc.data.len;
+	    if(dc.data.len <= 246) {
+		out_buff[0] = dc.data.len;
 		cwrite(out_cfh, out_buff, 1);
 		delta_pos+=1;
-	    } else if (dc.loc.len <= 0xffff) {
+	    } else if (dc.data.len <= 0xffff) {
 		out_buff[0] = 247;
-		writeUBytesBE(out_buff + 1, dc.loc.len, 2);
+		writeUBytesBE(out_buff + 1, dc.data.len, 2);
 		cwrite(out_cfh, out_buff, 3);
 		delta_pos+=3;
-	    } else if (dc.loc.len <= 0xffffffff) {
+	    } else if (dc.data.len <= 0xffffffff) {
 		out_buff[0] = 248;
-		writeUBytesBE(out_buff + 1, dc.loc.len, 4);
+		writeUBytesBE(out_buff + 1, dc.data.len, 4);
 		cwrite(out_cfh, out_buff, 5);
 		delta_pos+=5;
 	    } else {
 		return FORMAT_ERROR;
 	    }
-	    if(dc.loc.len != copyDCB_add_src(buffer, &dc, out_cfh)) {
+	    if(dc.data.len != copyDCB_add_src(buffer, &dc, out_cfh)) {
 		return EOF_ERROR;
 	    }
 
-	    delta_pos += dc.loc.len;
-	    fh_pos += dc.loc.len;
+	    delta_pos += dc.data.len;
+	    fh_pos += dc.data.len;
 	} else {
 	    if(off_is_sbytes) {
-		s_off = (signed long)dc.loc.offset - (signed long)dc_pos;
+		s_off = (signed long)dc.data.src_pos - (signed long)dc_pos;
 		u_off = abs(s_off);
 		ob=signedBytesNeeded(s_off);
 	    } else {
-		u_off = dc.loc.offset;
+		u_off = dc.data.src_pos;
 		ob=unsignedBytesNeeded(u_off);
 	    }
-	    lb=unsignedBytesNeeded(dc.loc.len);
+	    lb=unsignedBytesNeeded(dc.data.len);
 	    if(lb> INT_BYTE_COUNT) {
 		return FORMAT_ERROR;
 	    }
@@ -169,15 +169,15 @@ gdiffEncodeDCBuffer(CommandBuffer *buffer,
 		writeUBytesBE(out_buff + clen, u_off, ob);
 	    }
 	    clen+= ob;
-	    writeUBytesBE(out_buff + clen, dc.loc.len, lb);
+	    writeUBytesBE(out_buff + clen, dc.data.len, lb);
 	    clen+=lb;
 	    v2printf("copy delta_pos(%lu), fh_pos(%lu), type(%u), offset(%ld), len(%lu)\n",
 		delta_pos, fh_pos, out_buff[0], (off_is_sbytes ? 
-		    dc_pos + s_off : u_off), dc.loc.len);
+		    dc_pos + s_off : u_off), dc.data.len);
 	    if(cwrite(out_cfh, out_buff, clen)!=clen) {
 		return IO_ERROR;
 	    }
-	    fh_pos += dc.loc.len;
+	    fh_pos += dc.data.len;
 	    delta_pos+=1 + ob + lb;
 	    dc_pos += s_off;
 	}
