@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2003 Brian Harring
+  Copyright (C) 2003-2004 Brian Harring
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -52,7 +52,7 @@ int main(int argc, char **argv)
     struct stat ref_stat, ver_stat;
     cfile out_cfh, ref_cfh, ver_cfh;
     int ref_fh, ver_fh, out_fh;
-    unsigned char ref_id, ver_id;
+    signed int ref_id, ver_id;
     CommandBuffer buffer;
     poptContext p_opt;
 
@@ -65,14 +65,21 @@ int main(int argc, char **argv)
     p_opt = poptGetContext("differ", argc, (const char **)argv, options, 0);
     while((optr=poptGetNextOpt(p_opt)) != -1) {
 	if(optr < -1) {
-	    usage(p_opt, 1, poptBadOption(p_opt, POPT_BADOPTION_NOALIAS), 
+	    usage("differ", p_opt, 1, poptBadOption(p_opt, POPT_BADOPTION_NOALIAS), 
 		poptStrerror(optr));
 	}
 	switch(optr) {
 	case OVERSION:
 	    print_version("differ");
+	    exit(0);
+	case OUSAGE:
+	    usage("differ", p_opt, 0, NULL, NULL);
+	    break;
 	case OVERBOSE:
 	    global_verbosity++;
+	    break;
+	case OHELP:
+	    print_help("differ", p_opt);
 	    break;
 /*	case OBZIP2:
 	    if(patch_compressor) {
@@ -91,15 +98,15 @@ int main(int argc, char **argv)
     }
     if( ((src_file=(char *)poptGetArg(p_opt))==NULL) || 
 	(stat(src_file, &ref_stat))) 
-	usage(p_opt, 1, "Must specify an existing source file.",NULL);
+	usage("differ", p_opt, 1, "Must specify an existing source file.",NULL);
     if( ((trg_file=(char *)poptGetArg(p_opt))==NULL) || 
 	(stat(trg_file, &ver_stat)) )
-	usage(p_opt, 1, "Must specify an existing target file.",NULL);
+	usage("differ", p_opt, 1, "Must specify an existing target file.",NULL);
     if(patch_to_stdout != 0) {
 	out_fh = 1;
     } else {
 	if((patch_name = (char *)poptGetArg(p_opt))==NULL)
-	    usage(p_opt, 1, "Must specify a name for the patch file.",NULL);
+	    usage("differ", p_opt, 1, "Must specify a name for the patch file.",NULL);
 	if((out_fh = open(patch_name, O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1) {
 	    v0printf( "error creating patch file '%s' (open failed)\n",
 	    patch_name);
@@ -107,7 +114,7 @@ int main(int argc, char **argv)
 	}
     }
     if (NULL!=poptGetArgs(p_opt)) {
-	usage(p_opt, 1, poptBadOption(p_opt, POPT_BADOPTION_NOALIAS),
+	usage("differ", p_opt, 1, poptBadOption(p_opt, POPT_BADOPTION_NOALIAS),
 	"unknown option");
     }
     poptFreeContext(p_opt);
@@ -152,15 +159,15 @@ int main(int argc, char **argv)
 	err=DCBufferInit(&buffer, 4096, ref_stat.st_size, ver_stat.st_size, 
 	    DCBUFFER_MATCHES_TYPE);
 	if(err)
-	    print_exit(err);
+	    exit_error(err);
 	err=init_RefHash(&rhash, &ref_cfh, seed_len, sample_rate, hash_size, 
 	    RH_MOD_HASH);
 	if(err)
-	    print_exit(err);
+	    exit_error(err);
 	v1printf("insertting block\n");
 	err = RHash_insert_block(&rhash, &ref_cfh, 0, cfile_len(&ver_cfh));
 	if(err)
-	    print_exit(err);
+	    exit_error(err);
 	v1printf("sorting\n");
 	RHash_sort(&rhash);
 	v1printf("hunting for matches\n");
@@ -169,7 +176,7 @@ int main(int argc, char **argv)
 	print_RefHash_stats(&rhash);
 	err = OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh);
 	if(err)
-	    print_exit(err);
+	    exit_error(err);
 	free_RefHash(&rhash);
     } else if (1==1) {
 */
@@ -190,6 +197,7 @@ int main(int argc, char **argv)
 	    exit(EXIT_FAILURE);
 	}
 	ref_id = DCB_REGISTER_ADD_SRC(&buffer, &ver_cfh, NULL, 0);
+	
 	ver_id = DCB_REGISTER_COPY_SRC(&buffer, &ref_cfh, NULL, 0);
 	v1printf("initializing Reference Hash...\n");
 	if(init_RefHash(&rhash, &ref_cfh, 16, sample_rate, hash_size, 

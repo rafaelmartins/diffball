@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2003 Brian Harring
+  Copyright (C) 2003-2004 Brian Harring
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -18,7 +18,27 @@
 #ifndef _HEADER_ERRORS
 #define _HEADER_ERRORS 1
 
-void print_exit(int err);
+#define check_return(err, msg, extra)					\
+if(err) {								\
+    fprintf(stderr,"error detected in %s:%d\n", __FILE__,__LINE__);	\
+    if(msg)								\
+    	fprintf(stderr, "%s: ", (char *)(msg));				\
+    print_error(err);							\
+    if(extra)								\
+    	fprintf(stderr, "%s\n", (char *)(extra));			\
+    exit(err);								\
+}
+
+#define check_return2(err, msg)						\
+if(err) {								\
+    fprintf(stderr,"error detected in %s:%d\n", __FILE__,__LINE__);	\
+    if(msg)								\
+    	fprintf(stderr, "%s: ", (char *)(msg));				\
+    print_error(err);							\
+    exit(err);								\
+}
+
+void print_error(int err);
 
 #endif
 

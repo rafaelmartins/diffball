@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2003 Brian Harring
+  Copyright (C) 2003-2004 Brian Harring
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -27,6 +27,7 @@
 #include "formats.h"
 #include "defs.h"
 #include "options.h"
+#include "errors.h"
 #include "dcbuffer.h"
 
 unsigned int global_verbosity = 0;
@@ -51,7 +52,9 @@ main(int argc, char **argv)
     cfile patch_cfh[256];
     CommandBuffer dcbuff[2];
     poptContext p_opt;
-    unsigned long x, src_id;
+    unsigned long x;
+    signed int src_id;
+    signed int err;
     signed long optr;
     char  *src_name;
     char  *out_name;
@@ -65,14 +68,21 @@ main(int argc, char **argv)
     p_opt = poptGetContext("patcher", argc, (const char **)argv, options, 0);
     while((optr=poptGetNextOpt(p_opt)) != -1) {
 	if(optr < -1) {
-	    usage(p_opt, 1, poptBadOption(p_opt,
+	    usage("patcher", p_opt, 1, poptBadOption(p_opt,
 		POPT_BADOPTION_NOALIAS), poptStrerror(optr));
 	}
 	switch(optr) {
 	case OVERSION:
 	    print_version("patcher");
+	    exit(0);
+	case OUSAGE:
+	    usage("patcher", p_opt, 0, NULL, NULL);
+	    break;
 	case OVERBOSE:
 	    global_verbosity++;
+	    break;
+	case OHELP:
+	    print_help("patcher", p_opt);
 	    break;
 	case OBZIP2:
 	    if(out_compressor) {
@@ -90,9 +100,9 @@ main(int argc, char **argv)
     }
     if( ((src_name=(char *)poptGetArg(p_opt))==NULL) || 
 	(stat(src_name, &src_stat))) {
-	usage(p_opt, 1, "Must specify an existing source file.", 0);
+	usage("patcher", p_opt, 1, "Must specify an existing source file.", 0);
     } else if((patch_name = (char **)poptGetArgs(p_opt)) == NULL) {
-    	usage(p_opt, 1, "Must specify an existing patch file.", 0);
+    	usage("patcher", p_opt, 1, "Must specify an existing patch file.", 0);
     }
     patch_count = 0;
     for(p=patch_name; *p != NULL; p++)
@@ -100,11 +110,11 @@ main(int argc, char **argv)
     if(output_to_stdout) {
 	out_fh = 1;
 	if(patch_count == 0) {
-	    usage(p_opt, 1, "Must specify an existing patch file.", 0);
+	    usage("patcher", p_opt, 1, "Must specify an existing patch file.", 0);
 	}
     } else {
     	if(patch_count == 1) {
-    	    usage(p_opt, 1, "Must specify a name for the reconstructed file.", 0);
+    	    usage("patcher", p_opt, 1, "Must specify a name for the reconstructed file.", 0);
     	}
 	out_name = patch_name[patch_count - 1];
 	patch_name[patch_count] = NULL;
@@ -117,16 +127,16 @@ main(int argc, char **argv)
     for(x=0; x < patch_count; x++) {
         if(stat(patch_name[x], &patch_stat)) {
 	   v0printf("error stat'ing patch file '%s'\n", patch_name[x]);
-           usage(p_opt, 1, "Must specify an existing patch file.", 0);
+           usage("patcher", p_opt, 1, "Must specify an existing patch file.", 0);
         }
     	if((patch_fh[x] = open(patch_name[x], O_RDONLY,0))==-1) {
 	    v0printf( "error opening patch file '%s'\n", patch_name[x]);
 	    exit(EXIT_FAILURE);
     	}
         v1printf("patch_fh size=%lu\n", (unsigned long)patch_stat.st_size);
-    	copen(&patch_cfh[x], patch_fh[x], 0, patch_stat.st_size, 
+    	err=copen(&patch_cfh[x], patch_fh[x], 0, patch_stat.st_size, 
 	    AUTODETECT_COMPRESSOR, CFILE_RONLY);
-
+	check_return2(err,"copen of patch")
 	/* if compression is noticed, reorganize. */
 	if(patch_cfh[x].compressor_type != NO_COMPRESSOR)
 	    reorder_commands = 1;
@@ -165,6 +175,7 @@ main(int argc, char **argv)
 	v0printf("error opening source file '%s'\n", src_name);
 	exit(EXIT_FAILURE);
     }
+
     v1printf("src_fh size=%lu\n", (unsigned long)src_stat.st_size);
     copen(&src_cfh, src_fh, 0, src_stat.st_size, AUTODETECT_COMPRESSOR, 
 	CFILE_RONLY);
@@ -173,19 +184,17 @@ main(int argc, char **argv)
         if(x == patch_count - 1 && reorder_commands == 0 && bufferless) {
             v1printf("not reordering, and bufferless is %u, going bufferless\n", bufferless);
 	    if(x==0) {
-	        if(DCBufferInit(&dcbuff[0], 0, src_stat.st_size, 0, DCBUFFER_BUFFERLESS_TYPE)) {
-	            v0printf("unable to alloc needed mem, exiting\n");
-	    	    abort();
-	    	}
+	        err=DCBufferInit(&dcbuff[0], 0, src_stat.st_size, 0, DCBUFFER_BUFFERLESS_TYPE);
+		check_return2(err, "DCBufferInit");
             	src_id = internal_DCB_register_cfh_src(&dcbuff[0], &src_cfh, NULL, NULL, DC_COPY, 0);
+            	check_return(src_id, "internal_DCB_register_src", "unable to continue");
 	    } else {
-	    	if(DCBufferInit(&dcbuff[x % 2], 0, dcbuff[(x - 1) % 2].ver_size, 0, DCBUFFER_BUFFERLESS_TYPE)) {
-	    	    v0printf("unable to alloc needed mem, exiting\n");
-	    	    abort();
-	    	}
+	    	err=DCBufferInit(&dcbuff[x % 2], 0, dcbuff[(x - 1) % 2].ver_size, 0, DCBUFFER_BUFFERLESS_TYPE);
+		check_return2(err, "DCBufferInit");
     	    	src_id = DCB_register_dcb_src(dcbuff + ( x % 2), dcbuff + ((x -1) % 2));
+            	check_return(src_id, "internal_DCB_register_src", "unable to continue");
 	    }
-	    	
+
     	    if((out_fh = open(out_name, O_RDWR | O_TRUNC | O_CREAT, 0644))==-1) {
 		v0printf( "error creating out file (open failed)\n");
     		exit(1);
@@ -197,19 +206,17 @@ main(int argc, char **argv)
 	    DCB_register_out_cfh(&dcbuff[x % 2], &out_cfh);
 	} else {
             if(x==0) {
-    	    	if(DCBufferInit(&dcbuff[0], 4096, src_stat.st_size, 0, 
-	    	    DCBUFFER_FULL_TYPE)) {
-	    	    v0printf("unable to alloc needed mem, exiting\n");
-	    	    abort();
-	    	}
+    	    	err=DCBufferInit(&dcbuff[0], 4096, src_stat.st_size, 0, 
+	    	    DCBUFFER_FULL_TYPE);
+		check_return2(err, "DCBufferInit");
             	src_id = internal_DCB_register_cfh_src(&dcbuff[0], &src_cfh, NULL, NULL, DC_COPY, 0);
+            	check_return2(src_id, "DCB_register_cfh_src");
     	    } else {
-    	    	if(DCBufferInit(&dcbuff[x % 2], 4096, dcbuff[(x - 1) % 2].ver_size , 0, 
-	    	    DCBUFFER_FULL_TYPE)) {
-	    	    v0printf("unable to alloc needed mem, exiting\n");
-	    	    abort();
-    	    	}
+    	    	err=DCBufferInit(&dcbuff[x % 2], 4096, dcbuff[(x - 1) % 2].ver_size , 0, 
+	    	    DCBUFFER_FULL_TYPE);
+	    	check_return2(err, "DCBufferInit");
     	    	src_id = DCB_register_dcb_src(dcbuff + ( x % 2), dcbuff + ((x -1) % 2));
+    	    	check_return2(src_id, "DCB_register_dcb_src");
     	    }
 	}
 
@@ -259,7 +266,8 @@ main(int argc, char **argv)
     	    v1printf("\n");
     	}
     	if(recon_val) {
-	    v0printf("error detected while reading patch- quitting\n");
+	    v0printf("error detected while processing patch- quitting\n");
+	    print_error(recon_val);
 	    exit(EXIT_FAILURE);
 	}
 	v1printf("versions size is %lu\n", dcbuff[x % 2].ver_size);
@@ -281,12 +289,10 @@ main(int argc, char **argv)
 
     	v1printf("reordering commands? %u\n", reorder_commands);
     	v1printf("reconstructing target file based off of dcbuff commands...\n");
-    	if(reconstructFile(&dcbuff[(patch_count - 1) % 2], &out_cfh,reorder_commands)) {
-	    v0printf("error detected while reconstructing file, quitting\n");
-	    //remove the file here.
-    	} else {
-    	    v1printf("reconstruction completed successfully\n");
-    	}
+    	err = reconstructFile(&dcbuff[(patch_count - 1) % 2], &out_cfh,reorder_commands);
+	check_return(err, "reconstructFile", "error detected while reconstructing file, quitting");
+    	
+    	v1printf("reconstruction completed successfully\n");
     } else {
     	v1printf("reconstruction completed successfully\n");
     }

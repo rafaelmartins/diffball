@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2003 Brian Harring
+  Copyright (C) 2003-2004 Brian Harring
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -16,26 +16,42 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, US 
 */
 #include "defs.h"
+#include "options.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <popt.h>
 
 void 
-usage(poptContext p_opt, int exitcode, const char *error, const char *addl)
-{    
-    poptPrintUsage(p_opt, stderr, 0);
+usage(const char *prog, poptContext p_opt, int exitcode, const char *error, const char *addl)
+{
+    print_version(prog);
+    poptPrintUsage(p_opt, stdout, 0);
     if(error) {
 	if(addl) {
-	    v0printf("%s: %s\n", error,addl);
+	    fprintf(stdout,"%s: %s\n", error,addl);
 	} else {
-	    v0printf("%s\n", error);
+	    fprintf(stdout,"%s\n", error);
 	}
     }
+    fprintf(stdout, "\n");
     exit(exitcode);
+}
+
+void
+print_help(const char *prog, poptContext con)
+{
+    print_version(prog);
+    poptPrintHelp(con,stdout,0);
+    fprintf(stdout, "\n");
+    exit(0);
 }
 
 void
 print_version(const char *prog)
 {
-    v0printf("%s version %s\n", prog, VERSION);
-    exit(0);
+    fprintf(stdout,"diffball version %s, program %s (C) 2003-2004 Brian Harring\n", VERSION, prog);
+    fprintf(stdout,"http://diffball.sourceforge.net\n");
+    fprintf(stdout,"THIS SOFTWARE COMES WITH ABSOLUTELY NO WARRANTY! USE AT YOUR OWN RISK!\n");
+    fprintf(stdout,"Report bugs to <bdharring@wisc.edu>\n\n");
 }
+

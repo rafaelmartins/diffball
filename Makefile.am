@@ -30,6 +30,7 @@ bin_PROGRAMS = differ patcher diffball convert_delta ${cfile_bins} \
 patcher_SOURCES = 	patcher.c	\
 			apply-patch.c	\
 			options.c	\
+			errors.c	\
 			$(FORMATS)	\
 			$(DCB_FILES)
 			errors.c

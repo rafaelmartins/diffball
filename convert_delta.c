@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2003 Brian Harring
+  Copyright (C) 2003-2004 Brian Harring
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -62,8 +62,15 @@ main(int argc, char **argv)
 	switch(optr) {
 	case OVERSION:
 	    print_version("convert_delta");
+	    exit(0);
+	case OUSAGE:
+	    usage("convert_delta", p_opt, 0, NULL, NULL);
+	    break;
 	case OVERBOSE:
 	    global_verbosity++;
+	    break;
+	case OHELP:
+	    print_help("convert_delta", p_opt);
 	    break;
 	case OBZIP2:
 	    if(patch_compressor) {
@@ -81,19 +88,19 @@ main(int argc, char **argv)
     }
     if( ((src_file=(char *)poptGetArg(p_opt))==NULL) || 
 	(stat(src_file, &in_stat)))
-	usage(p_opt, 1, "Must specify an existing patch.", NULL);
+	usage("convert_delta", p_opt, 1, "Must specify an existing patch.", NULL);
     if(output_to_stdout) {
 	out_fh = 1;
     } else {
 	if((trg_file = (char *)poptGetArg(p_opt))==NULL)
-	    usage(p_opt, 1, "Must specify a name for the new patch.", NULL);
+	    usage("convert_delta", p_opt, 1, "Must specify a name for the new patch.", NULL);
         if((out_fh = open(trg_file, O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1){
 	    v0printf( "error creating output file '%s'\n", trg_file);
 	    exit(1);
 	}
     }
     if(NULL!= poptGetArgs(p_opt)) {
-	usage(p_opt, 1, poptBadOption(p_opt, POPT_BADOPTION_NOALIAS),
+	usage("convert_delta", p_opt, 1, poptBadOption(p_opt, POPT_BADOPTION_NOALIAS),
 	    "unknown option");
     }
     if((in_fh = open(src_file, O_RDONLY, 0))==-1) {
@@ -104,7 +111,7 @@ main(int argc, char **argv)
     if(src_format == NULL) {
 	src_format_id = identify_format(&in_cfh);
 	if(src_format_id==0) {
-	    v0printf( "Couldn't identify the patch format, aborting\n");
+	    v0printf("Couldn't identify the patch format, aborting\n");
 	    exit(EXIT_FAILURE);
 	} else if((src_format_id >> 16)==1) {
 	    v0printf( "Unsupported format version\n");
@@ -120,7 +127,7 @@ main(int argc, char **argv)
     }
 
     if(trg_format==NULL) {
-	usage(p_opt, 1, "new files format is required\n", NULL);
+	usage("convert_delta", p_opt, 1, "new files format is required\n", NULL);
     } else {
 	trg_format_id = check_for_format(trg_format, strlen(trg_format));
 	if(trg_format_id==0) {

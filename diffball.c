@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2003 Brian Harring
+  Copyright (C) 2003-2004 Brian Harring
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -29,6 +29,7 @@
 #include "diff-algs.h"
 #include "formats.h"
 #include "defs.h"
+#include "errors.h"
 #include "options.h"
 
 unsigned int global_verbosity = 0;
@@ -42,6 +43,7 @@ int cmp_tar_ents(const void *te1, const void *te2);
 unsigned long sample_rate=0;
 unsigned long seed_len = 0;
 unsigned long hash_size = 0;
+int error;
 unsigned int patch_compressor = 0;
 unsigned int patch_to_stdout = 0;
 char  *patch_format;
@@ -63,7 +65,8 @@ main(int argc, char **argv)
     tar_entry *target = NULL;
     tar_entry *tar_ptr = NULL;
     void *vptr;
-    unsigned char ref_id, ver_id;
+    signed err;
+    signed int ref_id, ver_id;
     unsigned long source_count, target_count;
     signed long encode_result=0;
     unsigned long x, patch_format_id;
@@ -84,14 +87,21 @@ main(int argc, char **argv)
     p_opt = poptGetContext("diffball", argc, (const char **)argv, options, 0);
     while((optr=poptGetNextOpt(p_opt)) != -1) {
 	if(optr < -1) {
-	    usage(p_opt, 1, poptBadOption(p_opt, POPT_BADOPTION_NOALIAS), 
+	    usage("diffball", p_opt, 1, poptBadOption(p_opt, POPT_BADOPTION_NOALIAS), 
 		poptStrerror(optr));
 	}
 	switch(optr) {
 	case OVERSION:
 	    print_version("diffball");
+	    exit(0);
 	case OVERBOSE:
 	    global_verbosity++;
+	    break;
+	case OUSAGE:
+	    usage("diffball", p_opt, 0, NULL, NULL);
+	    break;
+	case OHELP:
+	    print_help("diffball", p_opt);
 	    break;
 	case OBZIP2:
 	    if(patch_compressor) {
@@ -109,10 +119,10 @@ main(int argc, char **argv)
     }
     if( ((src_file=(char *)poptGetArg(p_opt))==NULL) || 
 	(stat(src_file, &ref_stat))) 
-	usage(p_opt, 1, "Must specify an existing source file.", NULL);
+	usage("diffball", p_opt, 1, "Must specify an existing source file.", NULL);
     if( ((trg_file=(char *)poptGetArg(p_opt))==NULL) || 
 	(stat(trg_file, &ver_stat)) )
-	usage(p_opt, 1, "Must specify an existing target file.", NULL);
+	usage("diffball", p_opt, 1, "Must specify an existing target file.", NULL);
     if(patch_format==NULL) {
 	patch_format_id = DEFAULT_PATCH_ID;
     } else {
@@ -126,14 +136,14 @@ main(int argc, char **argv)
 	out_fh = 1;
     } else {
 	if((patch_name = (char *)poptGetArg(p_opt))==NULL)
-	    usage(p_opt, 1, "Must specify a name for the patch file.", NULL);
+	    usage("diffball", p_opt, 1, "Must specify a name for the patch file.", NULL);
 	if((out_fh = open(patch_name, O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1) {
 	    v0printf( "error creating patch file (open failed)\n");
 	    exit(1);
 	}
     }
     if(NULL!=poptGetArgs(p_opt)) {
-	usage(p_opt, 1, poptBadOption(p_opt, POPT_BADOPTION_NOALIAS),
+	usage("diffball", p_opt, 1, poptBadOption(p_opt, POPT_BADOPTION_NOALIAS),
 	"unknown option");
     }
     poptFreeContext(p_opt);
@@ -249,16 +259,24 @@ main(int argc, char **argv)
     }
     v1printf("final trg_common='%.*s'\n", trg_common_len, trg_common);
 
-    if(DCBufferInit(&dcbuff, 4096, (unsigned long)ref_stat.st_size, 
+    err = DCBufferInit(&dcbuff, 4096, (unsigned long)ref_stat.st_size, 
 	(unsigned long)ver_stat.st_size, DCBUFFER_LLMATCHES_TYPE) ||
-	DCB_llm_init_buff(&dcbuff, 4096)) {
-	v0printf("error allocing needed memory, exiting\n");
-	exit(1);
-    }
+	DCB_llm_init_buff(&dcbuff, 4096);
+
+    check_return2(err,"DCBufferInit");
+
     v1printf("looking for matching filenames in the archives...\n");
 
     ver_id = DCB_REGISTER_ADD_SRC(&dcbuff, &ver_full, NULL, 0);
+    if(ver_id < 0) {
+        check_return(ver_id, "DCB_REGISTER_ADD_SRC", "failed to register file handle");
+    }
+
     ref_id = DCB_REGISTER_COPY_SRC(&dcbuff, &ref_full, NULL, 0);
+    if(ref_id < 0) {
+        check_return(ref_id, "DCB_REGISTER_COPY_SRC", "failed to register file handle");
+    }
+
     for(x=0; x< target_count; x++) {
 	v1printf("processing %lu of %lu\n", x + 1, target_count);
 	tar_ptr = &target[x];
@@ -281,23 +299,28 @@ main(int argc, char **argv)
         	NO_COMPRESSOR, CFILE_RONLY | CFILE_BUFFER_ALL);
             
             match_count++;
-            init_RefHash(&rhash_win, &ref_window, 24, 1, 
+            err=init_RefHash(&rhash_win, &ref_window, 24, 1, 
 		cfile_len(&ref_window), RH_BUCKET_HASH);
-	    RHash_insert_block(&rhash_win, &ref_window, 0, 
+	    check_return2(err,"init_RefHash");
+	    err=RHash_insert_block(&rhash_win, &ref_window, 0, 
 		cfile_len(&ref_window));
-	    RHash_cleanse(&rhash_win);
+	    check_return2(err,"RHash_insert_block");
+	    err=RHash_cleanse(&rhash_win);
+	    check_return2(err,"RHash_cleanse");
 	    print_RefHash_stats(&rhash_win);
-            if(OneHalfPassCorrecting(&dcbuff, &rhash_win, ref_id, &ver_window, ver_id)) {
+            err=OneHalfPassCorrecting(&dcbuff, &rhash_win, ref_id, &ver_window, ver_id);
+            
+            if(err) {
             	/* not a graceful exit I realize... */
             	v0printf("OneHalfPassCorrecting returned an error process file %.255s and %.255s\n", 
             	    target[x].fullname, tar_ptr->fullname);
             	v0printf("Quite likely this is a bug in diffball; error's should not occur at this point, exempting out of memory errors\n");
             	v0printf("please contact the author so this can be resolved.\n");
-            	exit(1);
+		check_return2(err,"OneHalfPassCorrecting");
             }
 //	    MultiPassAlg(&dcbuff, &ref_window, &ver_window, hash_size);
-            free_RefHash(&rhash_win);
-
+            err=free_RefHash(&rhash_win);
+            check_return(err,"free_RefHash","This shouldn't be happening...");
 	    cclose(&ver_window);
 	    cclose(&ref_window);
         }
@@ -314,8 +337,10 @@ main(int argc, char **argv)
     free(target);
 
     v1printf("beginning search for gaps, and unprocessed files\n");
-    MultiPassAlg(&dcbuff, &ref_full, ref_id, &ver_full, ver_id, hash_size);
-    DCB_insert(&dcbuff);
+    err=MultiPassAlg(&dcbuff, &ref_full, ref_id, &ver_full, ver_id, hash_size);
+    check_return(err, "MultiPassAlg", "final multipass run failed");
+    err=DCB_insert(&dcbuff);
+    check_return2(err, "DCB_insert");
     cclose(&ref_full);
 
     copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY | CFILE_OPEN_FH);

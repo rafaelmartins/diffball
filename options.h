@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2003 Brian Harring
+  Copyright (C) 2003-2004 Brian Harring
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -19,7 +19,7 @@
 #define _HEADER_OPTIONS 1
 #include <popt.h>
 
-enum {OVERSION=100, OVERBOSE,OFORMAT,OSEED,OSAMPLE,OSTDOUT,OBZIP2,OGZIP};
+enum {OVERSION=100, OVERBOSE,OUSAGE,OHELP,OFORMAT,OSEED,OSAMPLE,OSTDOUT,OBZIP2,OGZIP};
 /*lname, sname, info, ptr, val, desc, args */
 #define DIFF_OPTIONS(seed_len, sample_rate, hash_size)		\
 {"seed-len",	'b', POPT_ARG_INT, &(seed_len),0,0,0},		\
@@ -32,14 +32,16 @@ enum {OVERSION=100, OVERBOSE,OFORMAT,OSEED,OSAMPLE,OSTDOUT,OBZIP2,OGZIP};
 {"to-stdout",		'c', POPT_ARG_NONE,&(stdout), 0,0,0},	\
 /*{"bzip2-compress",	'j', POPT_ARG_NONE,0, OBZIP2,0,0},	\
 {"gzip-compress",	'z', POPT_ARG_NONE,0, OGZIP,0,0} */	\
-POPT_AUTOHELP							\
-{"use-md5",	'm',POPT_ARG_NONE, &global_use_md5, 0,0,0}
+{"use-md5",		'm', POPT_ARG_NONE, &global_use_md5, 0,0,0},	\
+{"usage",		'\0',POPT_ARG_NONE,0,OUSAGE,0,0},		\
+{"help",		'h', POPT_ARG_NONE,0,OHELP,0,0}
 
 #define FORMAT_OPTIONS(long, short, string)		\
 {long, short, POPT_ARG_STRING, &string, 0,"Format type","see man page for valid formats"}
 
-void print_version();
-void usage(poptContext p_opt, int exitcode, const char *error, 
+void print_version(const char *prog);
+void print_help(const char *prog, poptContext con);
+void usage(const char *prog, poptContext p_opt, int exitcode, const char *error, 
     const char *addl);
 
 #endif
