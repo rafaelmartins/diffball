@@ -32,7 +32,7 @@
 /* note, CFILE_COMPUTE_MD5 is common to both state_flags and access_flags */
 #define CFILE_COMPUTE_MD5		(0x8)
 
-
+#define CFILE_MD5_FINALIZED		(0x10)
 #define CFILE_SEEK_NEEDED		(0x4)
 #define CFILE_MEM_ALIAS			(0x2)
 #define CFILE_BUFFER_ALL		(0x1)
@@ -81,6 +81,7 @@ typedef struct {
     EVP_MD_CTX 		*data_md5_ctx;
     /* used to track where the md5 computation is at */
     unsigned long	data_md5_pos;
+    unsigned char	*data_md5;
 } cfile;
 
 unsigned int  copen(cfile *cfh, int fh, unsigned long fh_start,
@@ -100,5 +101,8 @@ unsigned long copy_cfile_block(cfile *out_cfh, cfile *in_cfh,
     unsigned long in_offset, unsigned long len);
 unsigned long cfile_len(cfile *cfh);
 unsigned long cfile_start_offset(cfile *cfh);
-unsigned int  cfile_finalize_md5(cfile *cfh, unsigned char *buff);
+unsigned int  cfile_finalize_md5(cfile *cfh);
+cfile_window *expose_page(cfile *cfh);
+cfile_window *next_page(cfile *cfh);
+cfile_window *prev_page(cfile *cfh);
 #endif

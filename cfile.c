@@ -53,6 +53,7 @@ copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
 	abort();
     if((cfh->raw = (cfile_window *)malloc(sizeof(cfile_window)))==NULL)
 	abort();*/
+    cfh->data_md5 = NULL;
     if(access_flags & CFILE_COMPUTE_MD5) {
 	if((cfh->data_md5_ctx = (EVP_MD_CTX *)malloc(sizeof(EVP_MD_CTX)))==NULL)
 	    abort();
@@ -104,6 +105,12 @@ cclose(cfile *cfh)
 	free(cfh->data.buff);
     if(cfh->raw.size)
 	free(cfh->raw.buff);
+    if(cfh->state_flags & CFILE_COMPUTE_MD5) {
+	free(cfh->data_md5_ctx);
+	if(cfh->state_flags & CFILE_MD5_FINALIZED)
+	    free(cfh->data_md5);
+	cfh->data_md5_pos = 0;
+    }
     cfh->raw.pos = cfh->raw.end = cfh->raw.size = cfh->raw.offset = 
 	cfh->data.pos = cfh->data.end = cfh->data.size = cfh->data.offset = 
 	cfh->raw_total_len = cfh->data_total_len = 0;
@@ -234,8 +241,9 @@ crefill(cfile *cfh)
 	cfh->data.pos = 0;
 	break;
     }
-    if(cfh->state_flags & CFILE_COMPUTE_MD5 && 
-	cfh->data.offset == cfh->data_md5_pos) {
+    if((cfh->state_flags & CFILE_COMPUTE_MD5) &&
+	((cfh->state_flags & CFILE_MD5_FINALIZED)==0) && 
+	(cfh->data.offset == cfh->data_md5_pos)) {
 	EVP_DigestUpdate(cfh->data_md5_ctx, cfh->data.buff, cfh->data.end);
 	cfh->data_md5_pos += cfh->data.end;
     }
@@ -278,11 +286,14 @@ copy_cfile_block(cfile *out_cfh, cfile *in_cfh, unsigned long in_offset,
 }
 
 unsigned int
-cfile_finalize_md5(cfile *cfh, unsigned char *buff)
+cfile_finalize_md5(cfile *cfh)
 {
     unsigned int md5len;
     /* check to see if someone is being a bad monkey... */
     assert(cfh->state_flags & CFILE_COMPUTE_MD5);
+    /* better handling needed... */
+    if((cfh->data_md5 = (unsigned char *)malloc(16))==NULL)
+	return 1;
     if(ctell(cfh, CSEEK_FSTART)!=cfh->data_md5_pos) 
 	cseek(cfh, cfh->data_md5_pos, CSEEK_FSTART);
 
@@ -291,20 +302,31 @@ cfile_finalize_md5(cfile *cfh, unsigned char *buff)
 	*/
     while(cfh->data_md5_pos != cfh->data_total_len) 
 	crefill(cfh);
-    EVP_DigestFinal(cfh->data_md5_ctx, buff, &md5len);
+    EVP_DigestFinal(cfh->data_md5_ctx, cfh->data_md5, &md5len);
+    cfh->state_flags |= CFILE_MD5_FINALIZED;
     return 0;
 }
 
-/*
 cfile_window *
 expose_page(cfile *cfh)
 {
+    if(cfh->data.end==0) 
+	crefill(cfh);
     return &cfh->data;
 }
 
 cfile_window *
 next_page(cfile *cfh)
 {
-
+    crefill(cfh);
+    return &cfh->data;
 }
-*/
+
+cfile_window *
+prev_page(cfile *cfh)
+{
+    /* possibly due an error check or something here */
+    cseek(cfh, -cfh->data.size, CSEEK_CUR);
+    crefill(cfh);
+    return &cfh->data;
+}

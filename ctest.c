@@ -118,9 +118,10 @@ int main(int argc, char **argv){
     assert(2==cread(cfh, buff, 2));
     assert(cfh->data_md5_pos == cfh->data.end);
     //assert(fstat.st_size==cread(cfh, buff, fstat.st_size));
-    cfile_finalize_md5(cfh, buff);
+    cfile_finalize_md5(cfh);
+    memcpy(buff, cfh->data_md5, 16);
     unsigned int x;
-    printf("md5=");
+    printf("md5=\n");
     for(x=0; x < 16; x++) 
 	printf("%2.2x", buff[x]);
     printf("\n");
