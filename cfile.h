@@ -41,6 +41,8 @@
 #define CFILE_SEEK_NEEDED		(0x80)
 
 #define BZIP2_DEFAULT_COMPRESS_LEVEL	9
+#define BZIP2_VERBOSITY_LEVEL		0
+#define BZIP2_DEFAULT_WORK_LEVEL	30
 
 /*lseek type stuff
 SEEK_SET
@@ -82,9 +84,8 @@ typedef struct {
     cfile_window	raw;
 
     /* compression crap */
-    bz_stream		*bz_stream;
+    bz_stream		*bzs;
     gzFile		gz_handle;
-//    gzFile		*gz_handle;
 
     /* other fun stuff, compression/md5 related. */
     EVP_MD_CTX 		*data_md5_ctx;

@@ -50,9 +50,8 @@ copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
     cfh->state_flags = 0;
     cfh->data_md5 = NULL;
     cfh->compressor_type = compressor_type;
+
     if(access_flags & CFILE_COMPUTE_MD5) {
-	if((cfh->data_md5_ctx = (EVP_MD_CTX *)malloc(sizeof(EVP_MD_CTX)))==NULL)
-	    abort();
 	cfh->state_flags |= CFILE_COMPUTE_MD5;
 	OpenSSL_add_all_digests();
 	md = EVP_get_digestbyname("md5");
@@ -63,8 +62,9 @@ copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
 	/* watch this, may need to change it when compression comes about */
 	cfh->data_md5_pos = cfh->data_total_len;
     }
+
     switch(compressor_type) {
-    case NO_COMPRESSOR: 
+    case NO_COMPRESSOR:
 	dcprintf("copen: opening w/ no_compressor\n");
 	cfh->data_fh_offset = fh_start;
 	cfh->data_total_len = fh_end - fh_start;
@@ -73,44 +73,57 @@ copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
 	} else {
 	    cfh->data.size = CFILE_DEFAULT_BUFFER_SIZE;
 	}
+	if((cfh->data.buff = (unsigned char *)malloc(cfh->data.size))==NULL) {
+	    abort();
+        }
 	dcprintf("copen: buffer size(%lu), buffer_all(%u)\n", cfh->data.size,
 	    access_flags & CFILE_BUFFER_ALL);
 	cfh->raw.size = 0;
+        cfh->raw.buff = NULL;
  	break;
-/*    case BZIP2_COMPRESSOR:
-	if((cfh->bz_stream = (bz_stream *)
+ 	
+    case BZIP2_COMPRESSOR:
+        cfh->data.size = CFILE_DEFAULT_BUFFER_SIZE;
+	cfh->raw.size = CFILE_DEFAULT_BUFFER_SIZE;
+	if((cfh->bzs = (bz_stream *)
 	    malloc(sizeof(bz_stream)))==NULL) {
 	    abort();
-	}
-	cfh->bz_stream->bzalloc = NULL;
-	cfh->bz_stream->bzfree =  NULL;
-	cfh->bz_stream->opaque = NULL;
-	if(cfh->access_flags & CFILE_WONLY)
-	    BZ2_bzCompressInit(cfh->bz_stream, 
-		BZIP2_DEFAULT_COMPRESS_LEVEL, 0, 0);
-	else 
-	    BZ2_bzDecompressInit(cfh->bz_stream, 0 ,0);
-	cfh->data.size = CFILE_DEFAULT_BUFFER_SIZE;
-	cfh->raw.size = CFILE_DEFAULT_BUFFER_SIZE;
-	break;*/
+	} else if((cfh->data.buff = (unsigned char *)malloc(cfh->data.size))==NULL) {
+	    abort();
+        } else if((cfh->raw.buff = (unsigned char *)malloc(cfh->raw.size))==NULL) {
+	    abort();
+        }
+	cfh->bzs->bzalloc = NULL;
+	cfh->bzs->bzfree =  NULL;
+	cfh->bzs->opaque = NULL;
+/*	if(cfh->access_flags & CFILE_WONLY)
+	    BZ2_bzCompressInit(cfh->bzs, BZIP2_DEFAULT_COMPRESS_LEVEL, 
+		BZIP2_VERBOSITY_LEVEL, BZIP2_DEFAULT_WORK_LEVEL);
+	    cfh->bzs->next_in = cfh->data.buff;
+	    cfh->bzs->next_out = cfh->raw.buff;
+	else {*/
+	    BZ2_bzDecompressInit(cfh->bzs, BZIP2_VERBOSITY_LEVEL, 0);
+            cfh->bzs->next_in = cfh->raw.buff;
+            cfh->bzs->next_out = cfh->data.buff;
+            cfh->bzs->avail_in = cfh->bzs->avail_out = 0;
+//        }
+	break;
+
     case GZIP_COMPRESSOR:
 	/* error checking ?!?! */
 	dcprintf("copen: opening w/ gzip_compressor\n");
-//	dcprintf("copen: lseeking to start(%lu).\n", cfh->raw_fh_offset);
+        cfh->data.size = CFILE_DEFAULT_BUFFER_SIZE;
+	if((cfh->data.buff = (unsigned char *)malloc(cfh->data.size))==NULL)
+	    abort();
 	cfh->raw_fh_offset = fh_start;
 	cfh->raw_total_len = fh_end - fh_start;
 	cfh->raw_fh = dup(fh);
 	cfh->data_fh_offset = 0;
-/*	if((cfh->gz_handle = (gzFile *)
-	    malloc(sizeof(gzFile)))==NULL) {
-	    abort();
-	}*/
 	if(cfh->access_flags & CFILE_WONLY) {
 	    v0printf("aborting, I won't write in gzip.\nyet...\n");
 	    exit(1);
 	} else {
 	    dcprintf("copen: gzdopen'ing readonly\n");
-	    cfh->data.size = CFILE_DEFAULT_BUFFER_SIZE;
 	    lseek(cfh->raw_fh, cfh->raw_fh_offset, SEEK_SET);
 	    if((cfh->gz_handle=gzdopen(fh, "rb"))==NULL) {
 		v0printf("crap, problem w/ gzdopen.\n");
@@ -118,22 +131,12 @@ copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
 	    }
 	}
 	cfh->raw.size = 0;
+	cfh->raw.buff = NULL;
 	break;
     }
     cfh->raw.pos = cfh->raw.offset  = cfh->raw.end = cfh->data.pos = 
 	cfh->data.offset = cfh->data.end = 0;
-    if(cfh->data.size != 0) {
-	if((cfh->data.buff = (unsigned char *)malloc(cfh->data.size))==NULL)
-	    abort();
-    } else
-	cfh->data.buff = NULL;
-    if(cfh->raw.size != 0) {
-	dcprintf("cfh->raw.size=%lu\n", cfh->raw.size);
-	if((cfh->raw.buff = (unsigned char *)malloc(cfh->raw.size))==NULL)
-	    abort();
-    } else
-	cfh->raw.buff = NULL;
-   cfh->state_flags |= CFILE_SEEK_NEEDED;
+    cfh->state_flags |= CFILE_SEEK_NEEDED;
     return 0;
 }
 
@@ -154,7 +157,12 @@ cclose(cfile *cfh)
 	cfh->data_md5_pos = 0;
     }
     if(cfh->compressor_type == BZIP2_COMPRESSOR) {
-	free(cfh->bz_stream);
+	if(cfh->access_flags & CFILE_WONLY) {
+	    BZ2_bzCompressEnd(cfh->bzs);
+	} else {
+	    BZ2_bzDecompressEnd(cfh->bzs);
+	}
+	free(cfh->bzs);
     }
     if(cfh->compressor_type == GZIP_COMPRESSOR) {
 	gzclose(cfh->gz_handle);
@@ -342,15 +350,28 @@ crefill(cfile *cfh)
 	cfh->data.pos = 0;
 	dcprintf("crefill: no_compress, got %lu\n", x);
 	break;
-/*    case BZIP2_COMPRESSOR:
-	// fairly raw
-	if(cfh->raw.pos == cfh->data.end) {
-	    x=read(cfh->raw_fh, cfh->raw.buff, cfh->raw.size);
+	
+    case BZIP2_COMPRESSOR:
+	if(cfh->bzs->avail_in == 0) {
+	    x = read(cfh->raw_fh, cfh->raw.buff, cfh->raw.size);
 	    cfh->raw.offset += cfh->raw.end;
-	    cfh->raw.end = x;
+	    cfh->bzs->avail_in = cfh->raw.end = x;
 	    cfh->raw.pos = 0;
+	    cfh->bzs->next_in = cfh->raw.buff;
 	}
-	break;*/
+	if(cfh->bzs->avail_out == 0) {
+	    cfh->bzs->avail_out = cfh->data.size;
+	    cfh->bzs->next_out = cfh->data.buff;
+	    err = BZ2_bzDecompress(cfh->bzs);
+	    /* note, this doesn't handle BZ_DATA_ERROR/BZ_DATA_ERROR_MAGIC , 
+	       which should be handled (rather then aborting) */
+	    if(err != BZ_OK && err != BZ_STREAM_END) {
+		v0printf("hmm, bzip2 didn't return BZ_OK, borking.\n");
+		abort();
+	    }
+	}
+	break;
+
     case GZIP_COMPRESSOR:
 	x = gzread(cfh->gz_handle, cfh->data.buff, cfh->data.size);
 	if((signed long)x < 0) {
