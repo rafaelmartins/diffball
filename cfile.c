@@ -440,6 +440,15 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 	cfh->data.pos = data_offset - cfh->data.offset;
 	return (CSEEK_ABS==offset_type ? data_offset + cfh->data_fh_offset: 
 	    data_offset);
+    } else if(data_offset >= cfh->data.end + cfh->data.offset && 
+	data_offset < cfh->data.end + cfh->data.size + cfh->data.offset &&
+	IS_LAST_LSEEKER(cfh) ) {
+	// see if the desired location is the next page (avoid lseek + read, get read instead).
+	crefill(cfh);
+	if(cfh->data.end + cfh->data.offset > data_offset)
+	    cfh->data.pos = data_offset - cfh->data.offset;
+	return (CSEEK_ABS==offset_type ? cfh->data.pos + cfh->data.offset + cfh->data_fh_offset:
+	    cfh->data.pos + cfh->data.offset);
     }
     switch(cfh->compressor_type) {
     case NO_COMPRESSOR:
@@ -568,6 +577,7 @@ raw_ensure_position(cfile *cfh)
 {
     SET_LAST_LSEEKER(cfh);
     if(NO_COMPRESSOR == cfh->compressor_type) {
+//	v0printf("lseeking in raw_ensure\n");
 	return (lseek(cfh->raw_fh, cfh->data.offset + cfh->data_fh_offset +
 	    cfh->data.end, SEEK_SET) != 
 	    (cfh->data.offset + cfh->data_fh_offset + cfh->data.end));
@@ -601,6 +611,7 @@ cflush(cfile *cfh)
 	case NO_COMPRESSOR:
 	    // position the sucker, either at write_end, or at write_start (for CFILE_WR)
 	    if(cfh->access_flags & CFILE_READABLE) {
+//		v0printf("lseeking in cflush\n");
 		if(lseek(cfh->raw_fh, cfh->data.offset + cfh->data_fh_offset + cfh->data.write_start, SEEK_SET) !=
 	            cfh->data.offset + cfh->data_fh_offset + cfh->data.write_start) {
 	            return (cfh->err = IO_ERROR);
@@ -693,6 +704,9 @@ crefill(cfile *cfh)
 	    cfh->data.end = cfh->data.pos = 0;
 	} else {
 	    cfh->data.offset += cfh->data.end;
+	    dcprintf("crefill: bz2, refilling data\n");
+	    cfh->bzs->avail_out = cfh->data.size;
+	    cfh->bzs->next_out = cfh->data.buff;
 	    do {
 		if(0 == cfh->bzs->avail_in && (cfh->raw.offset + 
 		    (cfh->raw.end - cfh->bzs->avail_in) < cfh->raw_total_len)) {
@@ -708,9 +722,6 @@ crefill(cfile *cfh)
 		    cfh->raw.pos = 0;
 		    cfh->bzs->next_in = cfh->raw.buff;
 		}
-		dcprintf("crefill: bz2, refilling data\n");
-		cfh->bzs->avail_out = cfh->data.size;
-		cfh->bzs->next_out = cfh->data.buff;
 		err = BZ2_bzDecompress(cfh->bzs);
 
 		/* note, this doesn't handle BZ_DATA_ERROR/BZ_DATA_ERROR_MAGIC , 
@@ -726,7 +737,8 @@ crefill(cfile *cfh)
 			cfh->data_total_len);
 		    cfh->state_flags |= CFILE_EOF;
 	 	}
-	    }while((!(cfh->state_flags & CFILE_EOF)) && cfh->bzs->avail_in==0 && cfh->bzs->avail_out==cfh->raw.size);
+//	    }while((!(cfh->state_flags & CFILE_EOF)) && cfh->bzs->avail_in==0 && cfh->bzs->avail_out==cfh->raw.size);
+	    }while((!(cfh->state_flags & CFILE_EOF)) && cfh->bzs->avail_out > 0);  //&& cfh->bzs->avail_out==cfh->raw.size);
 	    cfh->data.end = cfh->data.size - cfh->bzs->avail_out;
 	    cfh->data.pos = 0;
 	}
@@ -740,6 +752,9 @@ crefill(cfile *cfh)
 	    cfh->data.end = cfh->data.pos = 0;
 	} else {
 	    cfh->data.offset += cfh->data.end;
+	    dcprintf("crefill:%u: zs, refilling data\n", __LINE__);
+	    cfh->zs->avail_out = cfh->data.size;
+	    cfh->zs->next_out = cfh->data.buff;
 	    do {
 		if(0 == cfh->zs->avail_in && (cfh->raw.offset + 
 		    (cfh->raw.end - cfh->zs->avail_in) < cfh->raw_total_len)) {
@@ -756,9 +771,6 @@ crefill(cfile *cfh)
 		    cfh->raw.pos = 0;
 		    cfh->zs->next_in = cfh->raw.buff;
 		}
-		dcprintf("crefill:%u: zs, refilling data\n", __LINE__);
-		cfh->zs->avail_out = cfh->data.size;
-		cfh->zs->next_out = cfh->data.buff;
 		err = inflate(cfh->zs, Z_NO_FLUSH);
 
 		if(err != Z_OK && err != Z_STREAM_END) {
@@ -772,7 +784,8 @@ crefill(cfile *cfh)
 			cfh->data_total_len);
 		    cfh->state_flags |= CFILE_EOF;
 	 	}
-	    } while((!(cfh->state_flags & CFILE_EOF)) && cfh->zs->avail_in==0 && cfh->zs->avail_out==cfh->raw.size);
+//	    } while((!(cfh->state_flags & CFILE_EOF)) && cfh->zs->avail_in==0 && cfh->zs->avail_out==cfh->raw.size);
+	    } while((!(cfh->state_flags & CFILE_EOF)) && cfh->zs->avail_out > 0); // && cfh->zs->avail_out==cfh->raw.size);
 	    cfh->data.end = cfh->data.size - cfh->zs->avail_out;
 	    cfh->data.pos = 0;
 	}
@@ -902,7 +915,11 @@ prev_page(cfile *cfh)
 	cfh->data.end=0;
 	cfh->data.pos=0;
     } else {
-	cseek(cfh, -cfh->data.size, CSEEK_CUR);
+	if(cfh->data.size > cfh->data.offset) {
+	    cseek(cfh, 0, CSEEK_FSTART);
+	} else {
+	    cseek(cfh, -cfh->data.size, CSEEK_CUR);
+	} 
 	crefill(cfh);
     }
     return &cfh->data;

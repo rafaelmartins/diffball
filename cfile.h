@@ -24,6 +24,7 @@
 #include <zlib.h>
 
 #define CFILE_DEFAULT_BUFFER_SIZE 	(4096)
+//#define CFILE_DEFAULT_BUFFER_SIZE 	(512)
 #define NO_COMPRESSOR			(0x0)
 #define GZIP_COMPRESSOR			(0x1)
 #define BZIP2_COMPRESSOR		(0x2)
@@ -135,6 +136,8 @@ typedef struct _cfile {
 
 #define ENSURE_LSEEK_POSITION(cfh)					\
     (LAST_LSEEKER(cfh) == (cfh)->cfh_id ? 0 : raw_ensure_position(cfh))
+
+#define IS_LAST_LSEEKER(cfh) ( (cfh)->cfh_id == LAST_LSEEKER((cfh)) )
 
 int internal_copen(cfile *cfh, int fh, 
     unsigned long raw_fh_start, unsigned long raw_fh_end,
