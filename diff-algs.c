@@ -21,7 +21,7 @@
 #include <string.h>
 #include "adler32.h"
 #include "diff-algs.h"
-#include "primes.h"
+#include "hash.h"
 #include "defs.h"
 #include "bit-functions.h"
 
@@ -242,8 +242,7 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, unsigned char ref_id,
 	    sample_rate = COMPUTE_SAMPLE_RATE(hash_size, gap_total_len);
 	    v1printf("using hash_size(%lu), sample_rate(%lu)\n", 
 		hash_size, sample_rate);
-	    err = init_RefHash(&rhash, ref_cfh, seed_len, sample_rate, 
-		hash_size, RH_RBUCKET_HASH);
+	    err = rh_rbucket_hash_init(&rhash, ref_cfh, seed_len, sample_rate, hash_size);
 	    if(err)
 		return err;
 	    DCBufferReset(buff);
@@ -255,7 +254,7 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, unsigned char ref_id,
 	    }
 	    RHash_sort(&rhash);
 	    v1printf("looking for matches in reference file\n");
-	    err=RHash_find_matches(&rhash, ref_cfh);
+	    err=RHash_find_matches(&rhash, ref_cfh, 0, cfile_len(ref_cfh));
 	    if(err) {
 		eprintf("error detected\n");
 		return err;
@@ -291,8 +290,7 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, unsigned char ref_id,
 	    sample_rate = COMPUTE_SAMPLE_RATE(hash_size, cfile_len(ref_cfh));
 	    v1printf("using hash_size(%lu), sample_rate(%lu)\n", 
 		hash_size, sample_rate);
-	    err = init_RefHash(&rhash, ref_cfh, seed_len, sample_rate, 
-		hash_size, RH_BUCKET_HASH);
+	    err = rh_rbucket_hash_init(&rhash, ref_cfh, seed_len, sample_rate, hash_size);
 	    if(err)
 		return err;
 	    err = RHash_insert_block(&rhash, ref_cfh, 0L, cfile_len(ref_cfh));

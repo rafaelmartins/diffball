@@ -138,23 +138,30 @@ find_next_prime(PRIME_CTX *ctx)
 }
 
 unsigned long 
-get_nearest_prime(PRIME_CTX *ctx, unsigned long near)
+get_nearest_prime(unsigned long near)
 {
+    PRIME_CTX ctx;
     unsigned long x, y, div, prime;
     int is_prime;
-    if(near < ctx->base_primes[ctx->prime_count -1]) {
+
+    init_primes(&ctx);
+    prime = 0;
+    if(near < ctx.base_primes[ctx.prime_count -1]) {
 	x=0;
-	while(ctx->base_primes[x] < near) {
+	while(ctx.base_primes[x] < near) {
 	    x++;
 	}
 	if(x==0) {
-	    return ctx->base_primes[x];
-	} else if(abs(near - ctx->base_primes[x]) > 
-	    abs(near - ctx->base_primes[x-1])) {
-	    return ctx->base_primes[x-1];
+	    prime = ctx.base_primes[x];
+	} else if(abs(near - ctx.base_primes[x]) > abs(near - ctx.base_primes[x-1])) {
+	    prime = ctx.base_primes[x-1];
 	} else {
-	    return ctx->base_primes[x];
+	    prime = ctx.base_primes[x];
 	}
+    }
+    if(prime) {
+	free_primes(&ctx);
+	return prime;
     }
     div=0;
     if(!(near % 2)) {
@@ -164,23 +171,23 @@ get_nearest_prime(PRIME_CTX *ctx, unsigned long near)
     if(near==0xffffffff) {
 	near-=2;
     }
-    if(sqr(ctx->base_primes[ctx->prime_count -1]) < near) {
-	while(sqr(ctx->base_primes[ctx->prime_count -1]) < near &&
-	    ctx->base_primes[ctx->prime_count -1] != 65521) {
-	    if(find_next_prime(ctx)) {
-		return MEM_ERROR;
+    if(sqr(ctx.base_primes[ctx.prime_count -1]) < near) {
+	while(sqr(ctx.base_primes[ctx.prime_count -1]) < near && ctx.base_primes[ctx.prime_count -1] != 65521) {
+	    if(find_next_prime(&ctx)) {
+		free_primes(&ctx);
+		return 0;
 	    }
 	}
-	div=ctx->prime_count -1;
+	div = ctx.prime_count -1;
      } else {
 	x=0;
-	while(sqr(ctx->base_primes[x]) < near) {
+	while(sqr(ctx.base_primes[x]) < near) {
 	    x++;
 	}
 	div=x;
     }	
     for(x=0, is_prime=1; x< div && is_prime; x++) {
-	if(near % ctx->base_primes[x]==0) {
+	if(near % ctx.base_primes[x]==0) {
 	    is_prime=0;
 	}
     }
@@ -195,7 +202,7 @@ get_nearest_prime(PRIME_CTX *ctx, unsigned long near)
 	/*again, dealing w/ upper limit of unsigned longs. */
 	if(near < 0xffffffff -y) {
 	    for(x=0; x <= div && is_prime; x++) {
-		if((near +y) % ctx->base_primes[x]==0) {
+		if((near +y) % ctx.base_primes[x]==0) {
 		    is_prime=0;
 		}
 	    }
@@ -206,7 +213,7 @@ get_nearest_prime(PRIME_CTX *ctx, unsigned long near)
 	if(prime==0) {
 	    is_prime=1;
 	    for(x=0; x <= div && is_prime; x++) {
-		if((near -y) % ctx->base_primes[x]==0) {
+		if((near -y) % ctx.base_primes[x]==0) {
 		    is_prime=0;
 		}
 	    }
@@ -215,6 +222,7 @@ get_nearest_prime(PRIME_CTX *ctx, unsigned long near)
 	    }
 	}
     }
+    free_primes(&ctx);
     return prime;
 }
 

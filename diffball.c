@@ -26,6 +26,7 @@
 #include "tar.h"
 #include "cfile.h"
 #include "dcbuffer.h"
+#include "hash.h"
 #include "diff-algs.h"
 #include "formats.h"
 #include "defs.h"
@@ -328,8 +329,9 @@ main(int argc, char **argv)
         	NO_COMPRESSOR, CFILE_RONLY | CFILE_BUFFER_ALL);
             
             match_count++;
-            err=init_RefHash(&rhash_win, &ref_window, 24, 1, 
-		cfile_len(&ref_window), RH_BUCKET_HASH);
+	    err=rh_bucket_hash_init(&rhash_win, &ref_window, 24, 1, cfile_len(&ref_window));
+//            err=init_RefHash(&rhash_win, &ref_window, 24, 1, 
+//		cfile_len(&ref_window), RH_BUCKET_HASH);
 	    check_return2(err,"init_RefHash");
 	    err=RHash_insert_block(&rhash_win, &ref_window, 0, 
 		cfile_len(&ref_window));

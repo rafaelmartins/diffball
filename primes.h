@@ -26,5 +26,5 @@ typedef struct _PRIME_CTX {
 
 int init_primes(PRIME_CTX *ctx);
 void free_primes(PRIME_CTX *ctx);
-unsigned long get_nearest_prime(PRIME_CTX *ctx, unsigned long near);
+unsigned long get_nearest_prime(unsigned long near);
 #endif
