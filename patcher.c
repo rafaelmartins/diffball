@@ -173,21 +173,6 @@ main(int argc, char **argv)
 	} else if(reconstructFile(&dcbuff, &out_cfh)) {
 	    v0printf("error detected while reconstructing file, quitting\n");
 	    //remove the file here.
-	} else {
-
-	/* hack, move this to the format itself */
-	    if(BDELTA_FORMAT==patch_id) {
-		if(ctell(&out_cfh, CSEEK_ABS) < dcbuff.ver_size) {
-		    unsigned char buff[512];
-		    unsigned long to_write;
-		    to_write = dcbuff.ver_size - ctell(&out_cfh, CSEEK_ABS);
-		    memset(buff, 0, 512);
-		    while(to_write > 0) {
-			cwrite(&out_cfh, buff, MIN(to_write, 512));
-			to_write -= MIN(to_write, 512);
-		    }
-		}
-	    }	    
 	}
 	cclose(&out_cfh);
 	v1printf("reconstruction completed successfully\n");

@@ -24,6 +24,23 @@
 #include "bit-functions.h"
 #include "bdelta.h"
 
+unsigned long
+null_fill_add(CommandBuffer *dcb, DCommand *dc, cfile *out_cfh)
+{
+    unsigned char buff[512];
+    unsigned long len, x;
+    len = dc->loc.len;
+    memset(buff, 0, 512);
+    while(len) {
+	x = MIN(len, 512);
+	if(x != cwrite(out_cfh, buff, x)) {
+	    return dc->loc.len - len;
+	}
+	len -= x;
+    }
+    return dc->loc.len - len;
+}
+
 unsigned int
 check_bdelta_magic(cfile *patchf)
 {
@@ -151,6 +168,7 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
     unsigned long matches, add_len, copy_len, copy_offset;
     unsigned long size1, size2, or_mask=0, neg_mask;
     unsigned long ver_pos = 0, add_pos;
+    unsigned long processed_size = 0;
     unsigned long add_start;
     assert(DCBUFFER_FULL_TYPE == dcbuff->DCBtype);
     if(3!=cseek(patchf, 3, CSEEK_FSTART))
@@ -173,6 +191,7 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
     cread(patchf, buff, 3 * int_size);
     size1 = readUBytesLE(buff, int_size);
     size2 = readUBytesLE(buff + int_size, int_size);
+    v1printf("size1=%lu, size2=%lu\n", size1, size2);
     dcbuff->src_size = size1;
     dcbuff->ver_size = size2;
     matches = readUBytesLE(buff + (2 * int_size), int_size);
@@ -183,6 +202,7 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
     add_pos += (matches * (3 * int_size));
     add_start = add_pos;
     DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL, 0);
+    DCBUFFER_REGISTER_ADD_SRC(dcbuff, NULL, &null_fill_add, 0);
     v2printf("add block starts at %lu\nprocessing commands\n", add_pos);
     unsigned long match_orig = matches;
     if(size1==0) {
@@ -222,8 +242,13 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 //	    DCBufferAddCmd(dcbuff, DC_COPY, ver_pos, copy_len);
 	    ver_pos += copy_len;
 	}
+	processed_size += add_len + copy_len;
     }
     assert(ctell(patchf, CSEEK_FSTART)==add_start);
+    if(processed_size != size2) {
+	v1printf("hmm, left the trailing nulls out; adding appropriate command\n");
+	DCB_add_add(dcbuff, 0, size2 - processed_size, 1);
+    }
     v2printf("finished reading.  ver_pos=%lu, add_pos=%lu\n",
 	ver_pos, add_pos);
     return 0;

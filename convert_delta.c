@@ -117,11 +117,11 @@ main(int argc, char **argv)
 	    exit(1);
 	}
     }
-    if(src_format_id==BDELTA_FORMAT) {
+/*    if(src_format_id==BDELTA_FORMAT) {
 	v0printf( "this version does not support conversion of bdelta format.\n");
 	v0printf( "the stable 0.40 release will however.  Sorry.\n");
 	exit(1);
-    }
+    }*/
     if(trg_format==NULL) {
 	usage(p_opt, 1, "new files format is required\n", NULL);
     } else {
