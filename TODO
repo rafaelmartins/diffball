@@ -1,0 +1,5 @@
+Header format?
+4 byte magic, 1 byte file format version? (256 versions)
+reference md5 (32 bytes), patch md5 (nother 32 bytes).
+possibly md5 the final rather then reference, since final is already accessed in a one-pass method... 
+reference on the other hand is random access.

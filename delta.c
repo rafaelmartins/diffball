@@ -10,6 +10,21 @@
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
+void updateDCCopyStats(struct DCStats *stats, signed long pos_offset, signed long dc_offset, unsigned long len)
+{
+    stats->copy_count++;
+    
+    stats->copy_pos_offset_bytes[MAX(abs(pos_offset/8),5)]++;
+    stats->copy_rel_offset_bytes[MAX(abs(dc_offset/8), 5)]++;
+    stats->copy_len_bytes[MAX(len/8,5)]++;
+}
+
+void updateDCAddStats(struct DCStats *stats, unsigned long len)
+{
+    stats->add_count++;
+    
+}
+
 void DCBufferIncr(struct CommandBuffer *buffer)
 {
     //printf("   incr: cb was offset(%lu)-bit(%u),", buffer->cb_tail - buffer->cb_start, buffer->cb_tail_bit);
@@ -113,8 +128,6 @@ inline int bitsNeeded(long y)
 
 inline int bytesNeeded(long y)
 {
-    /* why 2 rather then 1 (1 due to a bit powers, eg rightmost is power 0)?  cause this treats it
-     ALL as signed. */
     unsigned int x;
     if (y == 0) {
 	//printf("no bytesneeded\n");
@@ -148,12 +161,10 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
     buffer->cb_tail = buffer->cb_head;
     buffer->cb_tail_bit = buffer->cb_head_bit;
     while(buffer->count--){
-	/* this lil method *CANNOT BE WORKING RIGHT* */
 	if((*buffer->cb_tail & (1 << buffer->cb_tail_bit))>0) {
 	    ptr=ver + buffer->lb_tail->offset;
 	    type=DC_COPY;
 	} else if ((*buffer->cb_tail & (1 << buffer->cb_tail_bit))==0){
-	    //ptr=ver + buffer->lb_tail->offset;
 	    type=DC_ADD;
 	} else {
 	    printf("wtf...\n");

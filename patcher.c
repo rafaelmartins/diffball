@@ -73,23 +73,15 @@ int main(int argc, char **argv)
 	printf("Couldn't create\truncate output file.\n");
 	exit(EXIT_FAILURE);
     }
-    /*if((buff_filled=read(delta_fh, commands, 512))==0){
+    if((buff_filled=read(delta_fh, commands, 512))==0){
 	printf("ahem.  the delta file is empty?\n");
 	exit(EXIT_FAILURE);
-    }*/
+    }
     fh_pos=0;
-    cptr=commands + 512;
-    buff_filled=512;
-    while(*cptr != 0 || (cptr == commands + buff_filled && buff_filled>0)) {
-	if(cptr == commands + buff_filled) {
-	    printf("refreshing buffer: cptr(%u)==buff_filled(%u)\n", cptr - commands, buff_filled);
-	    if((buff_filled=read(delta_fh, commands, 512))==0){
-		printf("ahem.  the delta file is empty?\n");
-		exit(EXIT_FAILURE);
-	    }
-	    cptr=commands;
-	    continue;
-	} else if(*cptr > 0 && *cptr <= 248) {
+    cptr=commands;
+    //buff_filled=512;
+    while(*cptr != 0) {
+	if(*cptr > 0 && *cptr <= 248) {
 	    //add command
 	    ccom = *cptr;
 	    cptr++;
@@ -183,6 +175,15 @@ int main(int argc, char **argv)
 		}
 		len -= clen;
 	    }
+	}
+	if(cptr == commands + buff_filled) {
+	    printf("refreshing buffer: cptr(%u)==buff_filled(%u)\n", cptr - commands, buff_filled);
+	    if((buff_filled=read(delta_fh, commands, 512))==0){
+		printf("ahem.  the delta file is empty?\n");
+		exit(EXIT_FAILURE);
+	    }
+	    cptr=commands;
+	    //continue;
 	}
 	/*if(cptr == commands + buff_filled) {
 	    printf("refreshing buffer: cptr(%u)==buff_filled(%u)\n", cptr - commands, buff_filled);

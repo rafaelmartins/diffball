@@ -23,7 +23,7 @@ struct CommandBuffer {
 struct DCStats {
     unsigned long copy_count;
     unsigned long add_count;
-    unsigned long offset_max;
+    /*unsigned long offset_max;
     unsigned long offset_min;
     unsigned long add_len_max;
     unsigned long add_len_min;
@@ -34,7 +34,16 @@ struct DCStats {
     signed long   pos_offset_max;
     signed long   pos_offset_min;
     unsigned long adjacent_offset_max;
-    unsigned long adjacent_offset_min;
+    unsigned long adjacent_offset_min;*/
+    /*unsigned long copy_pos_offsets_bytes[5];
+    unsigned long copy_neg_offsets_bytes[5];*/
+    unsigned long copy_pos_offset_bytes[5];
+    unsigned long copy_rel_offset_bytes[5];
+    unsigned long copy_len_bytes[5];
 };
+
+inline int bitsNeeded(long y);
+inline int bytesNeeded(long y);
+inline int signedBytesNeeded(signed long y);
 
 #endif
