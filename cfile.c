@@ -36,6 +36,7 @@ signed int cclose(struct cfile *cfile)
 {
 	unsigned int bytes_left, x;
 	//printf("closing cfile, access_flags(%u)\n", cfile->access_flags);
+#ifdef DEBUG_CWRITE
 	if(cfile->access_flags & CFILE_WONLY) {
 		bytes_left = cfile->raw_filled - cfile->raw_pos;
 		switch(cfile->compressor_type)
@@ -46,6 +47,7 @@ signed int cclose(struct cfile *cfile)
 			break;
 		}
 	}
+#endif
 	return 0;
 }
 
@@ -91,6 +93,7 @@ inline void crefresh(struct cfile *cfile)
 
 unsigned long cwrite(struct cfile *cfile, unsigned char *in_buff, unsigned long len)
 {
+#ifdef DEBUG_CWRITE
     unsigned long bytes_wrote = 0, tmp;
     unsigned int /*compr_bytes = 0,*/ uncompr_bytes=0;
     while(len > bytes_wrote) {
@@ -118,6 +121,9 @@ unsigned long cwrite(struct cfile *cfile, unsigned char *in_buff, unsigned long 
 		bytes_wrote += uncompr_bytes;
 	}
     return bytes_wrote;
+#else
+    return write(cfile->raw_fh, in_buff, len);
+#endif
 }
 
 unsigned long cposition(struct cfile *cfile)
