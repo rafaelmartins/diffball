@@ -138,7 +138,9 @@ signed int OneHalfPassCorrecting(unsigned int encoding_type,
     vbuff_end=cread(ver_cfh, vbuff, MIN(vbuff_size, ver_len));
     //printf("vc(%lu), seed_len(%lu), ver_len(%lu)\n", vc, seed_len, ver_len);
 	while(vc + seed_len < ver_len) {
+		printf("handling vc(%lu)\n", vc);
 		if(vc + seed_len > vbuff_start + vbuff_size) {
+			printf("full refresh of vbuff\n");
 			//if(vc > vbuff_start + vbuff_size) {
 				vbuff_start = cseek(ver_cfh, vc, CSEEK_ABS);
 				vbuff_end = cread(ver_cfh, vbuff, MIN(ver_len - vbuff_start,vbuff_size));
@@ -147,6 +149,7 @@ signed int OneHalfPassCorrecting(unsigned int encoding_type,
 			//	memmove(vbuff, vbuff + vbuff_size -x, x);
 				
 		} else if (vc < vbuff_start) {
+			printf("partial refresh of vbuff\n");
 			vbuff_start = cseek(ver_cfh, vc, CSEEK_ABS);
 			vbuff_end = cread(ver_cfh, vbuff, MIN(ver_len - vbuff_start, vbuff_size));
 		}
@@ -210,7 +213,7 @@ signed int OneHalfPassCorrecting(unsigned int encoding_type,
 				rbuff_end = cread(ref_cfh, rbuff, rbuff_size);
 			}	
 			if(memcmp(rbuff, vbuff+vc - vbuff_start, seed_len)!=0){
-				//printf("bad collision(%lu).\n", vc);
+				printf("bad collision(%lu).\n", vc);
 				bad_match++;
 				vc++;
 				continue;
@@ -297,8 +300,8 @@ signed int OneHalfPassCorrecting(unsigned int encoding_type,
 					//printf("pushing ref forw %u to cseek(%lu)\n", rbuff_size, rbuff_start);
 		    	}
 		    }
-		    printf("stopped forw match, v(%u)!=r(%u)\n",vbuff[vm-vbuff_start+len],
-		    rbuff[rm-rbuff_start+len]);
+		    //printf("stopped forw match, v(%u)!=r(%u)\n",vbuff[vm-vbuff_start+len],
+		    //rbuff[rm-rbuff_start+len]);
 		    printf("ver_len(%lu), vm(%lu)+len(%lu)==(%lu)\n",ver_len,vm,len,vm+len);
 		    printf("ref_len(%lu), rm(%lu)+len(%lu)==(%lu)\n",ref_len,rm,len,rm+len);
 		    printf("vbuff_start(%lu), rbuff_start(%lu)\n", vbuff_start, rbuff_start);
@@ -326,7 +329,7 @@ signed int OneHalfPassCorrecting(unsigned int encoding_type,
 	    	vc = vs -1;
 		} else {
 	    	no_match++;
-	    	//printf("no match(%lu)\n", vc -ver);
+	    	printf("no match(%lu)\n", vc);
 		}
 		vc++;
     }

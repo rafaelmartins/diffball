@@ -121,9 +121,13 @@ unsigned long cread(struct cfile *cfile, unsigned char *out_buff, unsigned long 
 		if(cfile->raw_pos == cfile->raw_filled) {
 			//printf("cread: refreshing file len(%lu), bytes_read(%lu)\n",
 			//	len, bytes_read);
+			//printf("crefreshing file for len(%lu), pos(%lu), filled(%lu)\n", len,
+			//cfile->raw_pos - cfile->raw_buff, cfile->raw_filled - cfile->raw_buff);
 			crefresh(cfile);
+			//printf("result being pos(%lu), filled(%lu)\n",
+			//cfile->raw_pos - cfile->raw_buff, cfile->raw_filled - cfile->raw_buff);
 	    	/* note this check needs some work/better error returning.  surpris surprise... */
-	    	if(cfile->raw_filled == cfile->raw_buff) {
+	    	if(cfile->raw_filled == cfile->raw_pos) {
 	    		printf("cread: len(%lu), bytes_read(%lu)\n", len, bytes_read);
 	    		printf("shit, raw_filled == raw_buff\n");
 				//abort();
@@ -135,6 +139,10 @@ unsigned long cread(struct cfile *cfile, unsigned char *out_buff, unsigned long 
 	    case NO_COMPRESSOR:
 	    	//printf("opt1(%lu), calced(%lu)\n", len - bytes_read, 
 	    	//	cfile->raw_filled - cfile->raw_pos);
+	    	//printf("len(%lu), bytes_read(%lu), val(%lu), raw_f(%lu), raw_p(%lu), other(%lu)\n", 
+	    	//len, bytes_read, len-bytes_read,  
+	    	//	cfile->raw_filled - cfile->raw_buff, 
+	    	//	cfile->raw_pos - cfile->raw_buff, cfile->raw_filled - cfile->raw_pos); 
 	    	uncompr_bytes = MIN(len - bytes_read, cfile->raw_filled - cfile->raw_pos);
 	    	memcpy(out_buff + bytes_read, cfile->raw_pos, uncompr_bytes);
 			//printf("uncompr_bytes(%lu), raw_pos prior(%lu)\n", 
@@ -146,6 +154,7 @@ unsigned long cread(struct cfile *cfile, unsigned char *out_buff, unsigned long 
 		//	uncompr_bytes, cfile->raw_pos - cfile->raw_buff); 
 		//printf("bytes_read(%lu) + uncompr_bytes == bytes(read(%lu)\n", 
 		//	bytes_read, uncompr_bytes, uncompr_bytes+ bytes_read);
+		//printf("bytes_read(%lu), uncompr_bytes(%lu)\n", bytes_read, uncompr_bytes);
 		bytes_read += uncompr_bytes;
 		//printf("bytes_read actual(%lu)\n", bytes_read);
 		//printf("cread: new bytes_read(%u)\n", bytes_read);

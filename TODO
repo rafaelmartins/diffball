@@ -3,6 +3,8 @@ Header format?
 reference md5 (32 bytes), patch md5 (nother 32 bytes).
 possibly md5 the final rather then reference, since final is already accessed in a one-pass method... 
 reference on the other hand is random access.
-GDIFF encoding finished... need to rewrite portions of patcher.c to handle multiple encodings (determined by files magic)
-interested note, while using total offset for offset encoding results in a larger uncompressed delta, when 
-you bzip2 compress it you achieve the smallest delta so far.  even over offseting based on dc_pos.
+Finish gdiff encoding- eg split off standard v4, then my tweaks w/ appropriate headers.
+Seperate the differencing and encoding functions fully (eg move the final encoding call out of diff-algs).  Also, possibly 
+create a control struct for differencing- abstract it, allow for it to stop part way if say dcbuffer gets filled.
+Yeah, dcbuffer needs finishing too.  Cfile also needs compression added in....
+

@@ -1,6 +1,10 @@
 The author is Brian Harring, <bdharring@wisc.edu>.
-Marc Adler, Randal Burns, and Andrew Tridgell deserve credit for basically the 
-algorithms- the adler32 rolling hash is based on Adler's implementation/alg, 
-tridgell for his master thesis (which basically brought me up to speed on the 
-lovely subject), and burns for the algorithm- it's one half pass correcting algoritm,
-detailed in his paper on delta compression on unstructured data.
+The variation on the adler32 (which was created by Marc Adler) I haven't seen elsewhere- I introduced the parity/prime array 
+due to the fact I'm hashing only 16 chars, and standard adler32 seems to have problems w/ the limited of a dataset.
+
+As for the differencing alg, Randal Burns and Andrew Tridgell- I pulled the concept's/algorithm out of their papers (Tridgell 
+for background, Burns for alg description).
+
+Burn's 'Delta Compression on Unstructured Data' would be a good place to start for anyone curious about delta compression.
+I've made modifications here and there to attempt and coax better performance, but by and by the underlying alg I learned 
+from Burn's (and his associates of course) paper.

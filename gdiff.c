@@ -22,6 +22,8 @@
 #include "gdiff.h"
 //#include "cfile.h"
 #include "bit-functions.h"
+#define MAX(x,y) ((x) > (y) ? (x) : (y))
+#define MIN(x,y) ((x) < (y) ? (x) : (y))
 
 signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer, 
     unsigned int offset_type, /*unsigned char *ver*/
@@ -41,6 +43,8 @@ signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer,
     unsigned long  bytes_wrote=0;
     unsigned long count;
     unsigned long total_add_len=0, total_copy_len=0;
+    unsigned long max_add_len=0, max_copy_len=0;
+    unsigned long min_add_len=0xffffffff, min_copy_len=0xffffffff;
     if(offset_type==ENCODING_OFFSET_VERS_POS || offset_type==ENCODING_OFFSET_DC_POS)
 		off_is_sbytes=1;
     else
@@ -79,6 +83,8 @@ signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer,
 				delta_pos, fh_pos, buffer->lb_tail->len);
 		    adds_in_buff++;
 		    total_add_len += buffer->lb_tail->len;
+		    min_add_len = MIN(min_add_len, buffer->lb_tail->len);
+		    max_add_len = MAX(max_add_len, buffer->lb_tail->len);
 		    u_off=buffer->lb_tail->len;
 		    adds_in_file++;
 		    if(buffer->lb_tail->len <= 246) {
@@ -129,6 +135,8 @@ signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer,
 		case DC_COPY:
 		    copies++;//clean this up.
 		    total_copy_len += buffer->lb_tail->len;
+		    min_copy_len = MIN(min_copy_len, buffer->lb_tail->len);
+		    max_copy_len = MAX(max_copy_len, buffer->lb_tail->len);
 		    if(off_is_sbytes) {
 				if(offset_type==ENCODING_OFFSET_VERS_POS)
 				    s_off = (signed long)buffer->lb_tail->offset - (signed long)fh_pos;
@@ -230,9 +238,11 @@ signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer,
     printf("Buffer statistics: copies(%lu), adds(%lu)\n    copy ratio=(%f%%), add ratio(%f%%)\n",
 	copies, adds_in_buff, ((float)copies)/((float)(copies + adds_in_buff))*100,
 	((float)adds_in_buff)/((float)copies + (float)adds_in_buff)*100);
-    printf("Buffer statistics: average copy_len(%lu), average add_len(%lu)\n",
-    (float)((float)total_copy_len/(float)copies), 
-    (float)((float)total_add_len/(float)adds_in_buff));
+    printf("Buffer statistics: average copy_len(%f), average add_len(%f)\n",
+    ((float)total_copy_len)/((float)copies), 
+    ((float)total_add_len)/((float)adds_in_buff));
+    printf("Buffer statistics: max_copy(%lu), min_copy(%lu), max_add(%lu), min_add(%lu)\n",
+	max_copy_len, min_copy_len, max_add_len, min_add_len);
     //printf("adds in file(%lu), average # of commands per add(%f)\n", adds_in_file,
 	//((float)adds_in_file)/((float)(adds_in_buff)));
     //ahem.  better error handling/returning needed. in time, in time...
