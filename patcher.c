@@ -19,7 +19,6 @@
 #include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
-//#include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include "string-misc.h"
@@ -139,7 +138,8 @@ main(int argc, char **argv)
     v1printf("patch_type=%lu\n", patch_id);
     cseek(&patch_cfh, 0, CSEEK_FSTART);
     copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
-	DCBufferInit(&dcbuff, 4096, 0, 0, DCBUFFER_FULL_TYPE);
+    DCBufferInit(&dcbuff, 4096, src_stat.st_size, 0, 
+	DCBUFFER_FULL_TYPE);
     if(SWITCHING_FORMAT == patch_id) {
 	recon_val = switchingReconstructDCBuff(&patch_cfh, &dcbuff);
     } else if(GDIFF4_FORMAT == patch_id) {
