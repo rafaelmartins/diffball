@@ -640,7 +640,7 @@ DCB_insert(CommandBuffer *buff)
     }
     if(buff->DCB.llm.buff_count > 0 ) {
 	buff->DCB.llm.cur--;
-	v1printf("inserting a segment %lu:%lu, commands(%lu)\n", 
+	v2printf("inserting a segment %lu:%lu, commands(%lu)\n", 
 	    buff->DCB.llm.buff->ver_pos, LLM_VEND(buff->DCB.llm.cur), 
 	    buff->DCB.llm.buff_count);
 
