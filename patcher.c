@@ -181,6 +181,9 @@ main(int argc, char **argv)
     DCBufferFree(&dcbuff);
     cclose(&src_cfh);
     cclose(&patch_cfh);
+    close(src_fh);
+    close(patch_fh);
+    close(out_fh);
     return 0;
 }
 

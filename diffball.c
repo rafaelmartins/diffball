@@ -348,6 +348,7 @@ main(int argc, char **argv)
     cclose(&out_cfh);
     close(src_fh);
     close(trg_fh);
+    close(out_fh);
     return 0;
 }
 

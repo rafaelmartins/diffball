@@ -237,5 +237,8 @@ int main(int argc, char **argv)
     cclose(&ref_cfh);
     v1printf("closing version file\n");
     cclose(&ver_cfh);
+    close(out_fh);
+    close(ver_fh);
+    close(ref_fh);
     return 0;
 }
