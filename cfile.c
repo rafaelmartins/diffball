@@ -331,15 +331,22 @@ cclose(cfile *cfh)
     return 0;
 }
 
-unsigned long
+signed long
 cread(cfile *cfh, unsigned char *buff, unsigned long len)
 {
     unsigned long bytes_wrote=0;
     unsigned long x;
+    signed long val;
     while(bytes_wrote != len) {
 	if(cfh->data.end==cfh->data.pos) {
-	    if(0==crefill(cfh))
-		return(bytes_wrote);
+	    val = crefill(cfh);
+	    if(val <= 0) {
+		dcprintf("got an error/0 bytes, returning from cread\n");
+		if(val==0)
+		    return(bytes_wrote);
+		else
+		    return val;
+	    }
 	}
 	x = MIN(cfh->data.end - cfh->data.pos, len - bytes_wrote);
 	/* possible to get stuck in a loop here, fix this */
@@ -350,7 +357,7 @@ cread(cfile *cfh, unsigned char *buff, unsigned long len)
     return bytes_wrote;
 }
 
-unsigned long
+signed long
 cwrite(cfile *cfh, unsigned char *buff, unsigned long len)
 {
     unsigned long bytes_wrote=0, x;
@@ -403,9 +410,9 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 	FLAG_LSEEK_NEEDED(cfh);
 	break;
     case GZIP_COMPRESSOR:
-	if(data_offset < cfh->data.offset ) {
-	    /* note this ain't optimal, but the alternative is modifying 
-	       zlib to support seeking via buffers... */
+/*	if(data_offset < cfh->data.offset ) {
+	    // note this ain't optimal, but the alternative is modifying 
+	    //   zlib to support seeking via buffers...
 	    dcprintf("cseek: zs data_offset < cfh->data.offset, resetting\n");
 	    FLAG_LSEEK_NEEDED(cfh);
 	    inflateEnd(cfh->zs);
@@ -428,6 +435,50 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 	cfh->data.pos = data_offset - cfh->data.offset;
 
 	return (CSEEK_ABS==offset_type ? data_offset + cfh->data_fh_offset : data_offset);
+*/
+	dcprintf("cseek: gz: data_off(%lu), data.offset(%lu)\n", data_offset, cfh->data.offset);
+	if(data_offset < cfh->data.offset ) {
+	    /* note this ain't optimal, but the alternative is modifying 
+	       zlib to support seeking... */
+	    dcprintf("cseek: gz: data_offset < cfh->data.offset, resetting\n");
+	    FLAG_LSEEK_NEEDED(cfh);
+	    inflateEnd(cfh->zs);
+	    cfh->zs->zalloc = NULL;
+	    cfh->zs->zfree =  NULL;
+	    cfh->zs->opaque = NULL;
+	    cfh->state_flags &= ~CFILE_EOF;
+	    internal_gzopen(cfh);
+	    cfh->zs->next_in = cfh->raw.buff;
+	    cfh->zs->next_out = cfh->data.buff;
+	    cfh->zs->avail_in = cfh->zs->avail_out = 0;
+	    cfh->data.end = cfh->raw.end = cfh->data.pos = 
+		cfh->data.offset = cfh->raw.offset = cfh->raw.pos = 0;
+	    if(ENSURE_LSEEK_POSITION(cfh)) {
+		return (cfh->err = IO_ERROR);
+	    }
+	    if(cfh->data_fh_offset) {
+		while(cfh->data.offset + cfh->data.end < cfh->data_fh_offset) {
+		    if(crefill(cfh)==0) {
+			return EOF_ERROR;
+		    }
+		}
+		cfh->data.offset -= cfh->data_fh_offset;
+	    }
+	} else {
+	    if(ENSURE_LSEEK_POSITION(cfh)) {
+		return (cfh->err = IO_ERROR);
+	    }
+	}
+	while(cfh->data.offset + cfh->data.end < data_offset) {
+	    if(crefill(cfh)==0) {
+		return EOF_ERROR;
+	    }
+	}
+	cfh->data.pos = data_offset - cfh->data.offset;
+
+	/* note gzip doens't use the normal return */
+	return (CSEEK_ABS==offset_type ? data_offset + cfh->data_fh_offset : data_offset);
+
 	break;
     case BZIP2_COMPRESSOR: 
 	dcprintf("cseek: bz2: data_off(%lu), data.offset(%lu)\n", data_offset, cfh->data.offset);

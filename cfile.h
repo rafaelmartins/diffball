@@ -150,8 +150,8 @@ int copen_child_cfh(cfile *cfh, cfile *parent, unsigned long fh_start,
     access_flags);
 
 unsigned int  cclose(cfile *cfh);
-unsigned long cread(cfile *cfh, unsigned char *out_buff, unsigned long len);
-unsigned long cwrite(cfile *cfh, unsigned char *in_buff, unsigned long len);
+signed long cread(cfile *cfh, unsigned char *out_buff, unsigned long len);
+signed long cwrite(cfile *cfh, unsigned char *in_buff, unsigned long len);
 unsigned long crefill(cfile *cfh);
 unsigned long cflush(cfile *cfh);
 unsigned long ctell(cfile *cfh, unsigned int tell_type);
