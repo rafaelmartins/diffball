@@ -22,11 +22,13 @@
 #include "defs.h"
 
 #define DEFAULT_SEED_LEN 	(16)
-#define DEFAULT_MAX_HASH_COUNT	(96000000/sizeof(unsigned long))
+#define DEFAULT_MAX_HASH_COUNT	(48000000/sizeof(unsigned long))
+
 #define RH_MOD_HASH	(0x1)
 #define RH_RMOD_HASH	(0x2)
-#define RH_SORT_HASH	(0x4)
-#define RH_RSORT_HASH	(0x8)
+#define RH_CMOD_HASH	(0x4)
+#define RH_SORT_HASH	(0x8)
+#define RH_RSORT_HASH	(0x10)
 
 #define RH_FINALIZED	(0x1)
 #define RH_SORTED	(0x2)
@@ -35,12 +37,6 @@ typedef struct {
     unsigned long	chksum;
     off_u64		offset;
 } chksum_ent;
-
-//typedef struct {
-//    unsigned long	chksum;
-//    off_u64      	src_pos;
-////    off_u64		ver_pos;
-//} match_ent;
 
 typedef struct {
     unsigned int seed_len;

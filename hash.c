@@ -42,7 +42,7 @@ lookup_offset(RefHash *rhash, ADLER32_SEED_CTX *ads)
     chksum = get_checksum(ads);
     if(rhash->type & RH_MOD_HASH) {
 	return (rhash->hash.mod[chksum % rhash->hr_size]);
-    } else if (rhash->type & RH_RMOD_HASH) {
+    } else if (rhash->type & (RH_RMOD_HASH | RH_CMOD_HASH)) {
 	index = chksum % rhash->hr_size;
 	return (rhash->hash.chk[index].chksum == chksum ? 
 	   rhash->hash.chk[index].offset : 0);
@@ -66,7 +66,7 @@ get_offset(RefHash *rhash, unsigned long index)
     void *p;
     if(rhash->type & RH_MOD_HASH) {
 	return (rhash->hash.mod[index]);
-    } else if (rhash->type & RH_RMOD_HASH) {
+    } else if (rhash->type & (RH_RMOD_HASH | RH_CMOD_HASH)) {
 	return (rhash->hash.chk[index].chksum ?	
 	    rhash->hash.chk[index].offset : 0);
     } else if (rhash->type & (RH_SORT_HASH | RH_RSORT_HASH)) {
@@ -83,7 +83,7 @@ get_offset(RefHash *rhash, unsigned long index)
 inline unsigned long 
 hash_it(RefHash *rhash, ADLER32_SEED_CTX *ads)
 {
-    if(rhash->type & (RH_MOD_HASH | RH_RMOD_HASH)) {
+    if(rhash->type & (RH_MOD_HASH | RH_RMOD_HASH | RH_CMOD_HASH)) {
 	return (get_checksum(ads) % rhash->hr_size);
 //  could use just a bitmask, although doesn't perform quite as well.
 //	return (get_checksum(ads) & rhash->hr_size);
@@ -97,7 +97,8 @@ free_RefHash(RefHash *rhash)
     v2printf("free_RefHash\n");
     if((rhash->type & RH_MOD_HASH) && (rhash->hash.mod != NULL))
 	free(rhash->hash.mod);
-    else if((rhash->type & (RH_SORT_HASH | RH_RSORT_HASH | RH_RMOD_HASH)) && 
+    else if((rhash->type & (RH_SORT_HASH | RH_RSORT_HASH | RH_RMOD_HASH | 
+	RH_CMOD_HASH)) && 
 	(rhash->hash.chk != NULL))
 	free(rhash->hash.chk);
     rhash->ref_cfh = NULL;
@@ -137,7 +138,7 @@ init_RefHash(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len,
 	    rhash->hash.mod[x] = 0;
 	}
 	rhash->flags |= RH_SORTED;
-    } else if(rhash->type & RH_RMOD_HASH) {
+    } else if(rhash->type & (RH_RMOD_HASH | RH_CMOD_HASH)) {
 	if((rhash->hash.chk=(chksum_ent*)malloc(sizeof(chksum_ent) * 
 	    (rhash->hr_size)))==NULL) {
 	    perror("Shite.  couldn't allocate needed memory for reference hash table.\n");
@@ -170,7 +171,7 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 {
     ADLER32_SEED_CTX ads;
     off_u64 hash_offset = 0;
-    unsigned long index;
+    unsigned long index, skip=0;
     cfile_window *cfw;
     unsigned int missed;
 
@@ -201,20 +202,23 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 		rhash->hash.mod[index] = cfw->offset + cfw->pos - 
 		    rhash->seed_len;
 		if(rhash->sample_rate > 1 && missed < rhash->sample_rate) {
-		    cfw->pos += rhash->sample_rate - missed;
+		    skip = rhash->sample_rate - missed;
 		}
 		missed=0;
 	    } else {
 		rhash->duplicates++;
 		missed++;
 	    }
-	} else if(rhash->type & RH_RMOD_HASH) {
+	} else if(rhash->type & (RH_RMOD_HASH | RH_CMOD_HASH)) {
 	    index = hash_it(rhash, &ads);
 	    if(rhash->hash.chk[index].chksum==0) {
 		rhash->inserts++;
 		rhash->hash.chk[index].chksum = get_checksum(&ads);
+		if(rhash->type & RH_CMOD_HASH)
+		    rhash->hash.chk[index].offset = cfw->offset + cfw->pos -
+			rhash->seed_len;
 		if(rhash->sample_rate > 1 && missed < rhash->sample_rate) {
-		    cfw->pos += rhash->sample_rate - missed;
+		    skip = rhash->sample_rate - missed;
 		}
 		missed=0;
 	    } else {
@@ -237,7 +241,7 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 		cfw->pos - rhash->seed_len;
 	    rhash->inserts++;
 	    if(rhash->sample_rate > 1)
-		cfw->pos += rhash->sample_rate;
+		skip = rhash->sample_rate;
 	} else if(rhash->type & RH_RSORT_HASH) {
 	    if(rhash->hr_size == rhash->inserts) {
 		v1printf("resizing from %lu to %lu\n", rhash->hr_size, 
@@ -253,9 +257,37 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 	    rhash->hash.chk[rhash->inserts].offset = 0;
 	    rhash->inserts++;
 	    if(rhash->sample_rate > 1)
-		cfw->pos += rhash->sample_rate;
-	}		
-	update_adler32_seed(&ads, cfw->buff + cfw->pos, 1);
+		skip = rhash->sample_rate;
+	}
+	if(skip) {
+//	    v1printf("asked to skip %lu\n", skip);
+	    if(cfw->pos + cfw->offset + skip>= ref_end) {
+		cfw->pos += skip;
+		continue;
+	    }
+	    if(skip > rhash->seed_len) {
+		while(cfw->pos + skip - rhash->seed_len >= cfw->end) {
+		    skip -= (cfw->end - cfw->pos);
+		    cfw = next_page(ref_cfh);
+		}
+		cfw->pos += skip - rhash->seed_len;
+		skip = rhash->seed_len;
+	    }
+	    // yes, I'm using index.  so what?
+	    index = MIN(cfw->end - cfw->pos , skip);
+	    update_adler32_seed(&ads, cfw->buff + cfw->pos, index);
+	    cfw->pos += index;	    
+	    skip -= index;
+	    if(skip) {
+		cfw = next_page(ref_cfh);
+		update_adler32_seed(&ads, cfw->buff, skip);
+		cfw->pos += skip;
+		skip = 0;
+	    }
+	}// else {
+	// fix this.
+	    update_adler32_seed(&ads, cfw->buff + cfw->pos, 1);
+	//}
     }
     free_adler32_seed(&ads);
     return 0;
