@@ -57,21 +57,25 @@
 #define TAR_DEVMINOR_LEN	8
 #define TAR_PREFIX_LEN		155
 
+#define TAR_EMPTY_ENTRY		0x1
+
 typedef struct {
-    unsigned long	file_loc;
+//    unsigned long	file_loc;
+    off_u64		start;
+    off_u64		end;
     unsigned long       entry_num;
-    unsigned long	size;
-//concattenation of prefix and name, +1 extra for null, +1 for slash if prefix is not null 
+//    unsigned long	size;
+    //concattenation of prefix and name, +1 extra for null, +1 for slash if prefix is not null 
     unsigned char       *fullname;
-    unsigned short int  fullname_len;
-    unsigned char	*working_name;
-    unsigned int	working_len;
+//    unsigned short int  fullname_len;
 } tar_entry;
 
 
 int check_str_chksum(const char *entry);
 inline unsigned long octal_str2long(char *string, unsigned int length);
-signed int read_fh_to_tar_entry(cfile *src_fh, tar_entry ***file,
+signed int read_fh_to_tar_entry(cfile *src_fh, tar_entry **tar_entries, unsigned long *total_count);
+int read_entry(cfile *src_cfh, off_u64 start, tar_entry *te);
+int readh_cfh_to_tar_entries(cfile *src_cfh, tar_entry ***file, 
     unsigned long *total_count);
 //struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count);
 

@@ -35,7 +35,10 @@
 unsigned int global_verbosity = 0;
 unsigned int global_use_md5 = 0;
 
-int cmp_tar_entries(const void *te1, const void *te2);
+unsigned int src_common_len=0, trg_common_len=0;
+
+int cmp_ver_tar_ent_to_src_tar_ent(const void *te1, const void *te2);
+int cmp_tar_ents(const void *te1, const void *te2);
 
 unsigned long sample_rate=0;
 unsigned long seed_len = 0;
@@ -51,14 +54,14 @@ struct poptOption options[] = {
     POPT_TABLEEND
 };
 
-int src_common_len=0, trg_common_len=0;
 
 int 
 main(int argc, char **argv)
 {
     int src_fh, trg_fh, out_fh;
-    tar_entry **source = NULL;
-    tar_entry **target = NULL;
+    tar_entry *source = NULL;
+    tar_entry **src_ptrs = NULL;
+    tar_entry *target = NULL;
     tar_entry *tar_ptr = NULL;
     void *vptr;
     unsigned char ref_id, ver_id;
@@ -148,7 +151,7 @@ main(int argc, char **argv)
     }
 
     if(copen(&ref_full, src_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY |
-	CFILE_OPEN_FH) ||
+	CFILE_OPEN_FH ) ||
         copen(&ver_full, trg_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY)) {
 	v0printf("error opening file; exiting\n");
 	exit(1);
@@ -178,25 +181,31 @@ main(int argc, char **argv)
     v2printf("target tarball's entry count=%lu\n", target_count);
 
     v3printf("qsorting\n");
-    qsort((tar_entry **)source, source_count , sizeof(tar_entry *), cmp_tar_entries);
+    src_ptrs = (tar_entry **)malloc(sizeof(tar_entry *) * source_count);
+    if(src_ptrs == NULL) {
+    	v0printf("unable to allocate needed memory, bailing\n");
+    	exit(EXIT_FAILURE);
+    }
+    for(x=0; x< source_count; x++)
+    	src_ptrs[x] = source + x;
+    qsort(src_ptrs, source_count, sizeof(tar_entry *), cmp_tar_ents);
     v3printf("qsort done\n");
     
 /* alg to basically figure out the common dir prefix... eg, if everything 
    is in dir debianutils-1.16.3; note, we want the slash, hence +1 */
 
-    p = rindex(source[0]->fullname, '/');
+    p = rindex(src_ptrs[0]->fullname, '/');
     if(p!=NULL) {
-	src_common_len = ((char *)p - (char *)source[0]->fullname) + 1;
-	strncpy((char *)src_common, (char *)source[0]->fullname, 
+	src_common_len = ((char *)p - (char *)src_ptrs[0]->fullname) + 1;
+	strncpy((char *)src_common, (char *)src_ptrs[0]->fullname, 
 	    src_common_len);
     } else {
-	src_common_len = source[0]->fullname_len -1;
-	strncpy(src_common, source[0]->fullname, src_common_len);
+	src_common_len = 0;
     }
     src_common[src_common_len] = '\0';  /*null delimit it */
 
-    for (x=0; x < source_count; x++) {
-        if (strncmp((const char *)src_common, (const char *)source[x]->fullname, src_common_len) !=0) {
+    for (x=0; x < source_count && src_common_len != 0; x++) {
+        if (strncmp((const char *)src_common, (const char *)src_ptrs[x]->fullname, src_common_len) !=0) {
             char *p;
 
             /* null the / at src_common_len-1, and attempt rindex again. */
@@ -208,51 +217,38 @@ main(int argc, char **argv)
                 src_common[0]='\0'; 
             } else {
 		/*include the / in the path again... */
-                src_common_len= src_common - p + 1; 
-                src_common[src_common_len +1]='\0';
+                src_common_len= p - src_common  +1; 
+                src_common[src_common_len]='\0';
             }
         }
     }
     v1printf("final src_common='%.*s'\n", src_common_len, src_common);
-    p = rindex(target[0]->fullname, '/');
+    p = rindex(target[0].fullname, '/');
     if(p!=NULL) {
-	trg_common_len = ((char *)p - (char *)target[0]->fullname) + 1;
-	strncpy((char *)trg_common, (char *)target[0]->fullname, 
-	    trg_common_len);
+	trg_common_len = ((char *)p - (char *)target[0].fullname) + 1;
+	strncpy((char *)trg_common, (char *)target[0].fullname, trg_common_len);
     } else {
-	trg_common_len = target[0]->fullname_len -1;
-	strncpy(trg_common, target[0]->fullname, trg_common_len);
+    	trg_common_len = 0;
     }
     trg_common[trg_common_len] = '\0';  /* null delimit it */
 
-    for (x=0; x < target_count; x++) {
-        if (strncmp((const char *)trg_common, (const char *)target[x]->fullname, 
+    for (x=0; x < target_count && trg_common_len != 0; x++) {
+        if (strncmp((const char *)trg_common, (const char *)target[x].fullname, 
 	    trg_common_len) !=0) {
-            v1printf("found a breaker(%s) at pos(%lu), loc(%lu)\n", 
-		target[x]->fullname, x, target[x]->file_loc);
 
             /* null the / at trg_common_len-1, and attempt rindex again. */
+
             trg_common[trg_common_len -1]='\0';
             if((p = rindex(trg_common, '/'))==NULL){
                 trg_common_len=0;
                 trg_common[0]='\0'; /*no common dir prefix. damn. */
             } else {
-                trg_common_len= trg_common - p + 1; /*include the / again... */
-                trg_common[trg_common_len +1]='\0';
+                trg_common_len= p - trg_common + 1; /*include the / again... */
+                trg_common[trg_common_len]='\0';
             }
         }
     }
     v1printf("final trg_common='%.*s'\n", trg_common_len, trg_common);
-
-    for (x=0; x < source_count; x++) {
-        source[x]->working_name += src_common_len;
-	source[x]->working_len -=  src_common_len;
-    }
-    
-    for (x=0; x < target_count; x++) {
-	target[x]->working_name += trg_common_len;
-	target[x]->working_len -= trg_common_len;
-    }
 
     if(DCBufferInit(&dcbuff, 4096, (unsigned long)ref_stat.st_size, 
 	(unsigned long)ver_stat.st_size, DCBUFFER_LLMATCHES_TYPE) ||
@@ -262,69 +258,86 @@ main(int argc, char **argv)
     }
     v1printf("looking for matching filenames in the archives...\n");
 
-    ref_id = DCB_REGISTER_ADD_SRC(&dcbuff, &ver_full, NULL, 0);
-    ver_id = DCB_REGISTER_COPY_SRC(&dcbuff, &ref_full, NULL, 0);
+    ver_id = DCB_REGISTER_ADD_SRC(&dcbuff, &ver_full, NULL, 0);
+    ref_id = DCB_REGISTER_COPY_SRC(&dcbuff, &ref_full, NULL, 0);
     for(x=0; x< target_count; x++) {
+//	if(target[x]->file_loc < 1155051 || target[x]->file_loc > 
+//	    1155053) {
+//	    v0printf("bypassing %lu...\n", target[x]->file_loc);
+//	    DCB_add_add(&dcbuff, target[x]->file_loc * 512, 
+//	    512 + (target[x]->size==0 ? 0 :
+//	                    target[x]->size + 512 - (target[x]->size % 512==0 ?
+//	                                    512 : target[x]->size % 512)), ver_id);
+//	    continue;
+//	} else {
+//	    v0printf("processing\n");
+//	}
 
 	v1printf("processing %lu of %lu\n", x + 1, target_count);
-	copen_child_cfh(&ver_window, &ver_full, (512 * target[x]->file_loc),
-            (512 * target[x]->file_loc) + 512 + (target[x]->size==0 ? 0 :
-            target[x]->size + 512 - (target[x]->size % 512==0 ? 
-	    512 : target[x]->size % 512)),
-            NO_COMPRESSOR, CFILE_RONLY | CFILE_BUFFER_ALL);
-        vptr = bsearch((const void **)&target[x], (const void **)source, 
-	    source_count, sizeof(tar_entry **), cmp_tar_entries);
+	tar_ptr = &target[x];
+        vptr = bsearch(&tar_ptr, src_ptrs, 
+	    source_count, sizeof(tar_entry **), cmp_ver_tar_ent_to_src_tar_ent);
         if(vptr == NULL) {
 	    v1printf("didn't find a match for %.255s, skipping\n", 
-		target[x]->fullname);
+		target[x].fullname);
         } else {
             tar_ptr = (tar_entry *)*((tar_entry **)vptr);
-            v1printf("found match between %.255s and %.255s\n", target[x]->fullname,
+//	    tar_ptr = (tar_entry *)vptr;
+            v1printf("found match between %.255s and %.255s\n", target[x].fullname,
 		tar_ptr->fullname);
 	    v2printf("differencing src(%lu:%lu) against trg(%lu:%lu)\n",
-        	(512 * tar_ptr->file_loc), (512 * tar_ptr->file_loc) + 512 + 
+		tar_ptr->start, tar_ptr->end, target[x].start, target[x].end);
+/*        	(512 * tar_ptr->file_loc), (512 * tar_ptr->file_loc) + 512 + 
 		(tar_ptr->size==0 ? 0 :	tar_ptr->size + 512 - 
 		(tar_ptr->size % 512==0 ? 512: 	tar_ptr->size % 512)),
 		(512 * target[x]->file_loc), (512 * target[x]->file_loc) + 
 		512 +(target[x]->size==0 ? 0 : target[x]->size + 512 - 
 		(target[x]->size % 512==0 ? 512 : target[x]->size % 512) ));
-	    v2printf("file_loc(%lu), size(%lu)\n", target[x]->file_loc,
-        	target[x]->size);
-            match_count++;
-            copen_child_cfh(&ref_window, &ref_full, (512 * tar_ptr->file_loc), 
-        	(512 * tar_ptr->file_loc) + 512 + (tar_ptr->size==0 ? 0 :
-        	tar_ptr->size + 512 - (tar_ptr->size % 512==0 ? 512 : 
-        	tar_ptr->size % 512)),
+*/
+	    copen_child_cfh(&ver_window, &ver_full, target[x].start, target[x].end,
+            	NO_COMPRESSOR, CFILE_RONLY | CFILE_BUFFER_ALL);
+/*	    (512 * target[x]->file_loc),
+            	(512 * target[x]->file_loc) + 512 + (target[x]->size==0 ? 0 :
+            	target[x]->size + 512 - (target[x]->size % 512==0 ? 
+	    	512 : target[x]->size % 512)),
+*/
+            copen_child_cfh(&ref_window, &ref_full, tar_ptr->start, tar_ptr->end,
         	NO_COMPRESSOR, CFILE_RONLY | CFILE_BUFFER_ALL);
+            
+/*            (512 * tar_ptr->file_loc), 
+        	(512 * tar_ptr->file_loc) + 512 + (tar_ptr->size==0 ? 0 :
+        	tar_ptr->size + 512 - (tar_ptr->size % 512==0 ? 
+        	512 : tar_ptr->size % 512)),
+*/
+            match_count++;
             init_RefHash(&rhash_win, &ref_window, 24, 1, 
 		cfile_len(&ref_window), RH_BUCKET_HASH);
 	    RHash_insert_block(&rhash_win, &ref_window, 0, 
 		cfile_len(&ref_window));
 	    RHash_cleanse(&rhash_win);
 	    print_RefHash_stats(&rhash_win);
-            OneHalfPassCorrecting(&dcbuff, &rhash_win, ref_id, &ver_window, ver_id);
+            OneHalfPassCorrecting2(&dcbuff, &rhash_win, ref_id, &ver_window, ver_id);
 //	    MultiPassAlg(&dcbuff, &ref_window, &ver_window, hash_size);
             free_RefHash(&rhash_win);
+
+	    cclose(&ver_window);
 	    cclose(&ref_window);
         }
-        cclose(&ver_window);
     }
 
     /* cleanup */
-    for(x=0; x< source_count; x++) {
-        free(source[x]->fullname);
-	free(source[x]);
-    }
+    for(x=0; x< source_count; x++)
+        free(source[x].fullname);
     free(source);
-
-    for(x=0; x< target_count; x++) {
-	free(target[x]->fullname);
-	free(target[x]);
-    }
+    free(src_ptrs);
+    
+    for(x=0; x< target_count; x++)
+	free(target[x].fullname);
     free(target);
 
     v1printf("beginning search for gaps, and unprocessed files\n");
     MultiPassAlg(&dcbuff, &ref_full, ref_id, &ver_full, ver_id, hash_size);
+    DCB_insert(&dcbuff);
     cclose(&ref_full);
 
     copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY | CFILE_OPEN_FH);
@@ -353,12 +366,16 @@ main(int argc, char **argv)
 }
 
 int 
-cmp_tar_entries(const void *te1, const void *te2)
+cmp_ver_tar_ent_to_src_tar_ent(const void *te1, const void *te2)
 {
-    tar_entry *p1=*((tar_entry **)te1);
-    tar_entry *p2=*((tar_entry **)te2);
-    return(strcmp((char *)(p1->working_name), 
-    	(char *)(p2->working_name)));
+    return strcmp( (*((tar_entry **)te1))->fullname + trg_common_len, (*((tar_entry **)te2))->fullname + src_common_len);
+}
+
+int 
+cmp_tar_ents(const void *te1, const void *te2)
+{
+    return strcmp( 	(*((tar_entry **)te1))->fullname, 
+    			(*((tar_entry **)te2))->fullname);
 }
 
 
