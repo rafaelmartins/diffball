@@ -1,18 +1,7 @@
-#include <stdlib.h>
-#include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 #include "cfile.h"
 
-/*struct cfile {
-    int fh;
-    unsigned long fh_pos;
-    //unsigned long fh_size;
-    unsigned int compressor_type;
-    unsigned char raw_buff[CFILE_RAW_BUFF_SIZE];
-    unsigned int raw_buff_size;
-    unsigned int raw_buff_filled;  
-};*/
 signed int copen(struct cfile *cfile, int fh, unsigned long fh_start, unsigned int compressor_type, 
 	unsigned int access_flags)
 {
@@ -85,8 +74,8 @@ unsigned long cwrite(struct cfile *cfile, unsigned char *in_buff, unsigned long 
 	    	if((tmp=write(cfile->fh, cfile->raw_buff, cfile->raw_buff_size))
 	    	   != cfile->raw_buff_filled) {
 	    	   bytes_wrote+=tmp;
-	    	   printf("danger will robinson, danger.  killed early, wrote(%lu) of wrote(%lu)\n",
-	    		bytes_wrote, len);
+	    	   //printf("danger will robinson, danger.  killed early, wrote(%lu) of wrote(%lu)\n",
+	    		//bytes_wrote, len);
 				/* need better error handling here, this WOULD leave cfile basically fscked */
 				return bytes_wrote;
 	    	}
