@@ -157,6 +157,12 @@ DCBufferReset(CommandBuffer *buffer)
     return buffer->buffer_count;
 }
 
+void DCBufferFree(CommandBuffer *buffer)
+{
+    free(buffer->cb_start);
+    free(buffer->lb_start);
+}
+
 void DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size, 
     unsigned long src_size, unsigned long ver_size)
 {

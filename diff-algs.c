@@ -39,18 +39,19 @@
 signed int 
 free_RefHash(RefHash *rhash)
 {
-	printf("free_RefHash\n");
-	free(rhash->hash);
-	rhash->seed_len = rhash->hr_size = rhash->sample_rate = 
-		rhash->inserts = rhash->duplicates = 0;
-	return 0;
+    printf("free_RefHash\n");
+    free(rhash->hash);
+    rhash->ref_cfh = NULL;
+    rhash->seed_len = rhash->hr_size = rhash->sample_rate = 
+	rhash->inserts = rhash->duplicates = 0;
+    return 0;
 }
 
 signed int 
 init_RefHash(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len, 
     unsigned int sample_rate, unsigned long hr_size)
 {
-	unsigned long x, index;
+    unsigned long x, index;
     //unsigned long inserts=0, duplicates=0;
     unsigned int const rbuff_size = 16 * 4096;
     unsigned char rbuff[rbuff_size];

@@ -76,6 +76,7 @@ main(int argc, char **argv)
 	cclose(&dout2_cfh);
     }*/
     printf("finished.\n");
+    DCBufferFree(&dcbuff);
     cclose(&din_cfh);
     cclose(&dout_cfh);
     return 0;

@@ -109,8 +109,10 @@ int main(int argc, char **argv)
 //    gdiffEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
 //    switchingEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
 //    rawEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
-    bdeltaEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
+//    bdeltaEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
     printf("exiting\n");
+    freeRefHash(&rhash);
+    DCBufferFree(&buffer);
     cclose(&ver_cfh);
     cclose(&out_cfh);
     return 0;
