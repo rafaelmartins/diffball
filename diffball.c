@@ -230,31 +230,14 @@ int main(int argc, char **argv)
 
     for (x=0; x < source_count; x++) {
         source[x]->working_name += src_common_len;
-		source[x]->working_len -=  src_common_len;
-//        source[x]->fullname_ptr= (char *)source[x]->fullname + src_common_len;
-//		source[x]->fullname_ptr_len = source[x]->fullname_len - src_common_len;
+	source[x]->working_len -=  src_common_len;
     }
     
     for (x=0; x < target_count; x++) {
-		target[x]->working_name += trg_common_len;
-		target[x]->working_len -= trg_common_len;
-//        target[x]->fullname_ptr = (char *)target[x]->fullname + trg_common_len;
-//		target[x]->fullname_ptr_len = target[x]->fullname_len - trg_common_len;
+	target[x]->working_name += trg_common_len;
+	target[x]->working_len -= trg_common_len;
     }
 
-    /* the following is for identifying changed files. */
-    /*if((source_matches = (char*)malloc(source_count))==NULL) {
-		perror("couldn't alloc needed memory, dieing.\n");
-		exit(EXIT_FAILURE);
-    }
-    if((target_matches = (char*)malloc(target_count))==NULL) {
-		perror("couldn't alloc needed memory, dieing.\n");
-		exit(EXIT_FAILURE);
-    }
-    match_count=0;*/
-    //for(x=0; x < target_count; x++)
-	//	target_matches[x] = '0';
-    
     copen(&ref_full, src_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY |
 	CFILE_OPEN_FH);
     DCBufferInit(&dcbuff, 4096, (unsigned long)ref_stat.st_size, 
@@ -266,64 +249,47 @@ int main(int argc, char **argv)
     v1printf("looking for matching filenames in the archives...\n");
     for(x=0; x< target_count; x++) {
 	v1printf("processing %lu of %lu\n", x + 1, target_count);
-        //entry=source[x];
-	//printf("checking '%s'\n", source[x]->fullname);
 	copen(&ver_window, trg_fh, (512 * target[x]->file_loc),
-        	(512 * target[x]->file_loc) + 512 + (target[x]->size==0 ? 0 :
-        		target[x]->size + 512 - (target[x]->size % 512==0 ? 512 : 
-        		target[x]->size % 512)),
-        		NO_COMPRESSOR, CFILE_RONLY | CFILE_BUFFER_ALL);
-        vptr = bsearch((const void **)&target[x], (const void **)source, source_count,
-            sizeof(struct tar_entry **), cmp_tar_entries);
+            (512 * target[x]->file_loc) + 512 + (target[x]->size==0 ? 0 :
+            target[x]->size + 512 - (target[x]->size % 512==0 ? 
+	    512 : target[x]->size % 512)),
+            NO_COMPRESSOR, CFILE_RONLY | CFILE_BUFFER_ALL);
+        vptr = bsearch((const void **)&target[x], (const void **)source, 
+	    source_count, sizeof(struct tar_entry **), cmp_tar_entries);
         if(vptr == NULL) {
-        	v1printf("didn't find a match for %.255s\n", target[x]->fullname);
-		v2printf("target loc(%lu:%lu)\n",
-        		(512 * target[x]->file_loc), 
-        		(512 * target[x]->file_loc) + 512 +(target[x]->size==0 ? 0 : 
-        			target[x]->size + 512 - (target[x]->size % 512==0 ? 512 : 
-        			target[x]->size % 512) ));
-        	v1printf("file_loc(%lu), size(%lu)\n", target[x]->file_loc,
-        			target[x]->size);
-        	OneHalfPassCorrecting(&dcbuff, &rhash_full, &ver_window);
-	    	//_matches[x] = '0';
-	    	//printf("couldn't match '%.255s'\n",
-	    	//	target[x]->fullname_ptr + trg_common_len);
-            //printf("'%s' not found!\n", source[x]->fullname_ptr);
+	    v1printf("didn't find a match for %.255s\n", target[x]->fullname);
+	    v2printf("target loc(%lu:%lu)\n", (512 * target[x]->file_loc), 
+        	(512 * target[x]->file_loc) + 512 +(target[x]->size==0 ? 0 : 
+        	target[x]->size + 512 - (target[x]->size % 512==0 ? 512 : 
+        	target[x]->size % 512) ));
+            v1printf("file_loc(%lu), size(%lu)\n", target[x]->file_loc,
+        	target[x]->size);
+            OneHalfPassCorrecting(&dcbuff, &rhash_full, &ver_window);
         } else {
-        	tar_ptr = (struct tar_entry *)*((struct tar_entry **)vptr);
-        	v1printf("found match between %.255s and %.255s\n", target[x]->fullname,
-        		tar_ptr->fullname);
-        	v2printf("differencing src(%lu:%lu) against trg(%lu:%lu)\n",
-        		(512 * tar_ptr->file_loc), 
-        		(512 * tar_ptr->file_loc) + 512 + (tar_ptr->size==0 ? 0 :
-        			tar_ptr->size + 512 - (tar_ptr->size % 512==0 ? 512: 
-        			tar_ptr->size % 512)),
-        		(512 * target[x]->file_loc), 
-        		(512 * target[x]->file_loc) + 512 +(target[x]->size==0 ? 0 : 
-        			target[x]->size + 512 - (target[x]->size % 512==0 ? 512 : 
-        			target[x]->size % 512) ));
-        		v2printf("file_loc(%lu), size(%lu)\n", target[x]->file_loc,
-        			target[x]->size);
-        	match_count++;
-        	copen(&ref_window, src_fh, (512 * tar_ptr->file_loc), 
-        		(512 * tar_ptr->file_loc) + 512 + (tar_ptr->size==0 ? 0 :
-        			tar_ptr->size + 512 - (tar_ptr->size % 512==0 ? 512 : 
-        			tar_ptr->size % 512)),
-        			NO_COMPRESSOR, CFILE_RONLY | CFILE_BUFFER_ALL);
-        	init_RefHash(&rhash_win, &ref_window, 16, 1, cfile_len(&ref_window));
-		v1printf("reference window stats:\n");
-		print_RefHash_stats(&rhash_win);
-        	OneHalfPassCorrecting(&dcbuff, &rhash_win, &ver_window);
-        	free_RefHash(&rhash_win);
-		cclose(&ref_window);
-	    	/*printf("matched  '%s'\n", target[(struct tar_entry **)vptr - target]->fullname);
-		    printf("correct  '%s'\n\n", ((*(struct tar_entry **)vptr)->fullname));*/
-		    //source_matches[x] = '1';
-		    /* note this works since the type cast makes ptr arithmetic already deal w/ ptr size. */
-		    //target_matches[(struct tar_entry **)vptr - target] = '1';
-		    //target_matches[(vptr - target)/(sizeof(struct tar_entry **))] = '1';
-		    //target_matches[((struct tar_entry *)
-            //printf("'%s' found!\n", source[x]->fullname_ptr);
+            tar_ptr = (struct tar_entry *)*((struct tar_entry **)vptr);
+            v1printf("found match between %.255s and %.255s\n", target[x]->fullname,
+		tar_ptr->fullname);
+	    v2printf("differencing src(%lu:%lu) against trg(%lu:%lu)\n",
+        	(512 * tar_ptr->file_loc), (512 * tar_ptr->file_loc) + 512 + 
+		(tar_ptr->size==0 ? 0 :	tar_ptr->size + 512 - 
+		(tar_ptr->size % 512==0 ? 512: 	tar_ptr->size % 512)),
+		(512 * target[x]->file_loc), (512 * target[x]->file_loc) + 
+		512 +(target[x]->size==0 ? 0 : target[x]->size + 512 - 
+		(target[x]->size % 512==0 ? 512 : target[x]->size % 512) ));
+	    v2printf("file_loc(%lu), size(%lu)\n", target[x]->file_loc,
+        	target[x]->size);
+            match_count++;
+            copen(&ref_window, src_fh, (512 * tar_ptr->file_loc), 
+        	(512 * tar_ptr->file_loc) + 512 + (tar_ptr->size==0 ? 0 :
+        	tar_ptr->size + 512 - (tar_ptr->size % 512==0 ? 512 : 
+        	tar_ptr->size % 512)),
+        	NO_COMPRESSOR, CFILE_RONLY | CFILE_BUFFER_ALL);
+            init_RefHash(&rhash_win, &ref_window, 16, 1, cfile_len(&ref_window));
+	    v1printf("reference window stats:\n");
+	    print_RefHash_stats(&rhash_win);
+            OneHalfPassCorrecting(&dcbuff, &rhash_win, &ver_window);
+            free_RefHash(&rhash_win);
+	    cclose(&ref_window);
         }
         cclose(&ver_window);
     }
@@ -337,18 +303,16 @@ int main(int argc, char **argv)
     	v1printf("must be a null padded tarball. processing the remainder.\n");
 	DCB_add_add(&dcbuff, x, ver_stat.st_size -x );
     }
-//    printf("matched(%lu), couldn't match(%lu) of entry count(%lu).\n", 
-//	match_count, target_count -match_count, target_count);
         
     /* cleanup */
-/*    for(x=0; x< source_count; x++) {
+    for(x=0; x< source_count; x++) {
         free(source[x]->fullname);
         free(source[x]);
     }
     for(x=0; x< target_count; x++) {
 	free(target[x]->fullname);
 	free(target[x]);
-    }*/
+    }
     free(target);
     free(source);
     copen(&ver_full, trg_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
