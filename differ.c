@@ -111,7 +111,7 @@ int main(int argc, char **argv)
 //    rawEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
 //    bdeltaEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
     printf("exiting\n");
-    freeRefHash(&rhash);
+    free_RefHash(&rhash);
     DCBufferFree(&buffer);
     cclose(&ver_cfh);
     cclose(&out_cfh);

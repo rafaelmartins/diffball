@@ -353,17 +353,17 @@ int main(int argc, char **argv)
     	printf("must be a null padded tarball. processing the remainder.\n");
     	DCBufferAddCmd(&dcbuff, DC_ADD, x, ver_stat.st_size - x);
     }
-    printf("matched(%lu), couldn't match(%lu) of entry count(%lu).\n", match_count, 
-    	target_count -match_count, target_count);
+//    printf("matched(%lu), couldn't match(%lu) of entry count(%lu).\n", 
+//	match_count, target_count -match_count, target_count);
         
     /* cleanup */
     for(x=0; x< source_count; x++) {
-        tar_ptr=source[x];
-        free(tar_ptr);
+        free(source[x]->fullname);
+        free(source[x]);
     }
     for(x=0; x< target_count; x++) {
-        tar_ptr=target[x];
-        free(tar_ptr);
+    free(target[x]->fullname);
+    free(target[x]);
     }
     free(target);
     free(source);
@@ -383,7 +383,7 @@ int main(int argc, char **argv)
     cclose(&out_cfh);
     close(src_fh);
     close(trg_fh);
-
+    return 0;
 }
 
 int cmp_tar_entries(const void *te1, const void *te2)

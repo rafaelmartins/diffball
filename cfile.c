@@ -113,12 +113,12 @@ cclose(cfile *cfh)
 	{
 	case NO_COMPRESSOR:
 	    x = write(cfh->raw_fh, cfh->raw_pos, bytes_left);
-	    return x== bytes_left ? 0 : 1;
+	    //return x== bytes_left ? 0 : 1;
 	    break;
 	}
     }
-    if((cfh->state_flags & CFILE_MEM_ALIAS)==0/* || 
-	(cfh->state_flags & CFILE_BUFFER_ALL)*/) {
+    if((cfh->state_flags & CFILE_BUFFER_ALL) || 
+	(!(cfh->state_flags & CFILE_MEM_ALIAS)) ) {
 	printf("copen: freeing memory\n");
 	free(cfh->raw_buff);
     }
