@@ -47,6 +47,7 @@ main(int argc, char **argv)
     struct stat src_stat, patch_stat;
     int src_fh, patch_fh, out_fh;
     cfile src_cfh, patch_cfh, out_cfh;
+    unsigned long patch_compressor_type;
     CommandBuffer dcbuff;
     poptContext p_opt;
 
@@ -117,7 +118,8 @@ main(int argc, char **argv)
     v1printf("patch_fh size=%lu\n", (unsigned long)patch_stat.st_size);
     copen(&src_cfh, src_fh, 0, src_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     copen(&patch_cfh, patch_fh, 0, patch_stat.st_size, 
-	NO_COMPRESSOR, CFILE_RONLY);
+//	NO_COMPRESSOR, CFILE_RONLY);
+	AUTODETECT_COMPRESSOR, CFILE_RONLY);
     if(patch_format==NULL) {
 	patch_id = identify_format(&patch_cfh);
 	if(patch_id==0) {
