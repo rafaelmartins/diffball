@@ -84,8 +84,8 @@ int main(int argc, char **argv)
 //	rawReconstructDCBuff(&delta_cfh, &dcbuff, offset_type);
 //	bdiffReconstructDCBuff(&delta_cfh, &dcbuff);
 //	xdelta1ReconstructDCBuff(&delta_cfh, &dcbuff, 1);
-//	bdeltaReconstructDCBuff(&delta_cfh, &dcbuff);
-	udiffReconstructDCBuff(&delta_cfh, &src_cfh, NULL, &dcbuff);
+	bdeltaReconstructDCBuff(&delta_cfh, &dcbuff);
+//	udiffReconstructDCBuff(&delta_cfh, &src_cfh, NULL, &dcbuff);
    	printf("reconstructing target file based off of dcbuff commands...\n");
    	reconstructFile(&dcbuff, &src_cfh, &delta_cfh, &out_cfh);
    	printf("reconstruction done.  calling close.\n");

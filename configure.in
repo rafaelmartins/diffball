@@ -5,6 +5,9 @@ AM_CONFIG_HEADER(config.h)
 # Checks for programs.
 AC_PROG_CC
 
+# toggling debug support.
+#AC_DEFINE(DEBUG, 1, Toggle on debug support, assert's, printfs...)
+
 # Checks for libraries.
 
 # Checks for header files.
