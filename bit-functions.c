@@ -30,3 +30,24 @@ inline int signedBytesNeeded(signed long y)
     x= (x/8) + (x % 8 ? 1 : 0);
     return x;
 }
+
+unsigned long readUnsignedBytes(const unsigned char *buff, unsigned char l)
+{
+    unsigned char *p;
+    unsigned long num=0;
+    for(p = (unsigned char*)buff; p - (unsigned char*)buff < l; p++) {
+	num = (num << 8) | *p;
+    }
+    return (unsigned long)num;
+}
+
+signed long readSignedBytes(const unsigned char *buff, unsigned char l)
+{
+    unsigned long num;
+    unsigned char *p;
+    num = *buff & 0x7f;  //strpi the leading bit.
+    for(p = (unsigned char *)buff + 1; p - buff < l; p++) {
+	num = (num << 8) + *p;
+    }
+    return (signed long)(num * (*buff & 0x80 ? -1 : 1));
+}

@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <string.h>
+#include "bit-functions.h"
 //#include "delta.h"
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -14,27 +15,6 @@
 //offset = fh_pos + readSignedBytes(cpy_buff, ctmp);
 //len = readUnsignedBytes(cpy_buff+ctmp, clen);
 
-
-unsigned long readUnsignedBytes(const unsigned char *buff, unsigned char l)
-{
-    unsigned char *p;
-    unsigned long num=0;
-    for(p = (unsigned char*)buff; p - (unsigned char*)buff < l; p++) {
-	num = (num << 8) | *p;
-    }
-    return (unsigned long)num;
-}
-
-signed long readSignedBytes(const unsigned char *buff, unsigned char l)
-{
-    unsigned long num;
-    unsigned char *p;
-    num = *buff & 0x7f;  //strpi the leading bit.
-    for(p = (unsigned char *)buff + 1; p - buff < l; p++) {
-	num = (num << 8) + *p;
-    }
-    return (signed long)(num * (*buff & 0x80 ? -1 : 1));
-}
 
 int main(int argc, char **argv)
 {
@@ -89,7 +69,7 @@ int main(int argc, char **argv)
 	    //add command
 	    ccom = *cptr;
 	    cptr++;
-	    printf("add  command delta_pos(%lu), fh_pos(%lu), len(%lu)\n", delta_pos, fh_pos, ccom);
+	    printf("add  command delta_pos(%lu), fh_pos(%lu), len(%u)\n", delta_pos, fh_pos, ccom);
 	    clen = MIN(buff_filled - (cptr - commands), ccom);
 	    //printf("len(%lu), clen(%lu)\n", *cptr, clen);
 	    if(write(out_fh, cptr, clen)!= clen){
@@ -158,7 +138,7 @@ int main(int argc, char **argv)
 	    else
 		clen=4;
 	    len = readUnsignedBytes(cpy_buff+ctmp, clen);
-	    printf("copy command delta_pos(%lu), fh_pos(%lu), type(%u), offset(%d), ref_pos(%lu) len(%lu)\n",
+	    printf("copy command delta_pos(%lu), fh_pos(%lu), type(%u), offset(%ld), ref_pos(%lu) len(%lu)\n",
 		delta_pos, fh_pos, ccom, offset, fh_pos + offset, len);
 	    delta_pos += clen + ctmp + 1;
 	    if(lseek(src_fh, dc_pos + offset, SEEK_SET)!= dc_pos + offset) {
@@ -170,7 +150,7 @@ int main(int argc, char **argv)
 		clen=(read(src_fh, buffer, MIN(1024, len)));
 		if(clen != 1024 && clen != len) {
 		    printf("hmm, error reading src_fh.\n");
-		    printf("clen(%lu), len(%lu)\n", clen, len);
+		    printf("clen(%u), len(%lu)\n", clen, len);
 		    exit(EXIT_FAILURE);
 		}
 		if(write(out_fh, buffer, clen) != clen){
@@ -199,7 +179,7 @@ int main(int argc, char **argv)
 	    cptr=commands;
 	}*/
     }
-    printf("end was found(%u) at delta_pos(%lu), cptr(%lu), buff(%lu)\n", *cptr==0 ? 1 : 0, delta_pos,
+    printf("end was found(%u) at delta_pos(%lu), cptr(%u), buff(%u)\n", *cptr==0 ? 1 : 0, delta_pos,
 	cptr - commands, buff_filled);
     printf("processed bytes(%lu) of bytes(%lu) available\n", delta_pos + (*cptr==0 ? 1: 0), delta_stat.st_size);
 }
