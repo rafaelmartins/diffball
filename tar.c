@@ -4,7 +4,7 @@ int verify_str_chksum(const char *entry);
 struct tar_entry *convert_str_tar_entry(char *block);
 
 struct tar_entry {
-    unsigned char       *name[100];
+    unsigned char       *name;
     unsigned int        mode;
     unsigned int        uid;
     unsigned int        gid;
@@ -24,7 +24,7 @@ struct tar_entry {
     unsigned long	file_loc;
     unsigned int        entry_num;
 /* I'm sure there is a better method, but I'm tired of screwing w/ ptrs. */
-    unsigned char       *fullname[256];  /*concattenation of prefix and name, 1 extra for null */
+    unsigned char       *fullname[257];  /*concattenation of prefix and name, 1 extra for null */
     unsigned char       *fullname_ptr;
     
 };
@@ -73,10 +73,10 @@ struct tar_entry *convert_str_tar_entry(char *block/*[512]*/)
     }
     if((t=(struct tar_entry *)malloc(sizeof(struct tar_entry)))==NULL){
         printf("Shite.  Couldn't allocate needed memory...\n");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     /* I'm using strncpy purely so that things get null padded for sure.  memcpy elsewhere most likely */
-    strncpy((char *)t->name, (const char *)block, 100);
+    //strncpy((char *)t->name, (const char *)block, 100);
     block = block +100;
     strncpy((char *)tmp8, (const char *)block, 8);          tmp8[8]='\0'; /* overkill? */
     t->mode = strtol((char *)tmp8, NULL, 8);                block+=8;
@@ -101,9 +101,31 @@ struct tar_entry *convert_str_tar_entry(char *block/*[512]*/)
     t->devmajor = strtol((char *)tmp8, NULL, 8);            block+=8;
     strncpy((char *)tmp8, (const char *)block, 8);          tmp8[8]='\0';
     t->devminor = strtol((char *)tmp8, NULL, 8);            block+=8;
-    strncpy((char *)t->prefix, (const char *)block, 155);
+    if(strnlen(block, 155)==0) { /* ergo prefix is nothing */
+        *(t->prefix) = '\0';
+        strncpy((char *)t->fullname, (char *)(block -345), 100);
+        t->name=(char *)t->fullname;
+        //*(t->fullname[strnlen(t->fullname, 100) +1])='\0';
+    } else {
+        /* I don't think this works.  soo... needs testing. */
+        char *p = (char *)t->fullname;
+        //printf("non-null prefix\n");
+        strncpy((char *)t->prefix, (char *)block, 155);
+        strncpy((char *)p, (char *)t->prefix, 155);
+        printf("so far='%s'\n", t->prefix);
+        //printf("part deux\n");
+        p[strnlen((char *)t->prefix, 155) +1]=(char)'/';
+        //printf("midway\n");
+        t->name = (char *)(p + strnlen(t->prefix, 155)+2);
+        //printf("part troi\n");
+        strncpy((char *)t->name, (char *)(block -345), 100);
+        //stncpy((char *)(t->fullname + strnlen(t->fullname, 155) +3), (char *)(block -345), 100);
+        //printf("grand finale\n");
+        p[strnlen((char *)t->fullname, 255) +1] = '\0';
+    }
+    /*strncpy((char *)t->prefix, (const char *)block, 155);
     strncpy((char *)t->fullname, (char *)t->prefix, 155);
-    strncat((char *)t->fullname, (char *)t->name, 100);
+    strncat((char *)t->fullname, (char *)t->name, 100);*/
     return t;
     //printf("matched %i\n", sscanf((const char *)block,"%8c",t.mode));
 }

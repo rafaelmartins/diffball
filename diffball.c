@@ -38,15 +38,7 @@ int main(int argc, char **argv)
 	printf("source file md5sum=%.32s\n", source_md5);
 	target = read_fh_to_tar_entry(trg_fh, &target_count, target_md5);
 	printf("target file md5sum=%.32s\n", target_md5);
-        /* this next one is moreso for bsearch's, but it's prob useful for the common-prefix alg too */
-        //qsort((struct tar_entry *)target, target_count, sizeof(struct tar_entry), cmp_tar_entries);
-        
-        printf("dumping source entries\n");
-        for(x=0; x< source_count; x++) {
-            printf("%lu: name('%.100s'), count(%lu), size(%lu), loc(%lu)\n",
-                x, source[x]->name, source[x]->entry_num, source[x]->size, source[x]->file_loc);
-        }
-        printf("finished\n");
+
         /* alg to basically figure out the common dir prefix... eg, if everything is in dir debianutils-1.16.3
            one thing I do wonder about... I make user of ptr algebra, do these methods hold for all architectures?
            ergo, do all arch's storage of a string have for ptr's string[x] < then string[x+1]? */
@@ -54,7 +46,6 @@ int main(int argc, char **argv)
         src_common_len=(char *)rindex((const char *)source[0]->fullname, '/') - (char *)source[0]->fullname+1;
         strncpy((char *)src_common, (char *)source[0]->fullname,src_common_len);
         src_common[src_common_len] = '\0';  /*null delimit it */
-        printf("src_common=%s\n", src_common);
         for (x=0; x < source_count; x++) {
             if (strncmp((const char *)src_common, (const char *)source[x]->fullname, src_common_len) !=0) {
                 char *p;
@@ -70,7 +61,7 @@ int main(int argc, char **argv)
                 }
             }
         }
-        printf("new src_common='%.255s'\n", src_common);
+        printf("final src_common='%.255s'\n", src_common);
         trg_common_len=(char *)rindex((const char *)target[0]->fullname, '/') - (char *)target[0]->fullname+1;
         strncpy((char *)trg_common, (char *)target[0]->fullname,trg_common_len);
         trg_common[trg_common_len] = '\0';  /* null delimit it */
@@ -99,6 +90,12 @@ int main(int argc, char **argv)
             source[x]->fullname_ptr= (char *)&source[x]->fullname + src_common_len;
         for (x=0; x < target_count; x++) 
             target[x]->fullname_ptr = (char *)&target[x]->fullname + trg_common_len;
+            
+    /* this next one is moreso for bsearch's, but it's prob useful for the common-prefix alg too */
+    printf("checking something='%s'\n", target[0]->fullname);
+    qsort((struct tar_entry **)target, target_count, sizeof(struct tar_entry *), cmp_tar_entries);
+    
+
         /*printf("attempting bsearch lookup...\n");*/
         /* strncpy((char *)entry.name, text,strlen(text));*/
         /*printf("verifying something, name=%s\n", (char *)entry.name);*/
@@ -110,17 +107,22 @@ int main(int argc, char **argv)
             printf("name='%.100s'\n", entry.name);
         else
             printf("well, key(%s) was not found\n", text);*/
-        /*for(x=0; x< source_count; x++) {
-            printf("freeing source's elements[%lu]\n", x);
-            free((struct tar_entry *)(source[x]));
-        }*/
-        printf("freeing source array\n");
+        struct tar_entry *ptr;
+        printf("freeing source: elements, ");
+        for(x=0; x< source_count; x++) {
+            ptr=source[x];
+            //printf("freeing source's elements[%lu]\n", x);
+            free(ptr);
+        }
+        printf("array.\n");
         free(source);
-        /*for(x=0; x< target_count; x++) {
-            printf("freeing target's elements[%lu]\n",x);
-            free((struct tar_entry *)(target[x]));
-        }*/
-        printf("freeing target array\n");
+        printf("freeing target: elements, ");
+        for(x=0; x< target_count; x++) {
+            ptr=target[x];
+            //printf("freeing target's elements[%lu]\n",x);
+            free(ptr);
+        }
+        printf("array.\n");
         free(target);
 	close(src_fh);
 	close(trg_fh);
@@ -137,7 +139,9 @@ int cmp_tar_entries(const void *te1, const void *te2)
     } else {
         return(strncmp((char *)((struct tar_entry *)te1)->name, (char *)((struct tar_entry *)te2)->name,100));
     }*/
-    return(strncmp((char *)((struct tar_entry *)te1)->fullname, (char *)((struct tar_entry *)te2)->fullname, 255));
+    /* printf("testing.  handed(%s)\n", (char *)(**((struct tar_entry **)te1)).fullname); */
+    return(strncmp((char *)(**((struct tar_entry **)te1)).fullname,
+        (char *)(**((struct tar_entry **)te2)).fullname, 255));
 }
 
 int command_pipes(const char *command, const char *args, int *ret_pipes)
@@ -207,6 +211,10 @@ struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, 
         entry = convert_str_tar_entry((char *)entry_char);
         entry->entry_num = count;
         entry->file_loc = offset;
+        /*if (count==1021 || count==1022 || count==1023){
+            printf("handling annoyance %u\n", count);
+            printf("entry ptr(%lu), name(%.100s)\n", entry, (char *)(entry->name));
+        }*/
         if (entry->size !=0) {
             int x= entry->size>>9;
             if (entry->size % 512)
@@ -235,12 +243,18 @@ struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, 
             //array_size *= 5;
         }
         file[count++] = entry;
+        /* kludge for testing to capture a segfault*/
+        
         /*printf("0 :%.100s\n1 :%u\n2 :%u\n3 :%u\n4 :%u\n5 :%.12s\n6 :%u\n7 :%c\n8 :%.100s\n9 :%.6s\n10:%.2s\n11:%.32s\n12:%.32s\n13:%u\n14:%u\n15:%100s\n16:%u\n",
         entry.name, entry.mode, entry.uid, entry.gid, entry.size, entry.mtime, entry.chksum, entry.typeflag,
         entry.linkname, entry.magic, entry.version, entry.uname, entry.gname, entry.devmajor, entry.devminor,
         entry.prefix, entry.file_loc);*/
     }
     *total_count = count;
+    if ((file=(struct tar_entry **)realloc(file,count*sizeof(struct tar_entry *)))==NULL){
+        perror("Shit.\nNo explanation, just Shit w/ a capital S.\n");
+        exit(EXIT_FAILURE);
+    }
     if(read_bytes>0) { /*finish outputing the file for md5summing */
         write(pipes[1], entry_char, read_bytes);
         while((read_bytes = read(src_fh, entry_char, 512))>0)
@@ -252,13 +266,5 @@ struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, 
         exit(EXIT_FAILURE);
     }
     memcpy((char *)md5sum, (char *)entry_char, 32);
-    //printf("md5sum='%.32s'\n", entry_char);
-    //while(write(pipes[1], entry_char, read(src_fh, entry_char, 512)));
-    //printf("source has %lu files, reallocing from %u to %u\n", count, array_size, count);
-    /* free up the unused memory of the array */
-    if ((file=(struct tar_entry **)realloc(file,count*sizeof(struct tar_entry *)))==NULL){
-        perror("Shit.\nNo explanation, just Shit w/ a capital S.\n");
-        exit(EXIT_FAILURE);
-    }
     return file;
 }
