@@ -69,7 +69,6 @@ reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh, int reorder_for_seq_acces
 	if((dc = (DCommand *)malloc(sizeof(DCommand))) == NULL) {
 	    return MEM_ERROR;
 	}
-	DCBufferReset(dcbuff);
 	l1 = 0;
 	while(DCB_commands_remain(dcbuff)) {
 //	    ap_printf("processing command %lu\n", l1);

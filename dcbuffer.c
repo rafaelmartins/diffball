@@ -18,6 +18,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <math.h>
+
 #include "dcbuffer.h"
 #include "cfile.h"
 #include "bit-functions.h"
@@ -34,28 +36,9 @@ bail_if_called_func()
 }
         
 
-unsigned long
-process_ovchain(CommandBuffer *dcb, unsigned long ver_pos, 
-    DCommand_abbrev **dptr, DCommand_abbrev **odptr, overlay_chain *ov,
-    unsigned long offset, unsigned long len);
-    
-/*int
-cmp_DCommand(const void *vd1, const void *vd2)
-{
-    DCommand *d1, *d2;
-    d1 = (DCommand *)vd1;
-    d2 = (DCommand *)vd2;
-    return d1->dcb_src != d2->dcb_src ? 
-    	(d1->dcb_src < d2->dcb_src ? -1 : 1)  : 
-        d1->data.src_pos != d2->data.src_pos ? 
-        d1->data.src_pos - d2->data.src_pos :
-	d1->data.len - d2->data.len;
-}
-*/                                              
-
 int
 DCB_collapse_commands(CommandBuffer *dcb, DCommand_abbrev **dptr_p, 
-    unsigned long *len1, DCommand_abbrev **odptr_p, unsigned *len2)
+    unsigned long *len1, DCommand_abbrev **odptr_p, unsigned long *len2)
 {
 //  ahem. bit hackney.  needs work.
     unsigned long 	x, y, count;
@@ -119,8 +102,8 @@ DCB_collapse_commands(CommandBuffer *dcb, DCommand_abbrev **dptr_p,
     return 0;
 }
 
-unsigned long
-process_ovchain(CommandBuffer *dcb, unsigned long ver_pos, 
+off_u64
+process_ovchain(CommandBuffer *dcb, off_u64 ver_pos, 
     DCommand_abbrev **dptr, DCommand_abbrev **odptr, overlay_chain *ov,
     unsigned long offset, unsigned long len)
 {
@@ -165,7 +148,11 @@ DCB_register_overlay_src(CommandBuffer *dcb,
     if(id < 0) {
     	return id;
     }
-    dcb->srcs[id].mask_read_func = (rm1 ? rm1 : default_dcb_src_cfh_read_func);
+    if(rm1 != NULL)
+	dcb->srcs[id].mask_read_func = rm1;
+    else
+    	dcb->srcs[id].mask_read_func = default_dcb_src_cfh_read_func;
+
     dcb->srcs[id].ov.com_size = 4;
     dcb->srcs[id].ov.com_count = 0;
     if((dcb->srcs[id].ov.command = (DCLoc *)malloc(sizeof(DCLoc) *
@@ -179,29 +166,36 @@ DCB_register_overlay_src(CommandBuffer *dcb,
 }
 
 int
-internal_DCB_register_dcb_src(CommandBuffer *dcb, CommandBuffer *dcb_src, 
-    dcb_src_read_func read_func, 
-    dcb_src_copy_func copy_func,
-    unsigned char type, unsigned char flags)
+DCB_register_dcb_src(CommandBuffer *dcb, CommandBuffer *dcb_src)
 {
-    v3printf("hmm, called dcb_register_dcb_src... but it's not implemented...\n");
-/*    v3printf("registering dcb_src(%lx), as buffer id(%u)\n", (unsigned long)dcb, dcb->src_count);
-    if(dcb->src_count == dcb->src_array_size && internal_DCB_resize_srcs(dcb)) {
-	return MEM_ERROR;
+    unsigned short x;
+    assert(dcb->DCBtype == DCBUFFER_FULL_TYPE);
+    assert(dcb_src->DCBtype == DCBUFFER_FULL_TYPE);
+    if((dcb->srcs[dcb->src_count].src_ptr.dcb = (DCB_src *)malloc(
+    	sizeof(DCB_src))) == NULL) {
+    	return MEM_ERROR;
     }
-    dcb->srcs[dcb->src_count].src_ptr.dcb = dcb_src;
-    dcb->srcs[dcb->src_count].flags = flags;
-    if (flags & DCB_OVERLAY_SRC) {
-	v3printf("registering overlay src\n");
-    } else {
-	dcb->srcs[dcb->src_count].ov = NULL;
+    for(x=0; x < 256; x++)
+    	dcb->srcs[dcb->src_count].src_ptr.dcb->src_map[x] = DCB_SRC_NOT_TRANSLATED;
+    	
+    dcb->srcs[dcb->src_count].src_ptr.dcb->src_dcb = dcb_src;
+    dcb->srcs[dcb->src_count].src_ptr.dcb->s = create_DCBSearch_index(dcb_src);
+    if(dcb->srcs[dcb->src_count].src_ptr.dcb->s == NULL) {
+    	free(dcb->srcs[dcb->src_count].src_ptr.dcb);
+    	return MEM_ERROR;
     }
-    dcb->srcs[dcb->src_count].type = ((type & 0x1) | DCB_DCB_SRC);
-    dcb->srcs[dcb->src_count].read_func = (read_func == NULL ? default_dcb_src_cfh_read_func : read_func);
-    dcb->srcs[dcb->src_count].copy_func = (copy_func == NULL ? default_dcb_src_cfh_copy_func : copy_func);
+    dcb->srcs[dcb->src_count].flags = 0;
+    dcb->srcs[dcb->src_count].read_func = NULL;
+    dcb->srcs[dcb->src_count].mask_read_func = NULL;
+    dcb->srcs[dcb->src_count].copy_func = NULL;
+    dcb->srcs[dcb->src_count].ov.src_id = NULL;
+    dcb->srcs[dcb->src_count].ov.command = NULL;
+    dcb->srcs[dcb->src_count].ov.com_size = 0;
+    dcb->srcs[dcb->src_count].ov.com_count = 0;
+    dcb->srcs[dcb->src_count].type = ((DC_COPY & 0x1) | DCB_DCB_SRC);
+    dcb->src_count++;
     return dcb->src_count - 1;
-*/
-    return 0l;
+
 }
 
 int
@@ -532,6 +526,147 @@ DCBufferDecr(CommandBuffer *buffer)
     }
 }
 
+/* at the moment, this is designed to basically give the finger when it detects a DCB_SRC_DCB, w/in sdcb.
+   I don't want to get into recursively registering DCB's as srcs through versions- this may (likely will)
+   change down the line, once this code has been stabled, and I feel the need/urge.
+
+   meanwhile, suffer the assert :)
+*/
+int
+DCB_rec_copy_from_DCB_src(CommandBuffer *tdcb, command_list *tcl,
+    CommandBuffer *sdcb, command_list *scl, unsigned short translation_map[256],
+    unsigned long com_offset, off_u64 seek, off_u64 len)
+{
+    unsigned long index;
+    off_u64 tmp_len;
+    signed short int x;
+    DCLoc *cur;
+    DCB_registered_src *dcb_s;
+
+    assert(sdcb == tdcb || translation_map != NULL);
+    assert(com_offset < scl->com_count);
+
+    // adjust position appropriately
+    if(sdcb->srcs[scl->src_id[com_offset]].ov.com_size && &sdcb->srcs[scl->src_id[com_offset]].ov != scl)
+    	tmp_len = sdcb->srcs[scl->src_id[com_offset]].ov.command[scl->command[com_offset].offset].len;
+    else
+    	tmp_len = scl->command[com_offset].len;
+    while(seek >= tmp_len) {
+	seek -= tmp_len;
+    	com_offset++;
+	assert(com_offset < scl->com_count);
+
+    	if(seek) {
+    	
+    	    if(sdcb->srcs[scl->src_id[com_offset]].ov.com_size)
+    	    	tmp_len = sdcb->srcs[scl->src_id[com_offset]].ov.command[scl->command[com_offset].offset].len;
+    	    else
+    	    	tmp_len = scl->command[com_offset].len;
+    	}
+    	   
+    }
+
+    while(len) {
+	cur = scl->command + com_offset;
+	dcb_s = sdcb->srcs + scl->src_id[com_offset];
+
+	tmp_len = MIN(cur->len - seek, len);
+
+    	if(dcb_s->type & DCB_DCB_SRC) {
+
+	    /* only allow translating one dcb version; other wise would have to recursively 
+	       update maps to tdcb */
+
+	    index = cur->offset / dcb_s->src_ptr.dcb->s->quanta;
+
+	    assert(sdcb == tdcb);
+	    assert(index < dcb_s->src_ptr.dcb->s->index_size);
+	    assert(dcb_s->src_ptr.dcb->s->ver_start[index] <= cur->offset);
+
+	    if(DCB_rec_copy_from_DCB_src(tdcb, tcl, 
+	    	dcb_s->src_ptr.dcb->src_dcb,
+	    	&dcb_s->src_ptr.dcb->src_dcb->DCB.full.cl,
+	    	dcb_s->src_ptr.dcb->src_map,
+		dcb_s->src_ptr.dcb->s->index[index],
+		cur->offset - dcb_s->src_ptr.dcb->s->ver_start[index] + seek,
+		tmp_len)) {
+	    }
+	} else {
+	    if(tcl->com_count == tcl->com_size) {
+	    	if(internal_DCB_resize_cl(tcl))
+	    	    return MEM_ERROR;
+	    }
+	    
+	    if(sdcb != tdcb) {
+
+	    	/* we're not working on the same version, so the map must be used, and updated. */
+	    	if(translation_map[scl->src_id[com_offset]] == DCB_SRC_NOT_TRANSLATED) {
+
+		    if(dcb_s->ov.com_count == 0) {
+			x = DCB_register_src(tdcb, dcb_s->src_ptr.cfh, 
+	    	    	    dcb_s->read_func, dcb_s->copy_func, 
+	    	    	    dcb_s->flags, (dcb_s->type & 0x1));
+	    	    } else {
+	    	    	x = DCB_register_overlay_src(tdcb, dcb_s->src_ptr.cfh,
+	    	    	    dcb_s->read_func, dcb_s->copy_func, dcb_s->mask_read_func,
+	    	    	    (dcb_s->flags & DCB_FREE_SRC_CFH));
+	    	    }
+	    	    if(x < 0)
+	    		return x;
+
+		    translation_map[scl->src_id[com_offset]] = x;
+		    /* disable auto-freeing in the parent; leave the flag on tdcb's version of src */
+	    	    dcb_s->flags &= ~DCB_FREE_SRC_CFH;
+	    	} else {
+		    x = translation_map[scl->src_id[com_offset]];
+	    	}
+	    } else {
+	    	x = scl->src_id[com_offset];
+	    }
+	    if(sdcb->srcs[scl->src_id[com_offset]].ov.com_count && scl != &sdcb->srcs[scl->src_id[com_offset]].ov) {
+	    	/* this is an ov, and we're not processing the first masking command.
+	    	   so, we go recursive 
+	    	   note temp_len is inaccurate when encountering the command to jump from ov_chain 
+	    	   to another */
+
+	    	tmp_len = MIN(len, sdcb->srcs[scl->src_id[com_offset]].ov.command[cur->offset].len - seek);
+	    	index = tdcb->srcs[x].ov.com_count;
+	    	if(tdcb->srcs[x].ov.com_count + 2 >= tdcb->srcs[x].ov.com_size) {
+	    	    if(internal_DCB_resize_cl(&tdcb->srcs[x].ov))
+	    	    	return MEM_ERROR;
+	    	}
+	    	tdcb->srcs[x].ov.src_id[index] = x;
+	    	tdcb->srcs[x].ov.command[index].offset = sdcb->srcs[scl->src_id[com_offset]].ov.command[cur->offset].offset + seek;
+	    	tdcb->srcs[x].ov.command[index].len = tmp_len;
+	    	tdcb->srcs[x].ov.com_count++;
+	    	if(DCB_rec_copy_from_DCB_src(tdcb, &tdcb->srcs[x].ov, sdcb,
+	    	    &sdcb->srcs[scl->src_id[com_offset]].ov,
+	    	    translation_map,
+	    	    scl->command[com_offset].offset + 1,
+	    	    seek,
+	    	    tmp_len)){
+	    	    return MEM_ERROR;
+	    	}
+	    	tcl->command[tcl->com_count].offset = index;
+	    	tcl->command[tcl->com_count].len = tdcb->srcs[x].ov.com_count - index;
+	    	tcl->src_id[tcl->com_count] = x;
+	    } else {
+	    	tcl->src_id[tcl->com_count] = x;
+		tcl->command[tcl->com_count].offset = cur->offset + seek;
+	    	tcl->command[tcl->com_count].len = tmp_len;
+	    }
+	    tcl->com_count++;
+	}
+	len -= tmp_len;
+	seek = 0;
+	com_offset++;
+
+	/* if at the end of scl, we best be at the end of this traversal. */
+	assert(com_offset < scl->com_count || len == 0);
+    }
+    return 0;
+}
+
 int
 DCB_add_overlay(CommandBuffer *dcb, off_u32 diff_src_pos, off_u32 len, int add_ov_id,
     off_u32 copy_src_pos, int ov_src_id)
@@ -563,7 +698,7 @@ DCB_add_overlay(CommandBuffer *dcb, off_u32 diff_src_pos, off_u32 len, int add_o
     return 0L;
 }
 
-void 
+int
 DCB_add_add(CommandBuffer *buffer, unsigned long ver_pos, 
     unsigned long len, unsigned char src_id)
 {
@@ -572,8 +707,9 @@ DCB_add_add(CommandBuffer *buffer, unsigned long ver_pos,
 	buffer->reconstruct_pos);
 #endif
     if(DCBUFFER_FULL_TYPE == buffer->DCBtype) {
-	if(buffer->DCB.full.cl.com_count == buffer->DCB.full.cl.com_size)
-	    internal_DCB_resize_full(buffer);
+	if(buffer->DCB.full.cl.com_count == buffer->DCB.full.cl.com_size &&
+	    internal_DCB_resize_cl(&buffer->DCB.full.cl))
+	    return MEM_ERROR;
 
 	buffer->DCB.full.cl.src_id[buffer->DCB.full.command_pos] = src_id;
 	buffer->DCB.full.cl.command[buffer->DCB.full.command_pos].offset = ver_pos;
@@ -582,12 +718,14 @@ DCB_add_add(CommandBuffer *buffer, unsigned long ver_pos,
 	buffer->reconstruct_pos += len;
 	DCBufferIncr(buffer);
     }
+    return 0;
 }
 
-void
+int
 DCB_add_copy(CommandBuffer *buffer, unsigned long src_pos, 
     unsigned long ver_pos, unsigned long len, unsigned char src_id)
 {
+    unsigned long index;
 #ifdef DEBUG_DCBUFFER
     buffer->total_copy_len += len;
 #endif
@@ -597,12 +735,40 @@ DCB_add_copy(CommandBuffer *buffer, unsigned long src_pos,
 #endif
 
     if(DCBUFFER_FULL_TYPE == buffer->DCBtype) {
-	if(buffer->DCB.full.cl.com_count == buffer->DCB.full.cl.com_size)
-	    internal_DCB_resize_full(buffer);
-	buffer->DCB.full.cl.command[buffer->DCB.full.command_pos].offset = src_pos;
-	buffer->DCB.full.cl.command[buffer->DCB.full.command_pos].len = len;
-	buffer->DCB.full.cl.src_id[buffer->DCB.full.command_pos] = src_id;
-	buffer->DCB.full.cl.com_count++;
+	if(buffer->DCB.full.cl.com_count == buffer->DCB.full.cl.com_size) {
+	    if(internal_DCB_resize_cl(&buffer->DCB.full.cl))
+		return MEM_ERROR;
+	}
+	if(buffer->srcs[src_id].type & DCB_DCB_SRC) {
+
+	    index = src_pos / buffer->srcs[src_id].src_ptr.dcb->s->quanta;
+	    assert(index < buffer->srcs[src_id].src_ptr.dcb->s->index_size);
+	    v0printf("index= %lu\n", index);
+	    assert(src_pos + len >= buffer->srcs[src_id].src_ptr.dcb->s->ver_start[index]);
+	    
+	    if(DCB_rec_copy_from_DCB_src(buffer, &buffer->DCB.full.cl,
+	    	buffer->srcs[src_id].src_ptr.dcb->src_dcb,
+	    	&buffer->srcs[src_id].src_ptr.dcb->src_dcb->DCB.full.cl,
+	    	buffer->srcs[src_id].src_ptr.dcb->src_map,
+	    	buffer->srcs[src_id].src_ptr.dcb->s->index[index],
+	    	src_pos - buffer->srcs[src_id].src_ptr.dcb->s->ver_start[index],
+	    	len)) {
+	    	return MEM_ERROR;
+	    }
+	    
+	    /* ensure commands were copied in. */
+	    assert(buffer->DCB.full.command_pos < buffer->DCB.full.cl.com_count);
+	    
+	    /* kind of dumb, but prefer to have DCBufferIncr still being used, should it ever do anything
+	       fancy (check wise) */
+	    buffer->DCB.full.command_pos = buffer->DCB.full.cl.com_count - 1;
+	    
+	} else {
+	    buffer->DCB.full.cl.command[buffer->DCB.full.command_pos].offset = src_pos;
+	    buffer->DCB.full.cl.command[buffer->DCB.full.command_pos].len = len;
+	    buffer->DCB.full.cl.src_id[buffer->DCB.full.command_pos] = src_id;
+	    buffer->DCB.full.cl.com_count++;
+	}
 	buffer->reconstruct_pos += len;
     } else if(DCBUFFER_MATCHES_TYPE == buffer->DCBtype) {
 	if(buffer->DCB.matches.buff_count == buffer->DCB.matches.buff_size) {
@@ -630,6 +796,7 @@ DCB_add_copy(CommandBuffer *buffer, unsigned long src_pos,
 	buffer->reconstruct_pos = ver_pos + len;
     }
     DCBufferIncr(buffer);
+    return 0;
 }
 
 int
@@ -746,6 +913,11 @@ DCBufferFree(CommandBuffer *buffer)
 	    v2printf("freeing  src_cfh(%lu)\n", x);
 	    free(buffer->srcs[x].src_ptr.cfh);
 	}
+	if(buffer->srcs[x].type & DCB_DCB_SRC) {
+	    free_DCBSearch_index(buffer->srcs[x].src_ptr.dcb->s);
+	    free(buffer->srcs[x].src_ptr.dcb);
+	    buffer->srcs[x].src_ptr.dcb = NULL;
+	}
 	if(buffer->srcs[x].ov.com_size) {
 	    free(buffer->srcs[x].ov.command);
 	    free(buffer->srcs[x].ov.src_id);
@@ -832,22 +1004,17 @@ internal_DCB_resize_matches(CommandBuffer *buffer)
 }
 
 int
-internal_DCB_resize_full(CommandBuffer *buffer)
+internal_DCB_resize_cl(command_list *cl)
 {
-    assert(DCBUFFER_FULL_TYPE == buffer->DCBtype);
-    v1printf("resizing command buffer from %lu to %lu\n", 
-	buffer->DCB.full.cl.com_size, buffer->DCB.full.cl.com_size * 2);
-
-    if((buffer->DCB.full.cl.src_id = (unsigned char *)realloc(
-	buffer->DCB.full.cl.src_id, buffer->DCB.full.cl.com_size *2))
-	==NULL) {
-	return MEM_ERROR;
-    } else if((buffer->DCB.full.cl.command = 
-	(DCLoc *)realloc(buffer->DCB.full.cl.command, 
-	buffer->DCB.full.cl.com_size * 2 * sizeof(DCLoc)) )==NULL) {
-	return MEM_ERROR;
+    assert(cl);
+    if((cl->src_id = (unsigned char *)realloc(cl->src_id, sizeof(unsigned char) *
+    	cl->com_size * 2)) == NULL 
+    	||
+    	(cl->command = (DCLoc *)realloc(cl->command, sizeof(DCLoc) * 
+    	cl->com_size * 2)) == NULL) {
+    	return MEM_ERROR;
     }
-    buffer->DCB.full.cl.com_size *= 2;
+    cl->com_size *= 2;
     return 0;
 }
 
@@ -962,3 +1129,79 @@ DCB_llm_init_buff(CommandBuffer *buff, unsigned long buff_size)
     return 0;
 }
 
+DCBSearch *
+create_DCBSearch_index(CommandBuffer *dcb)
+{
+    unsigned long pos, ver_pos, dpos, tmp_len;
+    DCBSearch *s;
+
+    if(dcb->DCBtype != DCBUFFER_FULL_TYPE)
+    	return NULL;
+
+    if(! dcb->ver_size) 
+    	return NULL;
+
+    s = malloc(sizeof(DCBSearch));
+
+    if(s == NULL) 
+    	return NULL;
+
+    // basically, take a rough guess at the avg command len, use it to determine the divisor, then adjust index_size
+    // to not allocate uneeded space (due to rounding of original index_size and quanta)
+    if(dcb->DCB.full.cl.com_count < 2)
+    	s->index_size = 1;
+    else
+	s->index_size = ceil(dcb->DCB.full.cl.com_count / 2);
+    v0printf("index_size = %lu\n", s->index_size);
+    s->quanta = ceil(dcb->ver_size / s->index_size);
+    s->index_size = ceil(dcb->ver_size / s->quanta);
+    s->index = (unsigned long *)malloc(sizeof(unsigned long) * s->index_size);
+
+    if(s->index == NULL) {
+	free(s);
+	return NULL;
+    }
+
+    s->ver_start = (off_u64 *)malloc(sizeof(off_u64) * s->index_size);
+    if(s->ver_start == NULL) {
+    	free(s->index);
+    	free(s);
+    	return NULL;
+    }
+    pos=0;
+    dpos = 0;
+    ver_pos = 0;
+    while(dpos < dcb->DCB.full.cl.com_count) {
+	if(dcb->srcs[dcb->DCB.full.cl.src_id[dpos]].ov.com_count) {
+	    tmp_len = dcb->srcs[dcb->DCB.full.cl.src_id[dpos]].ov.command[dcb->DCB.full.cl.command[dpos].offset].len;
+	} else {
+	    tmp_len = dcb->DCB.full.cl.command[dpos].len;
+	}
+	ver_pos += tmp_len;
+    	while(ver_pos > pos * s->quanta && pos < s->index_size) {
+    	    s->index[pos] = dpos;
+    	    s->ver_start[pos] = ver_pos - tmp_len;
+    	    pos++;
+    	}
+    	dpos++;
+    }
+    return s;    
+}
+
+void
+free_DCBSearch_index(DCBSearch *s)
+{
+    if(s) {
+    	free(s->index);
+    	free(s->ver_start);
+    	free(s);
+    }
+}
+
+void
+tfree(void *p)
+{
+    if(tfree != NULL) {
+    	free(p);
+    }
+}

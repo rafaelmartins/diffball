@@ -44,17 +44,16 @@ extern unsigned int global_use_md5;
 /* dcb_src related */
 #define DCB_SRC_NOT_TRANSLATED		0xffff
 
-/* essentially dcb->src_type is thus- upper 2 bits 
-   the actual type of the src (eg, cfile, another command
-   buffer), and the lower bit for if it's an add or copy src.
-   The lower bit will likely be phased out, moving to a dynamic 
-   add/copy determination depending on what the desired end result
-   is.
-*/
 
+/* essentially the lower two bits of a register_src->type are add|copy;
+   everything above is for specifying the actual type.
+   expect the lower two bits to be phased out at some point, in favor of 
+   either on the fly determining what the src_type is, or building a mask of 
+   copy/add.
+*/
 /* internal DCB src types */
 #define DCB_CFH_SRC			(char)0x80
-#define DCB_DCB_SRC			(char)0x00
+#define DCB_DCB_SRC			(char)0x40
 
 // internal dcbuffer macros.
 #define LLM_VEND(l)  ((l)->ver_pos + (l)->len)
@@ -106,9 +105,16 @@ typedef struct {
 } DCommand_abbrev;
 
 typedef struct {
+    unsigned long 	quanta;
+    unsigned long 	index_size;
+    unsigned long 	*index;
+    off_u64		*ver_start;
+} DCBSearch;	
+
+typedef struct {
     unsigned short		src_map[256];
     DCB_ptr			src_dcb;
-//    DCBSearch			*s;
+    DCBSearch			*s;
 } DCB_src;
 
 typedef union {
@@ -186,13 +192,7 @@ typedef struct _CommandBuffer {
 	(buff)->DCB.llm.ver_start = cfile_start_offset((cfh));		\
     }
 
-int internal_DCB_register_dcb_src(CommandBuffer *dcb, CommandBuffer *dcb_src,
-    dcb_src_read_func read_func, dcb_src_copy_func copy_func, 
-    unsigned char free, unsigned char type);
-#define DCB_register_dcb_src(dcb, dcb_src, read, copy, free, type)	\
-    internal_DCB_register_dcb_src((dcb), (dcb_src), (read), (copy),	\
-    (free), (type))
-
+int DCB_register_dcb_src(CommandBuffer *dcb, CommandBuffer *dcb_src);
 int DCB_register_overlay_src(CommandBuffer *dcb, 
     cfile *src, dcb_src_read_func rf1, dcb_src_copy_func rc1, 
     dcb_src_read_func rm1, char free1);
@@ -206,6 +206,10 @@ int internal_DCB_register_cfh_src(CommandBuffer *dcb, cfile *cfh,
 #define DCB_register_src(dcb, cfh, rf, cf, free, type)  internal_DCB_register_cfh_src((dcb), (cfh), (rf), (cf), (type), (free))
 
 unsigned long inline current_command_type(CommandBuffer *buff);
+
+DCBSearch * create_DCBSearch_index(CommandBuffer *dcb);
+void free_DCBSearch_index(DCBSearch *s);
+void tfree(void *p);
 
 void DCBufferIncr(CommandBuffer *buffer);
 void DCBufferDecr(CommandBuffer *buffer);
@@ -229,17 +233,29 @@ void DCB_truncate(CommandBuffer *buffer, unsigned long len);
 
 int DCB_add_overlay(CommandBuffer *buffer, off_u32 diff_src_pos, off_u32 len, 
     int add_ov_id, off_u32 copy_src_pos, int ov_src_id);
-void DCB_add_add(CommandBuffer *buffer, off_u64 ver_pos, unsigned long len,
+int DCB_add_add(CommandBuffer *buffer, off_u64 ver_pos, unsigned long len,
     unsigned char src_id);
-void DCB_add_copy(CommandBuffer *buffer, off_u64 src_pos, off_u64 ver_pos,
+int DCB_add_copy(CommandBuffer *buffer, off_u64 src_pos, off_u64 ver_pos,
     unsigned long len, unsigned char src_id);
+int DCB_rec_copy_from_DCB_src(CommandBuffer *tdcb, command_list *tcl,
+    CommandBuffer *sdcb, command_list *scl, unsigned short translation_map[256],
+    unsigned long com_offset, off_u64 seek, off_u64 len);
+
+off_u64
+process_ovchain(CommandBuffer *dcb, off_u64 ver_pos, 
+    DCommand_abbrev **dptr, DCommand_abbrev **odptr, overlay_chain *ov,
+    unsigned long offset, unsigned long len);
+
+int 
+DCB_collapse_commands(CommandBuffer *dcb, DCommand_abbrev **dptr_p,
+    unsigned long *len1, DCommand_abbrev **odptr_p, unsigned long *len2);
 
 int DCB_insert(CommandBuffer *buff);
 int DCB_llm_init_buff(CommandBuffer *buff, unsigned long buff_size);
 unsigned int DCB_test_llm_main(CommandBuffer *buff);
 void DCB_test_total_copy_len(CommandBuffer *buff);
 
-int internal_DCB_resize_full(CommandBuffer *buffer);
+int internal_DCB_resize_cl(command_list *cl);
 int internal_DCB_resize_matches(CommandBuffer *buffer);
 int internal_DCB_resize_llmatches(CommandBuffer *buffer);
 

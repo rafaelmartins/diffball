@@ -91,6 +91,7 @@ bsdiff_overlay_copy(DCommand *dc,
 		// note thate just the previous byte_count is returned.
 		// that number contains the copyed (eg read AND overlayed)
 		// don't want the data to be considered valid, hence leavng ocfw->pos as 0.
+		printf("bailing\n");
 	    	return bytes_wrote;
 	    }
 	    while(ocfw->pos < tmp_len) {

@@ -29,7 +29,6 @@
 #include "defs.h"
 #include "options.h"
 #include "dcbuffer.h"
-#include "search-dcb.h"
 
 unsigned int global_verbosity = 0;
 unsigned int out_compressor = 0;
@@ -51,9 +50,9 @@ main(int argc, char **argv)
     int patch_fh[256];
     cfile src_cfh, out_cfh;
     cfile patch_cfh[256];
-    CommandBuffer dcbuff[3], *dcb;
+    CommandBuffer dcbuff[2], *dcb;
     poptContext p_opt;
-    unsigned long x, y, src_id;
+    unsigned long x, src_id;
     signed long optr;
     char  *src_name;
     char  *out_name;
@@ -166,58 +165,56 @@ main(int argc, char **argv)
 	    	abort();
 	    }
             src_id = internal_DCB_register_cfh_src(&dcbuff[0], &src_cfh, NULL, NULL, DC_COPY, 0);
-	    y = 0;
     	} else {
-	    y = (2 * x) -1;
-    	    if(DCBufferInit(&dcbuff[y % 3], 4096, dcbuff[y % 3].ver_size , 0, 
+    	    if(DCBufferInit(&dcbuff[x % 2], 4096, dcbuff[(x - 1) % 2].ver_size , 0, 
 	    	DCBUFFER_FULL_TYPE)) {
 	    	v0printf("unable to alloc needed mem, exiting\n");
 	    	abort();
     	    }
-            src_id = internal_DCB_register_cfh_src(&dcbuff[y % 3], NULL, &bail_if_called_func, &bail_if_called_func, DC_COPY, 0);
+    	    src_id = DCB_register_dcb_src(dcbuff + ( x % 2), dcbuff + ((x -1) % 2));
+	    v1printf("id = %lu\n", src_id);
         }
     	if(SWITCHING_FORMAT == patch_id[x]) {
-	    recon_val = switchingReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[y % 3]);
+	    recon_val = switchingReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
     	} else if(GDIFF4_FORMAT == patch_id[x]) {
-	    recon_val = gdiff4ReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[y % 3]);
+	    recon_val = gdiff4ReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
     	} else if(GDIFF5_FORMAT == patch_id[x]) {
-	    recon_val = gdiff5ReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[y % 3]);
+	    recon_val = gdiff5ReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
     	} else if(BDIFF_FORMAT == patch_id[x]) {
-	    recon_val = bdiffReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[y % 3]);
+	    recon_val = bdiffReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
     	} else if(XDELTA1_FORMAT == patch_id[x]) {
-	    recon_val = xdelta1ReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[y % 3], 1);
+	    recon_val = xdelta1ReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2], 1);
     	} else if(BDELTA_FORMAT == patch_id[x]) {
-	    recon_val = bdeltaReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[y % 3]);
+	    recon_val = bdeltaReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
     	} else if(BSDIFF_FORMAT == patch_id[x]) {
-	    recon_val = bsdiffReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[y % 3]);
+	    recon_val = bsdiffReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
     	} else if(FDTU_FORMAT == patch_id[x]) {
-	    recon_val = fdtuReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[y % 3]);
+	    recon_val = fdtuReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
 //    	} else if(UDIFF_FORMAT == patch_id[x]) {
-//	    recon_val = udiffReconstructDCBuff(src_id, &patch_cfh[x], &src_cfh, NULL, &dcbuff[y 2% 3]);
+//	    recon_val = udiffReconstructDCBuff(src_id, &patch_cfh[x], &src_cfh, NULL, &dcbuff[x % 2]);
     	}
-    	v1printf("reconstruction return=%ld, commands=%ld\n", recon_val, dcbuff[y % 3].DCB.full.cl.com_count);
+    	v1printf("reconstruction return=%ld, commands=%ld\n", recon_val, dcbuff[x % 2].DCB.full.cl.com_count);
     	if(recon_val) {
 	    v0printf("error detected while reading patch- quitting\n");
 	    exit(EXIT_FAILURE);
 	}
-	v1printf("versions size is %lu\n", dcbuff[y % 3].ver_size);
+	v1printf("versions size is %lu\n", dcbuff[x % 2].ver_size);
 	if(x) {
-	    v0printf("merging %lu into %lu, storing in %lu\n", ((y-1)%3), (y%3), ((y+1)%3));
-    	    if(merge_version_buffers(&dcbuff[(y -1) % 3], &dcbuff[y % 3], src_id, &dcbuff[(y + 1) % 3])) {
-    	       v0printf("failed merging %lu and %lu, aborting\n", x -1, x);
-    	       exit(EXIT_FAILURE);
-    	    }
-	    v1printf("result was %lu commands\n", dcbuff[(y + 1) % 3].DCB.full.cl.com_count);
-	    v1printf("freeing %lu, %lu\n", ((y -1) %3), (y %3));
-	    DCBufferFree(&dcbuff[(y - 1) % 3]);
-	    DCBufferFree(&dcbuff[y % 3]);
+//	    v0printf("merging %lu into %lu, storing in %lu\n", ((y-1)%3), (y%3), ((y+1)%3));
+//    	    if(merge_version_buffers(&dcbuff[(y -1) % 3], &dcbuff[y % 3], src_id, &dcbuff[(y + 1) % 3])) {
+//    	       v0printf("failed merging %lu and %lu, aborting\n", x -1, x);
+//    	       exit(EXIT_FAILURE);
+//    	    }
+	    v1printf("result was %lu commands\n", dcbuff[x % 2].DCB.full.cl.com_count);
+//	    v1printf("freeing %lu\n", (x -1) % 2);
+	    DCBufferFree(&dcbuff[(x - 1) % 2]);
     	}
     }
     v1printf("applied %lu patches\n", patch_count);
     v1printf("reconstructing target file based off of dcbuff commands...\n");
     if(patch_count > 1) {
-    	dcb = &dcbuff[((patch_count-1) * 2)  % 3];
-	v0printf("value = %i\n", dcb - dcbuff);
+    	dcb = &dcbuff[(patch_count-1) % 2];
+	v0printf("using dcbuff = %i\n", dcb - dcbuff);
     } else {
     	dcb = dcbuff;
     }
