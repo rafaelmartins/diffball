@@ -40,6 +40,7 @@ int main(int argc, char **argv)
 {
     struct stat src_stat, delta_stat;
     int src_fh, delta_fh, out_fh;
+    unsigned int offset_type;
     struct cfile src_cfh, delta_cfh, out_cfh;
     struct CommandBuffer dcbuff;
     if(argc <4){
@@ -69,12 +70,13 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
     }
     copen(&src_cfh, src_fh, 0, src_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
-    copen(&delta_cfh, delta_fh, 0, delta_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
+    copen(&delta_cfh, delta_fh, 5, delta_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
     printf("here goes...\n");
+    offset_type = ENCODING_OFFSET_START;
 	DCBufferInit(&dcbuff, 1000000);
-	switchingReconstructDCBuff(&delta_cfh, &dcbuff, ENCODING_OFFSET_DC_POS);
-//   	gdiffReconstructDCBuff(&delta_cfh, &dcbuff, ENCODING_OFFSET_START, 4);
+//	switchingReconstructDCBuff(&delta_cfh, &dcbuff, offset_type);
+   	gdiffReconstructDCBuff(&delta_cfh, &dcbuff, offset_type, 4);
    	printf("reconstructing target file based off of dcbuff commands...\n");
    	reconstructFile(&dcbuff, &src_cfh, &delta_cfh, &out_cfh);
    	printf("reconstruction done.  calling close.\n");

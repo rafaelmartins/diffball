@@ -40,7 +40,7 @@ void reconstructFile(struct CommandBuffer *dcbuff, struct cfile *src_cfh,
 		    //copies++;//clean this up.
 		    printf("copy command, offset(%lu), len(%lu)\n",
 		    dcbuff->lb_tail->offset, dcbuff->lb_tail->len);
-		    cseek(src_cfh, dcbuff->lb_tail->offset, CSEEK_ABS);
+		    cseek(src_cfh, dcbuff->lb_tail->offset, CSEEK_FSTART);
 		    while(dcbuff->lb_tail->len) {
 	        	x = MIN(dcbuff->lb_tail->len, buff_size);
 	        	//printf("copying x(%u) of len(%u)\n", x, dcbuff->lb_tail->len);
@@ -58,7 +58,7 @@ void reconstructFile(struct CommandBuffer *dcbuff, struct cfile *src_cfh,
 		} else {
 		    printf("add command, offset(%lu), len(%lu)\n", 
 	        	dcbuff->lb_tail->offset, dcbuff->lb_tail->len);
-		    cseek(delta_cfh, dcbuff->lb_tail->offset, CSEEK_ABS);
+		    cseek(delta_cfh, dcbuff->lb_tail->offset, CSEEK_FSTART);
 	        while(dcbuff->lb_tail->len) {
 	        	x = MIN(dcbuff->lb_tail->len, buff_size);
 	        	if(cread(delta_cfh, buff, x)!=x) {

@@ -106,12 +106,12 @@ unsigned long cread(struct cfile *cfile, unsigned char *out_buff, unsigned long 
 {
     unsigned int  uncompr_bytes=0;
     unsigned long bytes_read=0;
-    /*if(cfile->state_flags & CFILE_MEM_ALIAS) {
+    if(cfile->state_flags & CFILE_MEM_ALIAS) {
     	uncompr_bytes = MIN(len, cfile->raw_filled - cfile->raw_pos);
     	memcpy(out_buff, cfile->raw_pos, uncompr_bytes);
    		cfile->raw_pos += uncompr_bytes;
    		return uncompr_bytes;
-   	}*/
+   	}
     while(len != bytes_read) {
     	//printf("still looping\n");
     	if(len < bytes_read) {
@@ -253,12 +253,19 @@ unsigned long cseek(struct cfile *cfile, signed long offset, int offset_type)
 	switch(cfile->compressor_type)
 	{
 	case NO_COMPRESSOR:
+		/*if(cfile->state_flags & CFILE_MEM_ALIAS) {
+			if(offset_type==CSEEK_FSTART) {
+				cfile->raw_pos = cfile->raw_buff + raw_offset;
+			} else if(offset_type==CSEEK_CUR) {
+				raw_offset = (unsigned long)(cfile->raw_fh_pos - 
+		*/
+				
 		if(offset_type==CSEEK_ABS || offset_type==CSEEK_FSTART)
 			raw_offset = (offset_type==CSEEK_FSTART ? cfile->raw_fh_start : 0)
 				+ (unsigned long)offset;
 		else if (offset_type==CSEEK_CUR)
 			raw_offset = (unsigned long)(cfile->raw_fh_pos + (cfile->raw_pos -
-			cfile->raw_buff) + offset);
+				cfile->raw_buff) + offset);
 		else
 			/*not implemented yet*/
 			raw_offset=cfile->raw_fh_start;
@@ -267,12 +274,22 @@ unsigned long cseek(struct cfile *cfile, signed long offset, int offset_type)
 			(cfile->raw_pos - cfile->raw_buff), offset);
 		printf("cseek: offset_type(%u), current_pos(%lu), desired(%lu), calculated(%lu)\n", 
 			offset_type, cfile->raw_fh_pos, offset, raw_offset);*/
+
 		if(cfile->state_flags & CFILE_MEM_ALIAS) {
+			/*printf("mem_aliased\noffset(%ld), raw_offset(%lu)\n", offset, raw_offset);
+			printf("raw_fh_start(%lu)\n", cfile->raw_fh_start);
+			printf("raw_pos(%lu)\n", cfile->raw_pos);*/
+			//cfile->raw_pos = cfile->raw_pos + raw_offset;
 			cfile->raw_pos = cfile->raw_buff + raw_offset;
-			return raw_offset;
+//			cfile->raw_buff + cfile->raw_fh_start + raw_offset;
+			if(offset_type==CSEEK_ABS)
+				return raw_offset;
+			return raw_offset - cfile->raw_fh_start;
 		}
 		uncompr_offset = lseek(cfile->raw_fh, raw_offset, SEEK_SET);
 		cfile->raw_fh_pos = uncompr_offset;
+		if(offset_type!=CSEEK_ABS) 
+			uncompr_offset -= cfile->raw_fh_start;
 		cfile->raw_pos = cfile->raw_filled = cfile->raw_buff;
 	}
 	//printf("cseeked.  raw_fh_pos(%lu)\n", cfile->raw_fh_pos);
