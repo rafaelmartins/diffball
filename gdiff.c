@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <string.h>
 #include "gdiff.h"
+#include "cfile.h"
 #include "bit-functions.h"
 
 signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer, 
