@@ -76,6 +76,22 @@ readUBytesLE(const unsigned char *buff, unsigned int l)
     return (unsigned long)num;
 }
 
+/*
+signed long 
+readSBytesLE(const unsigned char *buff, unsigned int l)
+{
+    unsigned long num = 0;
+    num |= (buff[l-1] & 0x7f);
+    for(; l > 1; l--)
+	num |= (num << 8) + buff[l -1];
+
+    num = *buff & 0x7f;  //strip the leading bit.
+    for(p = buff -l -1; p != buff; p--) 
+	num = (num << 8) + *p;
+    return (signed long)(num * (*buff & 0x80 ? -1 : 1));
+}
+*/
+
 signed long 
 readSBytesBE(const unsigned char *buff, unsigned int l)
 {
@@ -87,20 +103,6 @@ readSBytesBE(const unsigned char *buff, unsigned int l)
     }
     return (signed long)(num * (*buff & 0x80 ? -1 : 1));
 }
-
-/*
-signed long readSBytesLE(const unsigned char *buff, unsigned int l)
-{
-    unsigned long num = 0;
-    for(; l > 1; l--)
-	num |= (num << 8) + buff[l -1];
-
-    num = *buff & 0x7f;  //strip the leading bit.
-    for(p = buff -l -1; p != buff; p--) 
-	num = (num << 8) + *p;
-    return (signed long)(num * (*buff & 0x80 ? -1 : 1));
-}
-*/
 
 unsigned int 
 writeUBytesBE(unsigned char *buff, unsigned long value, unsigned int l)

@@ -24,17 +24,16 @@
 unsigned int
 check_bsdiff_magic(cfile *patchf)
 {
-/*    unsigned char buff[BDIFF_MAGIC_LEN + 1];
+    unsigned char buff[BSDIFF_MAGIC_LEN];
     cseek(patchf, 0, CSEEK_FSTART);
-    if(BDIFF_MAGIC_LEN + 1 != cread(patchf, buff, BDIFF_MAGIC_LEN + 1)) {
+    if(BSDIFF_MAGIC_LEN != cread(patchf, buff, BSDIFF_MAGIC_LEN)) {
 	return 0;
     }
-    if(memcmp(buff, BDIFF_MAGIC, BDIFF_MAGIC_LEN)!=0) {
+    if(memcmp(buff, BSDIFF_4_MAGIC, BSDIFF_MAGIC_LEN)!=0 && 
+	memcmp(buff, BSDIFF_3_MAGIC, BSDIFF_MAGIC_LEN)!=0 && 
+	memcmp(buff, BSDIFF_QS_MAGIC, BSDIFF_MAGIC_LEN)!=0) {
 	return 0;
     }
-    if(buff[BDIFF_MAGIC_LEN]==BDIFF_VERSION) {
-	return 2;
-    }*/
     return 1;
 }
 
@@ -99,6 +98,8 @@ bsdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh, cfile *out_cfh)
 signed int 
 bsdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 {
+    
+
 /*    unsigned char src_md5[16], ver_md5[16], buff[17];
     unsigned long len, offset, maxlength;
     unsigned long fh_pos;

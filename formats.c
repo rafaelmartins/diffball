@@ -23,20 +23,26 @@
 unsigned long int 
 check_for_format(char *format_name, unsigned int len)
 {
-   if((len==5) && (strncasecmp(format_name, "GDIFF", 5)==0)) {
+   if((len==6 && strncasecmp(format_name, "GDIFF4", 6)==0) ||
+	(5==len && strncasecmp(format_name, "GDIFF", 5)==0)) {
 	return GDIFF4_FORMAT;
-   } else if((len==6) && (strncasecmp(format_name, "GDIFF4", 6)==0)) {
-	return GDIFF4_FORMAT;
-   } else if((len==6) && (strncasecmp(format_name, "GDIFF5", 6)==0)) {
+   } else if(6==len && strncasecmp(format_name, "GDIFF5", 6)==0) {
 	return GDIFF5_FORMAT;
-   } else if((len==5) && (strncasecmp(format_name, "BDELTA", 5)==0)) {
+   } else if(5==len && strncasecmp(format_name, "BDELTA", 5)==0) {
 	return BDELTA_FORMAT;
-   } else if((len==5) && (strncasecmp(format_name, "XDELTA", 5)==0)) {
+   } else if(5==len && strncasecmp(format_name, "XDELTA", 5)==0) {
 	return XDELTA1_FORMAT;
-   } else if((len==9) && (strncasecmp(format_name, "SWITCHING", 9)==0)) {
+   } else if(9==len && strncasecmp(format_name, "SWITCHING", 9)==0) {
 	return SWITCHING_FORMAT;
-   } else if((len==5) && (strncasecmp(format_name, "BDIFF", 5)==0)) {
+   } else if(5==len && strncasecmp(format_name, "BDIFF", 5)==0) {
 	return BDIFF_FORMAT;
+   } else if((6==len && strncasecmp(format_name, "BSDIFF", 6)==0) || 
+	(7==len && strncasecmp(format_name, "BSDIFF4", 7)==0)) {
+	return BSDIFF4_FORMAT;
+   } else if((7==len && strncasecmp(format_name, "BSDIFF3", 7)==0) || 
+	(8==len && strncasecmp(format_name, "QSUFDIFF", 8)==0)) {
+	return BSDIFF3_FORMAT;
+   }
    return 0;
 }
 
