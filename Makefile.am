@@ -5,15 +5,15 @@ FORMATS = cfile.c bit-functions.c gdiff.c switching.c bdiff.c \
     bdelta.c xdelta1.c udiff.c bsdiff.c fdtu.c line-util.c formats.c
 DIFF_FILES = diff-algs.c adler32.c primes.c dcbuffer.c hash.c
 
+ctest_SOURCES = ctest.c cfile.c
+hash_stats_SOURCES = hash_stats.c $(DIFF_FILES) options.c cfile.c
+
 if BUILD_DEBUG_CFILE
-    ctest_SOURCES = ctest.c cfile.c
     cfile_bins = ctest
 else
     cfile_bins = 
 endif
-
 if BUILD_DEBUG_HASH
-    hash_stats_SOURCES = hash_stats.c $(DIFF_FILES) options.c cfile.c
     hash_bins = hash_stats
 else
     hash_bins =
@@ -33,5 +33,6 @@ EXTRA_DIST = $(man_MANS)
 noinst_HEADERS = cfile.h dcbuffer.h diff-algs.h bit-functions.h gdiff.h \
 	apply-patch.h adler32.h switching.h primes.h string-misc.h \
 	data-structs.h tar.h bdiff.h xdelta1.h cfile.h bdelta.h line-util.h \
-	udiff.h fdtu.h defs.h options.h formats.h hash.h
+	udiff.h fdtu.h bsdiff.h defs.h options.h formats.h hash.h
+
 
