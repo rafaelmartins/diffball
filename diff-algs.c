@@ -29,15 +29,179 @@
    Obviously credit for the alg's go to him, although I'm the one who gets the dubious
    credit for bugs in the implementation of said algorithms... */
 
+signed int
+OneHalfPassCorrecting2(CommandBuffer *dcb, RefHash *rh, unsigned char rid, cfile *vcfh, unsigned char vid)
+{
+    ADLER32_SEED_CTX ads;
+    off_u32		va, vs, vc, vm, rm, ver_len, len, ref_len, ver_start, ref_start;
+    cfile_window	*vcfw, *rcfw;
+    unsigned long bad_match=0, no_match=0, good_match=0;
+    unsigned long hash_offset, x;
+    int err;
+    err = init_adler32_seed(&ads, rh->seed_len, 1);
+    if(err)
+    	return err;
+    va = vs = vc = 0;
+    ver_len = cfile_len(vcfh);
+    ver_start = cfile_start_offset(vcfh);
+    ref_len = cfile_len(rh->ref_cfh);
+    ref_start = cfile_start_offset(rh->ref_cfh);
+
+    if(0 != cseek(vcfh, 0, CSEEK_FSTART)) {
+	return IO_ERROR;
+    }
+    vcfw = expose_page(vcfh);
+    if(vcfw->end == 0 && vcfw->offset != ver_len)
+	return(IO_ERROR);
+    
+    #define end_pos(x)	((x)->offset + (x)->end)
+    while(vcfw->end != 0) {
+    	if(va < vc) {
+    	    va = vc;
+    	}
+	if(va >= end_pos(vcfw)){
+	    if(va != cseek(vcfh, va, CSEEK_FSTART))
+	    	return(IO_ERROR);
+	    vcfw = expose_page(vcfh);
+	    if(vcfw->end == 0 && vcfw->offset != ver_len)
+	    	return IO_ERROR;
+	}
+	x = MIN(end_pos(vcfw) - va, vc + rh->seed_len - va);
+	update_adler32_seed(&ads, vcfw->buff + va - vcfw->offset, x);
+	va += x;
+	if(vc + rh->seed_len > va) {
+	   // loop back to get refilled from above.
+	   continue;
+	}
+	// check the hash for a match
+	hash_offset = lookup_offset(rh, &ads);
+	if(hash_offset == 0) {
+	    vc++;
+	    no_match++;
+	    continue;
+	}
+	if(hash_offset != cseek(rh->ref_cfh, hash_offset, CSEEK_FSTART)) {
+	    v0printf("error seeking in ref file\n");
+	    return IO_ERROR;
+	}
+
+	rcfw = expose_page(rh->ref_cfh);
+	//verify we haven't hit checksum collision
+	vm = vc;
+	for(x=0; x < rh->seed_len; x++) {
+	    if(rcfw->pos == rcfw->end) {
+	        rcfw = next_page(rh->ref_cfh);
+		if(rcfw->end == 0) {
+	    	    return IO_ERROR;
+	    	}
+	    }
+	    if(ads.seed_chars[(ads.tail + x) % ads.seed_len] != 
+	    	rcfw->buff[rcfw->pos]) {
+	    	bad_match++;
+	    	vc++;
+		break;
+	    }
+	    rcfw->pos++;
+	}
+	if(vc != vm)
+	    continue;
+	good_match++;
+	//back matching
+	vm = vc;
+	rm = hash_offset;
+	while(vm > 0 && rm > 0) {
+//	    if(vm -1 < vcfw->offset) {
+	    while(vm - 1 < vcfw->offset) {
+		vcfw = prev_page(vcfh);
+		if(vcfw->end == 0)
+		    return IO_ERROR;
+	    }
+//	    if(rm -1 < rcfw->offset) {
+	    while(rm - 1 < rcfw->offset) {
+		rcfw = prev_page(rh->ref_cfh);
+		if(rcfw->end == 0) 
+		    return IO_ERROR;
+	    }
+	    if(vcfw->buff[vm - 1 - vcfw->offset] == rcfw->buff[rm - 1 - rcfw->offset]) {
+	    	rm--;
+	    	vm--;
+	    } else {
+	    	break;
+	    }
+	}
+	len = vc + rh->seed_len - vm;
+
+	//forward matching
+	//first, reposition.
+	if(vm + len != cseek(vcfh, vm + len, CSEEK_FSTART)) 
+	    return IO_ERROR;
+	vcfw = expose_page(vcfh);
+	if(vcfw->end == 0 && vcfw->offset != ver_len)
+	    return IO_ERROR;
+
+	if(rm + len != cseek(rh->ref_cfh, rm + len, CSEEK_FSTART))
+	    return IO_ERROR;
+	rcfw = expose_page(rh->ref_cfh);
+	if(rcfw->end == 0 && rcfw->offset != ref_len)
+	    return IO_ERROR;
+
+//	while(vcfw->end > 0 && rcfw->end > 0) {
+	while(vm + len < ver_len && rm + len < ref_len) {
+	    if(vm + len >= end_pos(vcfw)) {
+	    	vcfw = next_page(vcfh);
+	    	if(vcfw->end == 0) {
+	    	    if(vcfw->offset != ver_len)
+	    	    	return IO_ERROR;
+		    break;
+		}
+	    }
+	    assert(vm + len <  vcfw->offset + vcfw->end);
+	    assert(vm + len >= vcfw->offset);
+
+	    if(rm + len >= end_pos(rcfw)) {
+	    	rcfw = next_page(rh->ref_cfh);
+	    	if(rcfw->end == 0) {
+	    	    if(rcfw->offset != ref_len)
+	    	    	return IO_ERROR;
+	    	    break;
+	    	}
+	    }
+	    assert(rm + len < rcfw->offset+ rcfw->end);
+	    assert(rm + len >= rcfw->offset);
+	    
+	    if(vcfw->buff[vm + len - vcfw->offset] == rcfw->buff[rm + len - rcfw->offset]) {
+		len++;
+	    } else {
+	    	break;
+	    }
+	}
+	if( vs <= vm) {
+	    if (vs < vm) {
+	    	DCB_add_add(dcb, ver_start + vs, vm - vs, vid);
+	    }
+	    DCB_add_copy(dcb, ref_start + rm, ver_start + vm, len, rid);
+	} else {
+	    DCB_truncate(dcb, vs -vm);
+	    DCB_add_copy(dcb, ref_start + rm, ver_start + vm, len, rid);
+	}
+	vs = vc = vm + len;
+    }
+    if (vs != ver_len)
+    	DCB_add_add(dcb, ver_start + vs, ver_len - vs, vid);
+    free_adler32_seed(&ads);
+    return 0;
+}
+	
+
 signed int 
-OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, unsigned char ref_id, cfile *ver_cfh, unsigned  char ver_id)
+OneHalfPassCorrecting3(CommandBuffer *buffer, RefHash *rhash, unsigned char ref_id, cfile *ver_cfh, unsigned  char ver_id)
 {
     off_u64 ver_len, ref_len;
     int err;
     unsigned long x, len;
     unsigned long no_match=0, bad_match=0, good_match=0;
     off_u64 vc, va, vs, vm, rm, hash_offset;
-    unsigned int const rbuff_size = 4096, vbuff_size = 4096;
+    unsigned int const rbuff_size = 50, vbuff_size = 50;
     unsigned char rbuff[rbuff_size], vbuff[vbuff_size];
     off_u64 rbuff_start=0, vbuff_start=0, rbuff_end=0, vbuff_end=0;
     ADLER32_SEED_CTX ads;
@@ -79,6 +243,7 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, unsigned char ref_i
 	if(va -vc >= rhash->seed_len) {
 	    update_adler32_seed(&ads, vbuff + vc - vbuff_start, rhash->seed_len);
 	} else {
+	    assert(vc + rhash->seed_len - va < vbuff_end);
 	    update_adler32_seed(&ads, vbuff + (va - vbuff_start), vc + rhash->seed_len -va);
 	}
 	va = vc + rhash->seed_len;
@@ -308,7 +473,7 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, unsigned char ref_id,
 	        err = DCB_llm_init_buff(buff, 128);
 		if(err)
 		    return err;
-	        err = OneHalfPassCorrecting(buff, &rhash, ref_id, &ver_window, ver_id);
+	        err = OneHalfPassCorrecting2(buff, &rhash, ref_id, &ver_window, ver_id);
 		if(err)
 		    return err;
 	        err = DCB_insert(buff);
@@ -336,7 +501,7 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, unsigned char ref_id,
 	    err = DCB_llm_init_buff(buff, 128);
 	    if(err)
 		return err;
-	    err = OneHalfPassCorrecting(buff, &rhash, ref_id, ver_cfh, ver_id);
+	    err = OneHalfPassCorrecting2(buff, &rhash, ref_id, ver_cfh, ver_id);
 	    if(err)
 		return err;
 	    err = DCB_insert(buff);
