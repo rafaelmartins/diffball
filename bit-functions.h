@@ -18,7 +18,7 @@ unsigned long readUnsignedBytes(const unsigned char *buff, unsigned char l);
 signed long readSignedBytes(const unsigned char *buff, unsigned char l);
 int convertUBytesChar(unsigned char *out_buff, unsigned long value, unsigned char byte_count);
 int convertSBytesChar(unsigned char *out_buff, signed long value, unsigned char byte_count);
-int writeUBytes(int fh, unsigned long value, unsigned char byte_count);
+/*int writeUBytes(int fh, unsigned long value, unsigned char byte_count);*/
 
 #endif
 

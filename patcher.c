@@ -19,7 +19,6 @@
 
 int main(int argc, char **argv)
 {
-    unsigned long int x;
     struct stat src_stat, delta_stat;
     int src_fh, delta_fh, out_fh;
     //struct PatchDeltaBuffer PDBuff;
@@ -32,7 +31,7 @@ int main(int argc, char **argv)
 		perror("what the hell, stat failed.  wtf?\n");
 		exit(EXIT_FAILURE);
     }
-    printf("src_fh size=%lu\n", src_stat.st_size);
+    printf("src_fh size=%lu\n", (unsigned long)src_stat.st_size);
     if ((src_fh = open(argv[1], O_RDONLY,0)) == -1) {
 		printf("Couldn't open %s, does it exist?\n", argv[1]);
 		exit(EXIT_FAILURE);
@@ -45,7 +44,7 @@ int main(int argc, char **argv)
 		perror("what the hell, stat failed.  wtf?\n");
 		exit(EXIT_FAILURE);
     }
-    printf("delta_fh size=%lu\n", delta_stat.st_size);
+    printf("delta_fh size=%lu\n", (unsigned long)delta_stat.st_size);
     if((out_fh = open(argv[3], O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1) {
 		printf("Couldn't create\truncate output file.\n");
 		exit(EXIT_FAILURE);
@@ -65,5 +64,6 @@ int main(int argc, char **argv)
     printf("patchf->fh_pos(%lu)\n", patchfile.fh_pos);
     gdiffReconstructFile(src_fh, out_fh, &patchfile, ENCODING_OFFSET_START, 4);
 	cclose(&patchfile);
+	return 0;
 }
 

@@ -10,7 +10,6 @@
 
 int main(int argc, char **argv)
 {
-    unsigned long int x;
     struct stat src_stat, trg_stat;
     struct cfile out_cfile;
     int src_fh, trg_fh, out_fh;
@@ -27,7 +26,8 @@ int main(int argc, char **argv)
 	perror("what the hell, stat failed.  wtf?\n");
 	exit(1);
     }
-    printf("src_fh size=%lu\ntrg_fh size=%lu\n", src_stat.st_size, trg_stat.st_size);
+    printf("src_fh size=%lu\ntrg_fh size=%lu\n", 
+    	(unsigned long)src_stat.st_size, (unsigned long)trg_stat.st_size);
     if ((src_fh = open(argv[1], O_RDONLY,0)) == -1) {
 	printf("Couldn't open %s, does it exist?\n", argv[1]);
 	exit(EXIT_FAILURE);

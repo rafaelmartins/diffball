@@ -149,7 +149,7 @@ signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer,
 		    clen+= ob;
 		    convertUBytesChar(out_buff + clen, buffer->lb_tail->len, lb);
 		    clen+=lb;
-		    printf("writing copy command delta_pos(%lu), fh_pos(%lu), type(%u), offset(%ld), len(%lu)\n",
+		    printf("writing copy delta_pos(%lu), fh_pos(%lu), type(%u), offset(%ld), len(%lu)\n",
 			delta_pos, fh_pos, out_buff[0], (off_is_sbytes ? s_off: u_off), buffer->lb_tail->len);
 		    if(cwrite(out_fh, out_buff, clen)!=clen) {
 				printf("shite, couldn't write copy command. eh?\n");

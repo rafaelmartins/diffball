@@ -40,9 +40,8 @@ signed int cclose(struct cfile *cfile)
 			return x== cfile->raw_buff_pos ? 0 : 1;
 			break;
 		}
-	} else {
-		return 0;
 	}
+	return 0;
 }
 
 unsigned long cread(struct cfile *cfile, unsigned char *out_buff, unsigned long len)
@@ -79,7 +78,7 @@ unsigned long cread(struct cfile *cfile, unsigned char *out_buff, unsigned long 
 unsigned long cwrite(struct cfile *cfile, unsigned char *in_buff, unsigned long len)
 {
     unsigned long bytes_wrote = 0, tmp;
-    unsigned int compr_bytes = 0, uncompr_bytes=0;
+    unsigned int /*compr_bytes = 0,*/ uncompr_bytes=0;
     while(len != bytes_wrote) {
 		if(cfile->raw_buff_pos == cfile->raw_buff_size) {
 	    	//printf("flushing write buffer\n");

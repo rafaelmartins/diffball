@@ -90,9 +90,10 @@ int convertUBytesChar(unsigned char *out_buff, unsigned long value, unsigned cha
     return 0;
 }
 
-int writeUBytes(int fh, unsigned long value, unsigned char byte_count)
+/*int writeUBytes(int fh, unsigned long value, unsigned char byte_count)
 {
    unsigned char out_buff[16];
    convertUBytesChar(out_buff, value, byte_count);
    return write(fh, out_buff, byte_count);
-}
+}*/
+
