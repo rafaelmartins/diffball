@@ -28,7 +28,7 @@ check_for_format(char *format_name, unsigned int len)
 	return GDIFF4_FORMAT;
    } else if(6==len && strncasecmp(format_name, "GDIFF5", 6)==0) {
 	return GDIFF5_FORMAT;
-   } else if(5==len && strncasecmp(format_name, "BDELTA", 5)==0) {
+   } else if(6==len && strncasecmp(format_name, "BDELTA", 5)==0) {
 	return BDELTA_FORMAT;
    } else if(5==len && strncasecmp(format_name, "XDELTA", 5)==0) {
 	return XDELTA1_FORMAT;
@@ -36,13 +36,13 @@ check_for_format(char *format_name, unsigned int len)
 	return SWITCHING_FORMAT;
    } else if(5==len && strncasecmp(format_name, "BDIFF", 5)==0) {
 	return BDIFF_FORMAT;
-   } else if((6==len && strncasecmp(format_name, "BSDIFF", 6)==0) || 
+/*   } else if((6==len && strncasecmp(format_name, "BSDIFF", 6)==0) || 
 	(7==len && strncasecmp(format_name, "BSDIFF4", 7)==0)) {
 	return BSDIFF4_FORMAT;
    } else if((7==len && strncasecmp(format_name, "BSDIFF3", 7)==0) || 
 	(8==len && strncasecmp(format_name, "QSUFDIFF", 8)==0)) {
 	return BSDIFF3_FORMAT;
-   }
+*/   }
    return 0;
 }
 
@@ -63,6 +63,8 @@ identify_format(cfile *patchf)
 	format = BDIFF_FORMAT;
     } else if ((val=check_xdelta1_magic(patchf))) {
 	format = XDELTA1_FORMAT;
+    } else if ((val=check_bsdiff_magic(patchf))) {
+	format = BSDIFF_FORMAT;
     }
     v2printf("identify_format, val=%lu, format=%lu\n", val, format);
     if(format==0) {
