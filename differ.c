@@ -53,6 +53,7 @@ int main(int argc, char **argv)
     struct stat ref_stat, ver_stat;
     cfile out_cfh, ref_cfh, ver_cfh;
     int ref_fh, ver_fh, out_fh;
+    unsigned char ref_id, ver_id;
     //char *src, *trg;
     CommandBuffer buffer;
     poptContext p_opt;
@@ -146,6 +147,7 @@ int main(int argc, char **argv)
 	seed_len, sample_rate, hash_size);
     v1printf("verbosity level(%u)\n", global_verbosity);
     v1printf("initializing Command Buffer...\n");
+
 /*    
     if(0==1) {
 	err=DCBufferInit(&buffer, 4096, ref_stat.st_size, ver_stat.st_size, 
@@ -175,7 +177,9 @@ int main(int argc, char **argv)
 	DCBufferInit(&buffer, 4, ref_stat.st_size, ver_stat.st_size,
 	    DCBUFFER_LLMATCHES_TYPE);
 	v1printf("running multipass alg\n");
-	MultiPassAlg(&buffer, &ref_cfh, &ver_cfh, hash_size);
+	ref_id = DCB_REGISTER_ADD_SRC(&buffer, &ver_cfh, NULL, 0);
+	ver_id = DCB_REGISTER_COPY_SRC(&buffer, &ref_cfh, NULL, 0);
+	MultiPassAlg(&buffer, &ref_cfh, ref_id, &ver_cfh, ver_id, hash_size);
 	DCB_insert(&buffer);
 	//free_RefHash(&rhash);
 /*
@@ -186,6 +190,8 @@ int main(int argc, char **argv)
 	    v0printf("error allocing mem, exiting\n");
 	    exit(EXIT_FAILURE);
 	}
+	ref_id = DCB_REGISTER_ADD_SRC(&buffer, &ver_cfh, NULL, 0);
+	ver_id = DCB_REGISTER_COPY_SRC(&buffer, &ref_cfh, NULL, 0);
 	v1printf("initializing Reference Hash...\n");
 	if(init_RefHash(&rhash, &ref_cfh, 16, sample_rate, hash_size, 
 	    RH_BUCKET_HASH)) {
@@ -209,7 +215,6 @@ int main(int argc, char **argv)
 	v0printf("error allocing needed memory for output, exiting\n");
 	exit(1);
     }
-    DCBUFFER_REGISTER_ADD_SRC(&buffer, &ver_cfh, NULL, 0);
     if(GDIFF4_FORMAT == patch_id) {
 	encode_result = gdiff4EncodeDCBuffer(&buffer, &out_cfh);
     } else if(GDIFF5_FORMAT == patch_id) {

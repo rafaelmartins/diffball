@@ -28,6 +28,6 @@
 unsigned int check_bsdiff_magic(cfile *patchf);
 signed int bsdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh, 
 	cfile *out_cfh);
-signed int bsdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff);
+signed int bsdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff);
 
 #endif

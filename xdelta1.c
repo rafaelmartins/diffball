@@ -18,7 +18,6 @@
 #include <stdlib.h>
 #include "defs.h"
 #include <string.h>
-#include "dcbuffer.h"
 #include "cfile.h"
 #include "bit-functions.h"
 #include "xdelta1.h"
@@ -71,7 +70,7 @@ xdelta1EncodeDCBuffer(CommandBuffer *buffer, unsigned int version,
 }
 
 signed int 
-xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff, 
+xdelta1ReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff, 
     unsigned int version)
 {
     cfile *add_cfh, *ctrl_cfh;
@@ -79,6 +78,7 @@ xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
     unsigned long len, offset, x, count, proc_count;
     unsigned long add_start, add_pos;
     unsigned char buff[32];
+    unsigned char ref_id, add_id;
     unsigned char add_is_sequential, copy_is_sequential;
     cseek(patchf, XDELTA_MAGIC_LEN, CSEEK_FSTART);
     cread(patchf, buff, 4);
@@ -155,17 +155,18 @@ xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 	}
 	copen_child_cfh(add_cfh, patchf, add_start, control_offset, 
 	    GZIP_COMPRESSOR, CFILE_RONLY);
-	DCBUFFER_REGISTER_ADD_SRC(dcbuff, add_cfh, NULL, 1);
+	add_id = DCB_REGISTER_ADD_SRC(dcbuff, add_cfh, NULL, 1);
     } else {
 	add_pos = add_start;
-	DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL, 0);
+	add_id = DCB_REGISTER_ADD_SRC(dcbuff, patchf, NULL, 0);
     }
+    ref_id = DCB_REGISTER_COPY_SRC(dcbuff, ref_cfh, NULL, 0);
     while(proc_count++ != count) {
 	x = readXDInt(ctrl_cfh, buff);
 	offset = readXDInt(ctrl_cfh, buff);
 	len = readXDInt(ctrl_cfh, buff);
 	if(x==XD_INDEX_COPY) {
-	    DCB_add_copy(dcbuff, offset, 0, len);
+	    DCB_add_copy(dcbuff, offset, 0, len, ref_id);
 	} else {
 	    if(add_is_sequential != 0) {
 		offset += add_pos; 
@@ -173,7 +174,7 @@ xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 	    } else {
 		offset += add_pos;
 	    }
-	    DCB_add_add(dcbuff, offset, len, 0);
+	    DCB_add_add(dcbuff, offset, len, add_id);
 	}
     }
     v2printf("finishing position was %lu\n", ctell(ctrl_cfh, CSEEK_FSTART));

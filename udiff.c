@@ -36,13 +36,14 @@ getUDec(cfile *cfh)
 }
 
 signed int
-udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
+udiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf,
     tar_entry **tarball, CommandBuffer *dcbuff)
 {
     unsigned long s_line, s_len, v_line, v_len;
     unsigned long s_lastline, s_lastoff;
     unsigned long line_count, offset, len;
     unsigned char add_copy, newline_complaint=0;
+    unsigned char add_id, ref_id;
     unsigned char buff[512];
     cread(patchf, buff, 3);
     if(0!=memcmp(buff, "---", 3))
@@ -51,7 +52,8 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 	return PATCH_CORRUPT_ERROR;
     s_lastoff = 0;
     s_lastline = 1;
-    DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL,0);
+    add_id = DCB_REGISTER_ADD_SRC(dcbuff, patchf, NULL, 0);
+    ref_id = DCB_REGISTER_COPY_SRC(dcbuff, ref_cfh, NULL, 0);
     while(cfile_len(patchf)!= ctell(patchf, CSEEK_FSTART)) {
 	cread(patchf, buff, 4);
 	if('\\'==buff[0]) {
@@ -75,9 +77,9 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 	s_line = getUDec(patchf);
 	v2printf("for segment, s_line(%lu), s_lastline(%lu):", s_line, 
 	    s_lastline);
-	skip_lines_forward(src_cfh, s_line - s_lastline);
+	skip_lines_forward(ref_cfh, s_line - s_lastline);
 	s_lastline = s_line;
-	v2printf("at pos(%lu) in src_cfh\n", ctell(src_cfh, CSEEK_FSTART));
+	v2printf("at pos(%lu) in ref_cfh\n", ctell(ref_cfh, CSEEK_FSTART));
 	cread(patchf, buff, 1);
 	if(buff[0]==',')
 	    s_len = /*s_line -*/ getUDec(patchf);
@@ -106,18 +108,18 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 		/* common line */
 		v2printf("skipping a line in both src and patch\n");
 		if(add_copy==0) 
-		    s_lastoff = ctell(src_cfh, CSEEK_FSTART);
+		    s_lastoff = ctell(ref_cfh, CSEEK_FSTART);
 		line_count++;
-		skip_lines_forward(src_cfh, 1);
+		skip_lines_forward(ref_cfh, 1);
 		s_lastline++;
 		skip_lines_forward(patchf, 1);
 		add_copy=1;
 	    } else if('+'==buff[0]) {
 		v2printf("got a version tweak(+): ");
 		if(add_copy) {
-		    offset = ctell(src_cfh, CSEEK_FSTART);
+		    offset = ctell(ref_cfh, CSEEK_FSTART);
 		    v2printf("adding copy for add_copy: ");
-		    DCB_add_copy(dcbuff, s_lastoff, 0, offset - s_lastoff);
+		    DCB_add_copy(dcbuff, s_lastoff, 0, offset - s_lastoff, ref_id);
 		    s_lastoff = offset;
 		    //s_lastline++; 
 		    add_copy=0;
@@ -126,21 +128,21 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 		v2printf("skipping a line in patch\n");
 		skip_lines_forward(patchf, 1);
 		len = (ctell(patchf, CSEEK_FSTART)) - offset;
-		DCB_add_add(dcbuff, offset, len, 0);
+		DCB_add_add(dcbuff, offset, len, add_id);
 		line_count++;
 	    } else if('-'==buff[0]) {
 		v2printf("got a source  tweak(-): ");
 		if(add_copy) {
-		    offset = ctell(src_cfh, CSEEK_FSTART);
+		    offset = ctell(ref_cfh, CSEEK_FSTART);
 		    v2printf("adding copy for add_copy: ");
-		    DCB_add_copy(dcbuff, s_lastoff, 0, offset - s_lastoff);
+		    DCB_add_copy(dcbuff, s_lastoff, 0, offset - s_lastoff, ref_id);
 		    add_copy=0;
 		}
 		v2printf("skipping a line in patch\n");
 		skip_lines_forward(patchf, 1);
 		s_lastline++;
-		skip_lines_forward(src_cfh, 1);
-		s_lastoff = ctell(src_cfh, CSEEK_FSTART);
+		skip_lines_forward(ref_cfh, 1);
+		s_lastoff = ctell(ref_cfh, CSEEK_FSTART);
 	    } else if('\\'==buff[0]) {
 		v2printf("got me a (hopefully) 'No newline...'\n");
 		if(26!=cread(patchf, buff + 1, 26))
@@ -158,8 +160,8 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 	} 
 	v2printf("so ends that segment\n");
     }
-    if(ctell(src_cfh, CSEEK_FSTART)!=cfile_len(src_cfh))
-	DCB_add_copy(dcbuff, s_lastoff, 0, cfile_len(src_cfh) - s_lastoff);
+    if(ctell(ref_cfh, CSEEK_FSTART)!=cfile_len(ref_cfh))
+	DCB_add_copy(dcbuff, s_lastoff, 0, cfile_len(ref_cfh) - s_lastoff, ref_id);
     return 0;
 
 }

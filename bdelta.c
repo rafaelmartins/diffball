@@ -142,11 +142,12 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *patchf)
 }
 
 signed int 
-bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
+bdeltaReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff)
 {
     unsigned int int_size;
     #define BUFF_SIZE 12
     unsigned int ver;
+    unsigned char ref_id, add_id;
     unsigned char buff[BUFF_SIZE];
     unsigned long matches, add_len, copy_len, copy_offset;
     unsigned long size1, size2, or_mask=0, neg_mask;
@@ -184,7 +185,8 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
     /* add block starts after control data. */
     add_pos += (matches * (3 * int_size));
     add_start = add_pos;
-    DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL, 0);
+    add_id = DCB_REGISTER_ADD_SRC(dcbuff, patchf, NULL, 0);
+    ref_id = DCB_REGISTER_ADD_SRC(dcbuff, ref_cfh, NULL, 0);
     v2printf("add block starts at %lu\nprocessing commands\n", add_pos);
     unsigned long match_orig = matches;
     if(size1==0) {
@@ -200,8 +202,7 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 	copy_len = readUBytesLE(buff + int_size * 2, int_size);
     	if(add_len) {
 	    v2printf("add  len(%lu)\n", add_len);
-	    DCB_add_add(dcbuff, add_pos, add_len, 0);
-//	    DCBufferAddCmd(dcbuff, DC_ADD, add_pos, add_len);
+	    DCB_add_add(dcbuff, add_pos, add_len, add_id);
 	    add_pos += add_len;
 	}
 	/* hokay, this is screwed up.  Course bdelta seems like it's got 
@@ -220,8 +221,7 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 	if(copy_len) {
 	    v2printf("copy len(%lu), off(%ld), pos(%lu)\n", 
 		copy_len, (signed long)copy_offset, ver_pos);
-	    DCB_add_copy(dcbuff, ver_pos, 0, copy_len);
-//	    DCBufferAddCmd(dcbuff, DC_COPY, ver_pos, copy_len);
+	    DCB_add_copy(dcbuff, ver_pos, 0, copy_len, ref_id);
 	    ver_pos += copy_len;
 	}
 	processed_size += add_len + copy_len;

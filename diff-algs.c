@@ -30,7 +30,7 @@
    credit for bugs in the implementation of said algorithms... */
 
 signed int 
-OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
+OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, unsigned char ref_id, cfile *ver_cfh, unsigned  char ver_id)
 {
     off_u64 ver_len, ref_len;
     int err;
@@ -191,14 +191,14 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 			cfile_start_offset(ver_cfh) + vs, vm-vs, 
 			cfile_start_offset(ver_cfh) + vm);
 		    DCB_add_add(buffer, cfile_start_offset(ver_cfh) + vs, 
-			vm -vs, 0);
+			vm -vs, ver_id);
 		}
 		v2printf("    copying src_offset(%lu), ver_offset(%lu), len(%lu), ver_end(%lu)\n", 
 		    cfile_start_offset(rhash->ref_cfh) + rm, 
 		    cfile_start_offset(ver_cfh) + vm, len, 
 		    cfile_start_offset(ver_cfh) + vm + len);
 		DCB_add_copy(buffer, cfile_start_offset(rhash->ref_cfh) +rm, 
-		    cfile_start_offset(ver_cfh) + vm, len);
+		    cfile_start_offset(ver_cfh) + vm, len, ref_id);
 	    } else {
 		v2printf("    truncating(%lu) bytes: (vm < vs)\n", vs - vm);
 		assert(vs -vm < cfile_len(ver_cfh));
@@ -206,7 +206,7 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 		v2printf("    replacement copy: offset(%lu), len(%lu)\n", 
 		    cfile_start_offset(rhash->ref_cfh) + rm, len);
 		DCB_add_copy(buffer, cfile_start_offset(rhash->ref_cfh) + rm, 
-		    cfile_start_offset(ver_cfh) + vm, len);
+		    cfile_start_offset(ver_cfh) + vm, len, ref_id);
 	    }
 	    vs = vm + len;
 	    vc = vs -1;
@@ -216,7 +216,7 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 	vc++;
     }
     if (vs != ver_len) {
-	DCB_add_add(buffer, cfile_start_offset(ver_cfh) + vs, ver_len - vs, 0);
+	DCB_add_add(buffer, cfile_start_offset(ver_cfh) + vs, ver_len - vs, ver_id);
     }
     free_adler32_seed(&ads);
     return 0;
@@ -224,7 +224,8 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 
 
 signed int
-MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, cfile *ver_cfh,
+MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, unsigned char ref_id,
+    cfile *ver_cfh, unsigned char ver_id, 
     unsigned long max_hash_size)
 {
     int err;
@@ -307,7 +308,7 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, cfile *ver_cfh,
 	        err = DCB_llm_init_buff(buff, 128);
 		if(err)
 		    return err;
-	        err = OneHalfPassCorrecting(buff, &rhash, &ver_window);
+	        err = OneHalfPassCorrecting(buff, &rhash, ref_id, &ver_window, ver_id);
 		if(err)
 		    return err;
 	        err = DCB_insert(buff);
@@ -335,7 +336,7 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, cfile *ver_cfh,
 	    err = DCB_llm_init_buff(buff, 128);
 	    if(err)
 		return err;
-	    err = OneHalfPassCorrecting(buff, &rhash, ver_cfh);
+	    err = OneHalfPassCorrecting(buff, &rhash, ref_id, ver_cfh, ver_id);
 	    if(err)
 		return err;
 	    err = DCB_insert(buff);

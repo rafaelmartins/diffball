@@ -28,9 +28,10 @@
 #include "hash.h"
 
 void print_RefHash_stats(RefHash *rhash);
-signed int OneHalfPassCorrecting(CommandBuffer *buffer, 
-	RefHash *rhash, cfile *ver_cfh);
-signed int MultiPassAlg(CommandBuffer *buffer, cfile *src_cfh, cfile *ver_cfh,
+signed int OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, unsigned char src_id, 
+	cfile *ver_cfh, unsigned char ver_id);
+signed int MultiPassAlg(CommandBuffer *buffer, cfile *ref_cfh, unsigned char ref_id, 
+    cfile *ver_cfh, unsigned char ver_id, 
     unsigned long max_hash_size);
 #endif
 

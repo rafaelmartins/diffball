@@ -145,30 +145,30 @@ main(int argc, char **argv)
 	abort();
     }
     if(SWITCHING_FORMAT == patch_id) {
-	recon_val = switchingReconstructDCBuff(&patch_cfh, &dcbuff);
+	recon_val = switchingReconstructDCBuff(&src_cfh, &patch_cfh, &dcbuff);
     } else if(GDIFF4_FORMAT == patch_id) {
-	recon_val = gdiff4ReconstructDCBuff(&patch_cfh, &dcbuff);
+	recon_val = gdiff4ReconstructDCBuff(&src_cfh, &patch_cfh, &dcbuff);
     } else if(GDIFF5_FORMAT == patch_id) {
-	recon_val = gdiff5ReconstructDCBuff(&patch_cfh, &dcbuff);
+	recon_val = gdiff5ReconstructDCBuff(&src_cfh, &patch_cfh, &dcbuff);
     } else if(BDIFF_FORMAT == patch_id) {
-	recon_val = bdiffReconstructDCBuff(&patch_cfh, &dcbuff);
+	recon_val = bdiffReconstructDCBuff(&src_cfh, &patch_cfh, &dcbuff);
     } else if(XDELTA1_FORMAT == patch_id) {
-	recon_val = xdelta1ReconstructDCBuff(&patch_cfh, &dcbuff, 1);
+	recon_val = xdelta1ReconstructDCBuff(&src_cfh, &patch_cfh, &dcbuff, 1);
     } else if(BDELTA_FORMAT == patch_id) {
-	recon_val = bdeltaReconstructDCBuff(&patch_cfh, &dcbuff);
+	recon_val = bdeltaReconstructDCBuff(&src_cfh, &patch_cfh, &dcbuff);
     } else if(BSDIFF_FORMAT == patch_id) {
-	recon_val = bsdiffReconstructDCBuff(&patch_cfh, &dcbuff);
+	recon_val = bsdiffReconstructDCBuff(&src_cfh, &patch_cfh, &dcbuff);
     } else if(FDTU_FORMAT == patch_id) {
-	recon_val = fdtuReconstructDCBuff(&patch_cfh, &dcbuff);
+	recon_val = fdtuReconstructDCBuff(&src_cfh, &patch_cfh, &dcbuff);
 //    } else if(UDIFF_FORMAT == patch_id) {
-//	recon_val = udiffReconstructDCBuff(&patch_cfh, &src_cfh, NULL, &dcbuff);
+//	recon_val = udiffReconstructDCBuff(&src_cfh, &patch_cfh, &src_cfh, NULL, &dcbuff);
     }
     v1printf("reconstruction return=%ld\n", recon_val);
     v1printf("reconstructing target file based off of dcbuff commands...\n");
     if(recon_val) {
 	v0printf("error detected while reading patch- quitting\n");
     } else {
-	DCBUFFER_REGISTER_COPY_SRC(&dcbuff, &src_cfh, NULL, 0);
+//	DCBUFFER_REGISTER_COPY_SRC(&dcbuff, &src_cfh, NULL, 0);
 	if(copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY)) {
 	    v0printf("error opening output file, exitting\n");
 	} else if(reconstructFile(&dcbuff, &out_cfh)) {

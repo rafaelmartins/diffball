@@ -61,8 +61,9 @@ main(int argc, char **argv)
     tar_entry **target = NULL;
     tar_entry *tar_ptr = NULL;
     void *vptr;
+    unsigned char ref_id, ver_id;
     unsigned long source_count, target_count;
-    signed long encode_result;
+    signed long encode_result=0;
     unsigned long x, patch_format_id;
     char src_common[512], trg_common[512], *p;  /* common dir's... */
     unsigned long match_count;
@@ -261,6 +262,8 @@ main(int argc, char **argv)
     }
     v1printf("looking for matching filenames in the archives...\n");
 
+    ref_id = DCB_REGISTER_ADD_SRC(&dcbuff, &ver_full, NULL, 0);
+    ver_id = DCB_REGISTER_COPY_SRC(&dcbuff, &ref_full, NULL, 0);
     for(x=0; x< target_count; x++) {
 
 	v1printf("processing %lu of %lu\n", x + 1, target_count);
@@ -299,7 +302,7 @@ main(int argc, char **argv)
 		cfile_len(&ref_window));
 	    RHash_cleanse(&rhash_win);
 	    print_RefHash_stats(&rhash_win);
-            OneHalfPassCorrecting(&dcbuff, &rhash_win, &ver_window);
+            OneHalfPassCorrecting(&dcbuff, &rhash_win, ref_id, &ver_window, ver_id);
 //	    MultiPassAlg(&dcbuff, &ref_window, &ver_window, hash_size);
             free_RefHash(&rhash_win);
 	    cclose(&ref_window);
@@ -321,13 +324,12 @@ main(int argc, char **argv)
     free(target);
 
     v1printf("beginning search for gaps, and unprocessed files\n");
-    MultiPassAlg(&dcbuff, &ref_full, &ver_full, hash_size);
+    MultiPassAlg(&dcbuff, &ref_full, ref_id, &ver_full, ver_id, hash_size);
     cclose(&ref_full);
 
     copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY | CFILE_OPEN_FH);
     v1printf("outputing patch...\n");
     v1printf("there were %lu commands\n", dcbuff.DCB.full.buffer_count);
-    DCBUFFER_REGISTER_ADD_SRC(&dcbuff, &ver_full, NULL, 0);
     if(GDIFF4_FORMAT == patch_format_id) { 
         encode_result = gdiff4EncodeDCBuffer(&dcbuff, &out_cfh);
     } else if(GDIFF5_FORMAT == patch_format_id) {

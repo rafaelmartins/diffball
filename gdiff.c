@@ -17,8 +17,6 @@
 */
 #include <stdlib.h>
 #include "defs.h"
-//#include <stdio.h>
-//#include <assert.h>
 #include "gdiff.h"
 #include "bit-functions.h"
 
@@ -189,7 +187,7 @@ gdiffEncodeDCBuffer(CommandBuffer *buffer,
 }
 
 signed int 
-gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff, 
+gdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff, 
 	unsigned int offset_type)
 {
     const unsigned int buff_size = 5;
@@ -198,6 +196,7 @@ gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
     unsigned long ver_pos=0, dc_pos=0;
     unsigned long int u_off=0;
     signed long int s_off=0;
+    unsigned char add_id, ref_id;
     int off_is_sbytes, ob=0, lb=0;
     if(offset_type==ENCODING_OFFSET_DC_POS)
 	off_is_sbytes=1;
@@ -205,7 +204,10 @@ gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 	off_is_sbytes=0;
     assert(DCBUFFER_FULL_TYPE == dcbuff->DCBtype);
     cseek(patchf, 5, CSEEK_CUR);
-    DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL,0);
+
+    add_id = DCB_REGISTER_ADD_SRC(dcbuff, patchf, NULL, 0);
+    ref_id = DCB_REGISTER_COPY_SRC(dcbuff, ref_cfh, NULL, 0);
+
     while(cread(patchf, buff, 1)==1 && *buff != 0) {
 	if(*buff > 0 && *buff <= 248) {
 	    //add command
@@ -221,7 +223,7 @@ gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 	        len= readUBytesBE(buff, lb);
 	    } else
 		len=*buff;
-	    DCB_add_add(dcbuff, ctell(patchf, CSEEK_FSTART), len, 0);
+	    DCB_add_add(dcbuff, ctell(patchf, CSEEK_FSTART), len, add_id);
 	    v2printf("len(%lu)\n", len);
 	    cseek(patchf, len, CSEEK_CUR);
 	} else if(*buff >= 249 ) {
@@ -262,7 +264,7 @@ gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 		    dc_pos = u_off = dc_pos + s_off;
 		}
 		v2printf("offset(%lu), len(%lu)\n", u_off, len);
-		DCB_add_copy(dcbuff, u_off, 0, len);
+		DCB_add_copy(dcbuff, u_off, 0, len, ref_id);
 		ver_pos+=len;
 	    }
     }

@@ -66,7 +66,7 @@ const unsigned long copy_soff_start[] = {
 
 signed 
 int switchingEncodeDCBuffer(CommandBuffer *buffer, 
-    /*unsigned int offset_type,*/ cfile *out_cfh)
+    cfile *out_cfh)
 {
     unsigned long fh_pos=0;
     signed long s_off=0;
@@ -235,11 +235,10 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
     return 0;
 }
 
-signed int switchingReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff /*, 
-    unsigned int offset_type*/) {
-    //unsigned char *cptr;
+signed int switchingReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff) {
     const unsigned int buff_size = 4096;
     unsigned char buff[buff_size];
+    unsigned char ref_id, add_id;
     unsigned long int len;
     unsigned long ver_pos=0, dc_pos=0;
     unsigned long int u_off;
@@ -269,7 +268,8 @@ signed int switchingReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff /*,
     cseek(patchf, com_start, CSEEK_CUR);
     add_off = SWITCHING_MAGIC_LEN + SWITCHING_VERSION_LEN + 4;
     last_com=DC_COPY;
-    DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL,0);
+    add_id = DCB_REGISTER_ADD_SRC(dcbuff, patchf, NULL, 0);
+    ref_id = DCB_REGISTER_COPY_SRC(dcbuff, ref_cfh, NULL, 0);
     v2printf("add data block size(%lu), starting commands at pos(%lu)\n", com_start,
 	ctell(patchf, CSEEK_ABS));
     while(cread(patchf, buff, 1)==1 && end_of_patch==0) {
@@ -283,7 +283,7 @@ signed int switchingReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff /*,
 		    len += add_len_start[lb];
 	    	}
 	    	if(len) {
-		    DCB_add_add(dcbuff, add_off, len, 0);
+		    DCB_add_add(dcbuff, add_off, len, add_id);
 		    add_off += len;
 	    	}
 	    	last_com = DC_ADD;
@@ -324,8 +324,7 @@ signed int switchingReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff /*,
 	    	    continue;
 	    	}
 	    	if(len) {
-		    DCB_add_copy(dcbuff, u_off, 0, len);
-//		    DCBufferAddCmd(dcbuff, DC_COPY, u_off, len);
+		    DCB_add_copy(dcbuff, u_off, 0, len, ref_id);
 		}
 	    	last_com = DC_COPY;
 	    	v2printf("copy off(%ld), len(%lu)\n", u_off, len);

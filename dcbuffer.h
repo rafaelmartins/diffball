@@ -69,7 +69,7 @@ typedef struct {
 } DCommand;
 
 typedef struct _CommandBuffer *DCB_ptr;
-typedef unsigned long (*dcb_src_func)(DCB_ptr, DCommand *, cfile *);
+typedef unsigned long (*dcb_src_read_func)(DCB_ptr, DCommand *, cfile *);
 
 typedef struct _CommandBuffer {
     off_u64 src_size;
@@ -83,11 +83,9 @@ typedef struct _CommandBuffer {
 	struct {
 	    unsigned long buffer_count;
 	    unsigned long buffer_size;
-	    unsigned char *cb_start, *cb_end, *cb_head, *cb_tail;
-	    unsigned char cb_tail_bit, cb_head_bit;
+	    unsigned long command_pos;
+	    unsigned char *src_id;
 	    DCLoc *lb_start, *lb_end, *lb_head, *lb_tail;
-	    unsigned long add_index;
-	    unsigned char *add_src_id;
 	} full;
 	struct {
 	    off_u64 ver_start;
@@ -103,20 +101,18 @@ typedef struct _CommandBuffer {
 	    unsigned long free_size, free_count;
 	} llm;
     } DCB;
-    cfile *add_src_cfh[2];
-    dcb_src_func add_src_func[2];
-    unsigned short add_src_count;
-    unsigned long  add_src_free;
+
+    cfile **src_cfh;
+    dcb_src_read_func *src_read_func;
+    unsigned int src_array_size, src_count;
+    unsigned char src_free[16];
+    unsigned char src_type[16];
 
     /* this is a hack, and not a particularly good one either.
 	things need to be expanded to eliminate the need for this- check the 
 	bsdiff format reconstructor if you're curious of it's reason for 
 	existing*/
     void *extra_patch_data;
-    cfile *copy_src_cfh[2];
-    dcb_src_func copy_src_func[2];
-    unsigned short copy_src_count;
-    unsigned long  copy_src_free;
     unsigned long flags;
 } CommandBuffer;
 
@@ -132,27 +128,12 @@ typedef struct _CommandBuffer {
 #endif
 
 #define copyDCB_add_src(buff, dc, out_cfh)				\
-    (buff)->add_src_func[(dc)->src_id]((buff), (dc), (out_cfh))
+    (buff)->src_read_func[(dc)->src_id]((buff), (dc), (out_cfh))
 #define copyDCB_copy_src(buff, dc, out_cfh)				\
-    (buff)->copy_src_func[(dc)->src_id]((buff), (dc), (out_cfh))
+    (buff)->src_read_func[(dc)->src_id]((buff), (dc), (out_cfh))
 
-#define DCBUFFER_REGISTER_ADD_SRC(buff, handle, func, free)		\
-    if((buff)->add_src_count >= 2){abort();};				\
-    (buff)->add_src_cfh[(buff)->add_src_count] = (handle);		\
-    (buff)->add_src_func[(buff)->add_src_count] = ((func) == NULL ? 	\
-	&default_dcb_add_func : (func));				\
-    (buff)->add_src_free |= (((free) & 0x1) << (buff)->add_src_count);	\
-    v2printf("registering %u add_src\n", (buff)->add_src_count);	\
-    (buff)->add_src_count++
-
-#define DCBUFFER_REGISTER_COPY_SRC(buff, handle, func, free)		\
-    if((buff)->copy_src_count >= 2) {abort();};				\
-    (buff)->copy_src_cfh[(buff)->copy_src_count] = (handle);		\
-    (buff)->copy_src_func[(buff)->copy_src_count] = ((func) == NULL ? 	\
-	&default_dcb_copy_func : (func));				\
-    (buff)->copy_src_free |= (((free) & 0x1) << 			\
-	(buff)->copy_src_count);					\
-    (buff)->copy_src_count++
+#define DCB_REGISTER_ADD_SRC(buff, cfh, func, free)	(DCB_register_src((buff), (cfh), (func), (free), DC_ADD))
+#define DCB_REGISTER_COPY_SRC(buff, cfh, func, free)	(DCB_register_src((buff), (cfh), (func), (free), DC_COPY))
 
 /* not used anymore, chuck at some point */
 #define DCB_REGISTER_MATCHES_VER_CFH(buff, cfh)				\
@@ -161,6 +142,9 @@ typedef struct _CommandBuffer {
     } else if((buff)->DCBtype==DCBUFFER_LLMATCHES_TYPE) {		\
 	(buff)->DCB.llm.ver_start = cfile_start_offset((cfh));		\
     }
+
+int DCB_register_src(CommandBuffer *dcb, cfile *cfh, dcb_src_read_func read_func, 
+    unsigned char free, unsigned char type);
 
 unsigned long inline current_command_type(CommandBuffer *buff);
 unsigned long default_dcb_add_func(CommandBuffer *dcb, DCommand *dc, 
@@ -182,9 +166,9 @@ void DCB_get_next_command(CommandBuffer *buffer, DCommand *dc);
 void DCB_truncate(CommandBuffer *buffer, unsigned long len);
 
 void DCB_add_add(CommandBuffer *buffer, off_u64 ver_pos, unsigned long len,
-    unsigned short src_id);
+    unsigned char src_id);
 void DCB_add_copy(CommandBuffer *buffer, off_u64 src_pos, off_u64 ver_pos,
-    unsigned long len);
+    unsigned long len, unsigned char src_id);
 
 int DCB_insert(CommandBuffer *buff);
 int DCB_llm_init_buff(CommandBuffer *buff, unsigned long buff_size);

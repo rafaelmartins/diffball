@@ -27,7 +27,7 @@
 
 unsigned int check_fdtu_magic(cfile *patchf);
 signed int fdtuEncodeDCBuffer(CommandBuffer *buffer, cfile *out_cfh);
-signed int fdtuReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff);
+signed int fdtuReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff);
 
 
 #endif

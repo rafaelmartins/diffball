@@ -117,11 +117,7 @@ main(int argc, char **argv)
 	    exit(1);
 	}
     }
-/*    if(src_format_id==BDELTA_FORMAT) {
-	v0printf( "this version does not support conversion of bdelta format.\n");
-	v0printf( "the stable 0.40 release will however.  Sorry.\n");
-	exit(1);
-    }*/
+
     if(trg_format==NULL) {
 	usage(p_opt, 1, "new files format is required\n", NULL);
     } else {
@@ -134,17 +130,17 @@ main(int argc, char **argv)
     poptFreeContext(p_opt);
     DCBufferInit(&dcbuff, 4096,0,0, DCBUFFER_FULL_TYPE);
     if(SWITCHING_FORMAT == src_format_id) {
-        recon_val = switchingReconstructDCBuff(&in_cfh, &dcbuff);
+        recon_val = switchingReconstructDCBuff(&in_cfh, &in_cfh, &dcbuff);
     } else if(GDIFF4_FORMAT == src_format_id) {
-        recon_val = gdiff4ReconstructDCBuff(&in_cfh, &dcbuff);
+        recon_val = gdiff4ReconstructDCBuff(&in_cfh, &in_cfh, &dcbuff);
     } else if(GDIFF5_FORMAT == src_format_id) {
-        recon_val = gdiff5ReconstructDCBuff(&in_cfh, &dcbuff);       
+        recon_val = gdiff5ReconstructDCBuff(&in_cfh, &in_cfh, &dcbuff);       
     } else if(BDIFF_FORMAT == src_format_id) {
-        recon_val = bdiffReconstructDCBuff(&in_cfh, &dcbuff);       
+        recon_val = bdiffReconstructDCBuff(&in_cfh, &in_cfh, &dcbuff);       
     } else if(XDELTA1_FORMAT == src_format_id) {
-        recon_val = xdelta1ReconstructDCBuff(&in_cfh, &dcbuff, 1);
+        recon_val = xdelta1ReconstructDCBuff(&in_cfh, &in_cfh, &dcbuff, 1);
     } else if(BDELTA_FORMAT == src_format_id) {
-        recon_val = bdeltaReconstructDCBuff(&in_cfh, &dcbuff);
+        recon_val = bdeltaReconstructDCBuff(&in_cfh, &in_cfh, &dcbuff);
     } else if(BSDIFF_FORMAT == src_format_id) {
 	v0printf("Sorry, unwilling to do bsdiff conversion in this version.\n");
 	v0printf("Try a newer version.\n");

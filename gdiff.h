@@ -23,7 +23,7 @@
 #define GDIFF_VER5_MAGIC 5
 #define GDIFF_VER_LEN 1
 #include "diff-algs.h"
-//#include "pdbuff.h"
+#include "dcbuffer.h"
 #include "cfile.h"
 /* gdiff format
     EOF 0
@@ -59,10 +59,10 @@ signed int gdiffEncodeDCBuffer(CommandBuffer *buffer,
 #define gdiff5EncodeDCBuffer(buff, ocfh)			\
     gdiffEncodeDCBuffer((buff), ENCODING_OFFSET_DC_POS, (ocfh))
 
-signed int gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff, 
+signed int gdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff, 
     unsigned int offset_type);
-#define gdiff4ReconstructDCBuff(pcfh, buff) 			\
-    gdiffReconstructDCBuff((pcfh), (buff), ENCODING_OFFSET_START)
-#define gdiff5ReconstructDCBuff(pcfh, buff)			\
-    gdiffReconstructDCBuff((pcfh), (buff), ENCODING_OFFSET_DC_POS)
+#define gdiff4ReconstructDCBuff(rcfh, pcfh, buff) 			\
+    gdiffReconstructDCBuff((rcfh), (pcfh), (buff), ENCODING_OFFSET_START)
+#define gdiff5ReconstructDCBuff(rcfh, pcfh, buff)			\
+    gdiffReconstructDCBuff((rcfh), (pcfh), (buff), ENCODING_OFFSET_DC_POS)
 #endif

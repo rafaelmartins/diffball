@@ -17,6 +17,7 @@
 */
 #ifndef _HEADER_XDELTA1
 #define _HEADER_XDELTA1 1
+#include "dcbuffer.h"
 #include "cfile.h"
 
 #define XD_COMPRESSED_FLAG	0x8
@@ -35,7 +36,7 @@
 unsigned int check_xdelta1_magic(cfile *patchf);
 signed int xdelta1EncodeDCBuffer(CommandBuffer *buffer, 
     unsigned int version, cfile *out_cfh);
-signed int xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff, 
+signed int xdelta1ReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff, 
     unsigned int version);
 
 

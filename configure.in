@@ -4,16 +4,6 @@ AM_INIT_AUTOMAKE
 AM_CONFIG_HEADER(config.h)
 # Checks for programs.
 
-AC_ARG_ENABLE(profiling,
-AC_HELP_STRING([--enable-profiling],[build for profiling  (default no)]),
-[case "${enableval}" in
-  yes) enable_profiling=true ;;
-  no)  enable_profiling=false ;;
-  *)   AC_MSG_ERROR(bad value ${enableval} for --enable-profiling) ;;
-esac], 
-[enable_profiling=false])
-
-
 AC_ARG_ENABLE(asserts,
 AC_HELP_STRING([--enable-asserts],[enable all asserts (default no)]),
 [case "${enableval}" in
@@ -22,6 +12,15 @@ AC_HELP_STRING([--enable-asserts],[enable all asserts (default no)]),
   *)   AC_MSG_ERROR(bad value ${enableval} for --enable-asserts) ;;
 esac], 
 [enable_asserts=false])
+
+AC_ARG_ENABLE(profiling,
+AC_HELP_STRING([--enable-profiling],[compile profiling support in (default no)]),
+[case "${enableval}" in
+  yes) enable_profiling=true ;;
+  no)  enable_profiling=false ;;
+  *)   AC_MSG_ERROR(bad value ${enableval} for --enable-profiling) ;;
+esac],
+[enable_profiling=false])
 
 AC_ARG_ENABLE(debug-dcbuffer,
 AC_HELP_STRING([--enable-debug-dcbuffer],[enable testing of internal command buffer (default no)]),

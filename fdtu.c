@@ -51,7 +51,7 @@ fdtuEncodeDCBuff(CommandBuffer *dcb, cfile *out_cfh)
 }
 
 signed int 
-fdtuReconstructDCBuff(cfile *patchf, CommandBuffer *dcb)
+fdtuReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcb)
 {
     unsigned long int flags =0;
     unsigned long p_len;
@@ -104,5 +104,5 @@ fdtuReconstructDCBuff(cfile *patchf, CommandBuffer *dcb)
 	NO_COMPRESSOR, CFILE_RONLY))
 	return MEM_ERROR;
     v1printf("calling xdeltaReconstruct\n");
-    return xdelta1ReconstructDCBuff(cfh, dcb, 1);
+    return xdelta1ReconstructDCBuff(ref_cfh, cfh, dcb, 1);
 } 	

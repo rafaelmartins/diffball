@@ -99,11 +99,12 @@ bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *out_cfh)
 }
 
 signed int 
-bdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
+bdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff)
 {
     unsigned char src_md5[16], ver_md5[16], buff[17];
     unsigned long len, offset, maxlength;
     unsigned long fh_pos;
+    unsigned char ref_id, add_id;
     memset(src_md5, 0, 16);
     memset(ver_md5, 0, 16);
     /* skippping magic bdiff, and version char 'a' */
@@ -112,7 +113,8 @@ bdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
     /* what the heck is maxlength used for? */
     maxlength = readUBytesBE(buff, 4);
     fh_pos = 0;
-    DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL, 0);
+    add_id = DCB_REGISTER_ADD_SRC(dcbuff, patchf, NULL, 0);
+    ref_id = DCB_REGISTER_COPY_SRC(dcbuff, ref_cfh, NULL, 0);
     while(1 == cread(patchf, buff, 1)) {
 	v2printf("got command(%u): ", buff[0]);
 	if((buff[0] >> 6)==00) {
@@ -133,7 +135,7 @@ bdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 	    }
 	    fh_pos += len;
 	    v2printf(" offset(%lu), len=%lu\n", offset, len);
-	    DCB_add_copy(dcbuff, offset, 0, len);
+	    DCB_add_copy(dcbuff, offset, 0, len, ref_id);
 	} else if ((buff[0] >> 6)==2) {
 	    buff[0] &= 0x3f;
 	    v2printf("got an add at %lu, fh_pos(%lu):", 
@@ -148,7 +150,7 @@ bdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 	    }
 	    fh_pos += len;
 	    v2printf(" len=%lu\n", len);
-	    DCB_add_add(dcbuff, ctell(patchf, CSEEK_FSTART), len, 0);
+	    DCB_add_add(dcbuff, ctell(patchf, CSEEK_FSTART), len, add_id);
 	    cseek(patchf, len, CSEEK_CUR);
 	} else if((buff[0] >> 6)==1) {
 	    buff[0] &= 0x3f;
