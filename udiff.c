@@ -44,7 +44,7 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
     unsigned long s_line, s_len, v_line, v_len;
     unsigned long s_lastline, s_lastoff;
     unsigned long line_count, offset, len;
-    unsigned long add_copy;
+    unsigned char add_copy, newline_complaint=0;
     unsigned char buff[512];
     cread(patchf, buff, 3);
     assert(0==memcmp(buff, "---",3));
@@ -60,6 +60,10 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 	    assert(22==cread(patchf, buff + 4, 22));
 	    assert(memcmp(buff,"\\ No newline at end of file", 26)==0);
 	    skip_lines_forward(patchf,1);
+	    /* hokay. this is a kludge, not even innovative/good enough to be 
+	       called a hack. */
+	    assert(newline_complaint);
+	    DCBufferTruncate(dcbuff,1);
 	    continue;
 	}
 	assert(0==memcmp(buff, "@@ -",4));
@@ -139,6 +143,10 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 		assert(26==cread(patchf, buff + 1, 26));
 		assert(memcmp(buff,"\\ No newline at end of file", 26)==0);
 		skip_lines_forward(patchf,1);
+		/* kludge.  May be a wrong assumption, but diff's complaints 
+		   about lack of newline at the end of a file should first be 
+		   for the source file.  This little puppy is used for that */
+		newline_complaint=1;
 	    }
 	} 
 	printf("so ends that segment\n");
