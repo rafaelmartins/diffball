@@ -41,25 +41,29 @@ signed int
 bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *ver_cfh, 
     cfile *patchf)
 {
-    unsigned long dc_pos, count, maxnum, matches;
+    unsigned long dc_pos, total_count, count, maxnum, matches;
     unsigned long add_len, copy_len, copy_offset;
     unsigned char prev, current;
     unsigned int intsize;
     unsigned char buff[16];
+    unsigned long match_orig = matches;
+    DCommand dc;
     cwrite(patchf, BDELTA_MAGIC, BDELTA_MAGIC_LEN);
     writeUBytesLE(buff, BDELTA_VERSION, BDELTA_VERSION_LEN);
     cwrite(patchf, buff, BDELTA_VERSION_LEN);
-    count = DCBufferReset(dcbuff);
+    total_count = 0;
+    DCBufferReset(dcbuff);
     /* since this will be collapsing all adds... */
     current = DC_COPY;
     matches=0;
-    while(count--) {
+    while(DCB_commands_remain(dcbuff)) {
+	total_count++;
+	DCB_get_next_command(dcbuff, &dc);
 	prev = current;
-	current = current_command_type(dcbuff);
+	current = dc.type;
 	if(! ((prev==DC_ADD && current==DC_COPY) ||
 	    (prev==DC_ADD && current==DC_ADD)) )
 	    matches++;
-	DCBufferIncr(dcbuff);
     }
     maxnum = MAX(matches, MAX(dcbuff->src_size, dcbuff->ver_size) );
 /*    if(maxnum <= 0x7f)
@@ -78,35 +82,38 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *ver_cfh,
     writeUBytesLE(buff + intsize, dcbuff->ver_size, intsize);
     writeUBytesLE(buff + (2 * intsize), matches, intsize);
     cwrite(patchf, buff, (3 * intsize));
-    count = DCBufferReset(dcbuff);
+    DCBufferReset(dcbuff);
     dc_pos=0;
-    unsigned long match_orig = matches;
+    match_orig = matches;
+    count = total_count;
     while(matches--) {
+	DCB_get_next_command(dcbuff, &dc);
 	v2printf("handling match(%lu)\n", match_orig - matches);
 	add_len=0;
-	if(DC_ADD==current_command_type(dcbuff)) {
+	if(DC_ADD==dc.type) {
 	    do {
-		add_len += DCBF_cur_len(dcbuff);
+		add_len += dc.loc.len; //DCBF_cur_len(dcbuff);
 	    	count--;
-		DCBufferIncr(dcbuff);
-	    } while(count!=0 && current_command_type(dcbuff)==DC_ADD);
+		DCB_get_next_command(dcbuff, &dc);
+//		DCBufferIncr(dcbuff);
+	    } while(count!=0 && DC_ADD == dc.type);
 	    v2printf("writing add len=%lu\n", add_len);
 	}
 	/* basically a fall through to copy, if count!=0 */
 	if(count != 0) {
-	    copy_len = DCBF_cur_len(dcbuff);
-	    if(dc_pos > DCBF_cur_off(dcbuff)) {
+	    copy_len = dc.loc.len;
+	    if(dc_pos > dc.loc.offset) {
 		v2printf("negative offset, dc_pos(%lu), offset(%lu)\n",
-		    dc_pos, DCBF_cur_off(dcbuff));
-		copy_offset = DCBF_cur_off(dcbuff) + (~dc_pos + 1);
+		    dc_pos, dc.loc.offset);
+		copy_offset = dc.loc.offset + (~dc_pos + 1);
 	    } else {
 		v2printf("positive offset, dc_pos(%lu), offset(%lu)\n",
-		    dc_pos, DCBF_cur_off(dcbuff));
-		copy_offset = DCBF_cur_off(dcbuff) - dc_pos;
+		    dc_pos, dc.loc.offset);
+		copy_offset = dc.loc.offset - dc_pos;
 	    }
-	    dc_pos = DCBF_cur_off(dcbuff) + DCBF_cur_len(dcbuff);
+	    dc_pos = dc.loc.offset + dc.loc.len;
 	    v2printf("writing copy_len=%lu, offset=%lu, dc_pos=%lu\n",
-		copy_len, DCBF_cur_off(dcbuff), dc_pos);
+		copy_len, dc.loc.offset, dc_pos);
 	} else {
 	    copy_len = 0;
 	    copy_offset = 0;
@@ -115,20 +122,21 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *ver_cfh,
 	writeUBytesLE(buff + intsize, add_len, intsize);
 	writeUBytesLE(buff + (2 * intsize), copy_len, intsize);
 	cwrite(patchf, buff, (3 * intsize));
-	DCBufferIncr(dcbuff);
+//	DCBufferIncr(dcbuff);
 	count--;
     }
     /* control block wrote. */
-    count = DCBufferReset(dcbuff);
+    DCBufferReset(dcbuff);
     v2printf("writing add_block at %lu\n", ctell(patchf, CSEEK_FSTART));
-    while(count--) {
-	if(current_command_type(dcbuff)==DC_ADD) {
-	    if(DCBF_cur_len(dcbuff) != 
-		copy_cfile_block(patchf, ver_cfh, DCBF_cur_off(dcbuff),
-		DCBF_cur_len(dcbuff)) )
+    while(DCB_commands_remain(dcbuff)) {
+//    while(count--) {
+	DCB_get_next_command(dcbuff, &dc);
+	if(DC_ADD == dc.type) {
+	    if(dc.loc.len != copy_cfile_block(patchf, ver_cfh, 
+		dc.loc.offset, dc.loc.len))
 		abort();
 	}
-	DCBufferIncr(dcbuff);
+//	DCBufferIncr(dcbuff);
     }
     return 0;
 }
@@ -144,6 +152,7 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
     unsigned long size1, size2, or_mask=0, neg_mask;
     unsigned long ver_pos = 0, add_pos;
     unsigned long add_start;
+    assert(DCBUFFER_FULL_TYPE == dcbuff->DCBtype);
     if(3!=cseek(patchf, 3, CSEEK_FSTART))
 	goto truncated_patch;
     if(2!=cread(patchf, buff, BDELTA_VERSION_LEN))
@@ -183,7 +192,8 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 	copy_len = readUBytesLE(buff + int_size * 2, int_size);
     	if(add_len) {
 	    v2printf("add  len(%lu)\n", add_len);
-	    DCBufferAddCmd(dcbuff, DC_ADD, add_pos, add_len);
+	    DCB_add_add(dcbuff, add_pos, add_len);
+//	    DCBufferAddCmd(dcbuff, DC_ADD, add_pos, add_len);
 	    add_pos += add_len;
 	}
 	/* hokay, this is screwed up.  Course bdelta seems like it's got 
@@ -202,7 +212,8 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 	if(copy_len) {
 	    v2printf("copy len(%lu), off(%ld), pos(%lu)\n", 
 		copy_len, (signed long)copy_offset, ver_pos);
-	    DCBufferAddCmd(dcbuff, DC_COPY, ver_pos, copy_len);
+	    DCB_add_copy(dcbuff, ver_pos, 0, copy_len);
+//	    DCBufferAddCmd(dcbuff, DC_COPY, ver_pos, copy_len);
 	    ver_pos += copy_len;
 	}
     }

@@ -149,7 +149,8 @@ xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 	offset = readXDInt(ctrl_cfh, buff);
 	len = readXDInt(ctrl_cfh, buff);
 	if(x==XD_INDEX_COPY) {
-	    DCBufferAddCmd(dcbuff, DC_COPY, offset, len);
+	    DCB_add_copy(dcbuff, offset, 0, len);
+//	    DCBufferAddCmd(dcbuff, DC_COPY, offset, len);
 	} else {
 	    if(add_is_sequential != 0) {
 		offset += add_pos; 
@@ -157,7 +158,8 @@ xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 	    } else {
 		offset += add_pos;
 	    }
-	    DCBufferAddCmd(dcbuff, DC_ADD, offset, len);
+	    DCB_add_add(dcbuff, offset, len);
+//	    DCBufferAddCmd(dcbuff, DC_ADD, offset, len);
 	}
     }
     v2printf("finishing position was %lu\n", ctell(ctrl_cfh, CSEEK_FSTART));

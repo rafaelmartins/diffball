@@ -66,7 +66,7 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 	    /* hokay. this is a kludge, not even innovative/good enough to be 
 	       called a hack. */
 	    assert(newline_complaint);
-	    DCBufferTruncate(dcbuff,1);
+	    DCB_truncate(dcbuff,1);
 	    continue;
 	} else if ('B'==buff[0]) {
 	    /* handle the "Binary file x and y differ" by puking. */
@@ -122,8 +122,9 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 		if(add_copy) {
 		    offset = ctell(src_cfh, CSEEK_FSTART);
 		    v2printf("adding copy for add_copy: ");
-		    DCBufferAddCmd(dcbuff, DC_COPY, s_lastoff, 
-			offset - s_lastoff);
+		    DCB_add_copy(dcbuff, s_lastoff, 0, offset - s_lastoff);
+//		    DCBufferAddCmd(dcbuff, DC_COPY, s_lastoff, 
+//			offset - s_lastoff);
 		    s_lastoff = offset;
 		    //s_lastline++; 
 		    add_copy=0;
@@ -132,15 +133,17 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 		v2printf("skipping a line in patch\n");
 		skip_lines_forward(patchf, 1);
 		len = (ctell(patchf, CSEEK_FSTART)) - offset;
-		DCBufferAddCmd(dcbuff, DC_ADD, offset, len);
+		DCB_add_add(dcbuff, offset, len);
+//		DCBufferAddCmd(dcbuff, DC_ADD, offset, len);
 		line_count++;
 	    } else if('-'==buff[0]) {
 		v2printf("got a source  tweak(-): ");
 		if(add_copy) {
 		    offset = ctell(src_cfh, CSEEK_FSTART);
 		    v2printf("adding copy for add_copy: ");
-		    DCBufferAddCmd(dcbuff, DC_COPY, s_lastoff, 
-			offset - s_lastoff);
+		    DCB_add_copy(dcbuff, s_lastoff, 0, offset - s_lastoff);
+//		    DCBufferAddCmd(dcbuff, DC_COPY, s_lastoff, 
+//			offset - s_lastoff);
 		    add_copy=0;
 		}
 		v2printf("skipping a line in patch\n");
@@ -168,7 +171,8 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 	v2printf("so ends that segment\n");
     }
     if(ctell(src_cfh, CSEEK_FSTART)!=cfile_len(src_cfh))
-	DCBufferAddCmd(dcbuff, DC_COPY, s_lastoff, cfile_len(src_cfh) - s_lastoff);
+	DCB_add_copy(dcbuff, s_lastoff, 0, cfile_len(src_cfh) - s_lastoff);
+//	DCBufferAddCmd(dcbuff, DC_COPY, s_lastoff, cfile_len(src_cfh) - s_lastoff);
     DCBUFFER_REGISTER_ADD_CFH(dcbuff, patchf);
     return 0;
 

@@ -34,112 +34,169 @@ inline current_command_type(CommandBuffer *buff)
     return 0;
 }
 
-DCLoc *
-current_DCLoc(CommandBuffer *buff)
+void
+DCB_get_next_command(CommandBuffer *buff, DCommand *dc)
 {
-    assert(buff->DCBtype == DCBUFFER_FULL_TYPE);
-    return buff->DCB.full.lb_tail;
+    if(DCBUFFER_FULL_TYPE == buff->DCBtype) {
+	dc->type = current_command_type(buff);
+	dc->loc.offset = buff->DCB.full.lb_tail->offset;
+	dc->loc.len = buff->DCB.full.lb_tail->len;
+	DCBufferIncr(buff);
+    } else if (DCBUFFER_MATCHES_TYPE == buff->DCBtype) {
+	assert(buff->DCB.matches.buff_count > 
+	    (buff->DCB.matches.cur - buff->DCB.matches.buff));
+	assert(buff->reconstruct_pos != buff->ver_size);
+	if(buff->reconstruct_pos == buff->DCB.matches.cur->ver_pos) {
+	    dc->type = DC_COPY;
+	    dc->loc.offset = buff->DCB.matches.cur->src_pos;
+	    dc->loc.len = buff->DCB.matches.cur->len;
+	    DCBufferIncr(buff);
+	} else {
+	    dc->type = DC_ADD;
+	    dc->loc.offset = buff->reconstruct_pos;
+	    dc->loc.len= buff->DCB.matches.cur->ver_pos - buff->reconstruct_pos;
+	}
+	buff->reconstruct_pos += dc->loc.len;
+    }
 }
 
 void 
-DCBufferTruncate(CommandBuffer *buffer, unsigned long len)
+DCB_truncate(CommandBuffer *buffer, unsigned long len)
 {
+    unsigned long trunc_pos;
     //get the tail to an actual node.
     DCBufferDecr(buffer);
-    //v2printf("truncation: \n");
-    while(len) {
-	/* should that be less then or equal? */
-	if (buffer->DCB.full.lb_tail->len <= len) {
-	    len -= buffer->DCB.full.lb_tail->len;
-//		    v2printf("    whole removal of type(%u), offset(%lu), len(%lu)\n",
-//			(*buffer->cb_tail & (1 << buffer->cb_tail_bit)) >> buffer->cb_tail_bit, buffer->lb_tail->offset,
-//			buffer->lb_tail->len);
-	    DCBufferDecr(buffer);
-	    buffer->DCB.full.buffer_count--;
-	} else {
-//		    v2printf("    partial adjust of type(%u), offset(%lu), len(%lu) is now len(%lu)\n",
-//			(*buffer->cb_tail & (1 << buffer->cb_tail_bit))>buffer->cb_tail_bit, buffer->lb_tail->offset,
-//			buffer->lb_tail->len, buffer->lb_tail->len - len);
-	    buffer->DCB.full.lb_tail->len -= len;
-	    len=0;
+    if(DCBUFFER_FULL_TYPE == buffer->DCBtype) {
+	buffer->reconstruct_pos -= len;
+	while(len) {
+	    if (buffer->DCB.full.lb_tail->len <= len) {
+		len -= buffer->DCB.full.lb_tail->len;
+		DCBufferDecr(buffer);
+		buffer->DCB.full.buffer_count--;
+	    } else {
+		buffer->DCB.full.lb_tail->len -= len;
+		len=0;
+	    }
 	}
+    } else if (DCBUFFER_MATCHES_TYPE == buffer->DCBtype) {
+	assert(buffer->DCB.matches.buff_count > 0);
+	assert(buffer->DCB.matches.cur->ver_pos + 
+	    buffer->DCB.matches.cur->len - len >= 0);
+	trunc_pos = buffer->DCB.matches.cur->ver_pos + 
+	    buffer->DCB.matches.cur->len - len;
+	//buffer->reconstruct_pos = trunc_pos;
+	while(trunc_pos < buffer->DCB.matches.cur->ver_pos + 
+	    buffer->DCB.matches.cur->len) {
+	    if(buffer->DCB.matches.cur->ver_pos >= trunc_pos) {
+		DCBufferDecr(buffer);
+		buffer->DCB.matches.buff_count--;
+	    } else {
+		buffer->DCB.matches.cur->len = trunc_pos - 
+		    buffer->DCB.matches.cur->ver_pos;
+	    }
+	}
+	buffer->reconstruct_pos = buffer->DCB.matches.cur->ver_pos + 
+	    buffer->DCB.matches.cur->len;
     }
-    DCBufferIncr(buffer);
+    DCBufferIncr(buffer);	
 }
 
 
 void 
 DCBufferIncr(CommandBuffer *buffer)
 {
-    assert(DCBUFFER_FULL_TYPE==buffer->DCBtype);
-    buffer->DCB.full.lb_tail = (buffer->DCB.full.lb_end == 
-	buffer->DCB.full.lb_tail) ?
-    buffer->DCB.full.lb_start : buffer->DCB.full.lb_tail + 1;
-    if (buffer->DCB.full.cb_tail_bit >= 7) {
-	buffer->DCB.full.cb_tail_bit = 0;
-	buffer->DCB.full.cb_tail = (buffer->DCB.full.cb_tail == 
-	    buffer->DCB.full.cb_end) ? buffer->DCB.full.cb_start : 
-	    buffer->DCB.full.cb_tail + 1;
-    } else {
-	buffer->DCB.full.cb_tail_bit++;
+    if(DCBUFFER_FULL_TYPE == buffer->DCBtype) {
+	buffer->DCB.full.lb_tail = (buffer->DCB.full.lb_end == 
+	    buffer->DCB.full.lb_tail) ?
+	buffer->DCB.full.lb_start : buffer->DCB.full.lb_tail + 1;
+	if (buffer->DCB.full.cb_tail_bit >= 7) {
+	    buffer->DCB.full.cb_tail_bit = 0;
+	    buffer->DCB.full.cb_tail = (buffer->DCB.full.cb_tail == 
+		buffer->DCB.full.cb_end) ? buffer->DCB.full.cb_start : 
+		buffer->DCB.full.cb_tail + 1;
+	} else {
+	    buffer->DCB.full.cb_tail_bit++;
+	}
+	assert(buffer->DCB.full.lb_head != buffer->DCB.full.lb_tail);
+    } else if(DCBUFFER_MATCHES_TYPE == buffer->DCBtype) {
+	assert(buffer->DCB.matches.cur - buffer->DCB.matches.buff < 
+	    buffer->DCB.matches.buff_size);
+	    buffer->DCB.matches.cur++;
     }
 }
 
 void 
 DCBufferDecr(CommandBuffer *buffer)
 {
-    assert(DCBUFFER_FULL_TYPE == buffer->DCBtype);
-    buffer->DCB.full.lb_tail--;
-    if (buffer->DCB.full.cb_tail_bit != 0) {
-	buffer->DCB.full.cb_tail_bit--;
-    } else {
-	buffer->DCB.full.cb_tail = (buffer->DCB.full.cb_tail == 
-	    buffer->DCB.full.cb_start) ? buffer->DCB.full.cb_end : 
-	    buffer->DCB.full.cb_tail - 1;
-	buffer->DCB.full.cb_tail_bit=7;
+    if(DCBUFFER_FULL_TYPE == buffer->DCBtype) {
+	buffer->DCB.full.lb_tail--;
+	if (buffer->DCB.full.cb_tail_bit != 0) {
+	    buffer->DCB.full.cb_tail_bit--;
+	} else {
+	    buffer->DCB.full.cb_tail = (buffer->DCB.full.cb_tail == 
+		buffer->DCB.full.cb_start) ? buffer->DCB.full.cb_end : 
+	        buffer->DCB.full.cb_tail - 1;
+	    buffer->DCB.full.cb_tail_bit=7;
+	}
+    } else if (DCBUFFER_MATCHES_TYPE == buffer->DCBtype) {
+	if(buffer->DCB.matches.cur != buffer->DCB.matches.buff) {
+	    buffer->DCB.matches.cur--;
+	/*    if(buffer->DCB.matches.cur->ver_pos + buffer->DCB.matches.cur->len
+		== buffer->reconstruct_pos) {
+		buffer->reconstruct_pos = buffer->DCB.matches.cur->ver_pos;
+	    } else {
+		buffer->reconstruct_pos = buffer->DCB.matches.cur->ver_pos + 
+		    buffer->DCB.matches.cur->len;
+		buffer->DCB.matches.cur++;
+	    }*/
+	
+	} else {
+	    buffer->reconstruct_pos = 0;
+	}
     }
 }
 
 void 
-DCBufferAddCmd(CommandBuffer *buffer, int type, unsigned long offset, 
+DCB_add_add(CommandBuffer *buffer, unsigned long ver_pos, 
     unsigned long len)
 {
-    assert(DCBUFFER_FULL_TYPE == buffer->DCBtype);
-    if(buffer->DCB.full.lb_tail == buffer->DCB.full.lb_end) {
-	DCB_resize_full(buffer);
-    }
-    buffer->DCB.full.lb_tail->offset = offset;
-    buffer->DCB.full.lb_tail->len = len;
-    if (type==DC_ADD)
+    if(DCBUFFER_FULL_TYPE == buffer->DCBtype) {
+	if(buffer->DCB.full.lb_tail == buffer->DCB.full.lb_end)
+	    DCB_resize_full(buffer);
+	buffer->DCB.full.lb_tail->offset = ver_pos;
+	buffer->DCB.full.lb_tail->len = len;
 	*buffer->DCB.full.cb_tail &= ~(1 << buffer->DCB.full.cb_tail_bit);
-    else
-	*buffer->DCB.full.cb_tail |= (1 << buffer->DCB.full.cb_tail_bit);
-    buffer->DCB.full.buffer_count++;
-    DCBufferIncr(buffer);
-}
-
-void 
-DCB_get_add(CommandBuffer *buffer, DCLoc *dloc)
-{
-//    if(DCBUFFER_FULL_TYPE == buffer->DCBtype) {
-	
-
+	buffer->DCB.full.buffer_count++;
+	buffer->reconstruct_pos += len;
+	DCBufferIncr(buffer);
+    }
 }
 
 void
 DCB_add_copy(CommandBuffer *buffer, unsigned long src_pos, 
     unsigned long ver_pos, unsigned long len)
 {
-    assert(DCBUFFER_MATCHES_TYPE == buffer->DCBtype);	
-    if(DCBUFFER_MATCHES_TYPE == buffer->DCBtype) {
-	if(buffer->DCB.matches.buff_count == buffer->DCB.matches.buff_size)
+    if(DCBUFFER_FULL_TYPE == buffer->DCBtype) {
+	if(buffer->DCB.full.lb_tail == buffer->DCB.full.lb_end)
+	    DCB_resize_full(buffer);
+	buffer->DCB.full.lb_tail->offset = src_pos;
+	buffer->DCB.full.lb_tail->len = len;
+	*buffer->DCB.full.cb_tail |= (1 << buffer->DCB.full.cb_tail_bit);
+	buffer->DCB.full.buffer_count++;
+	buffer->reconstruct_pos += len;
+    } else if(DCBUFFER_MATCHES_TYPE == buffer->DCBtype) {
+	if(buffer->DCB.matches.buff_count == buffer->DCB.matches.buff_size) {
 	    DCB_resize_matches(buffer);
-
-	buffer->DCB.matches.buff->src_pos = src_pos;
-	buffer->DCB.matches.buff->ver_pos = ver_pos;
-	buffer->DCB.matches.buff->len = len;
+	}
+	assert(buffer->DCB.matches.buff_count == 
+	    (buffer->DCB.matches.cur - buffer->DCB.matches.buff));
+	buffer->DCB.matches.cur->src_pos = src_pos;
+	buffer->DCB.matches.cur->ver_pos = ver_pos;
+	buffer->DCB.matches.cur->len = len;
 	buffer->DCB.matches.buff_count++;
+	buffer->reconstruct_pos = ver_pos + len;
     }
+    DCBufferIncr(buffer);
 }
 
 void 
@@ -172,17 +229,43 @@ DCBufferCollapseAdds(CommandBuffer *buffer)
     }
 }
 
-unsigned long 
+
+
+void
 DCBufferReset(CommandBuffer *buffer)
 {
+    buffer->reconstruct_pos = 0;
     if(DCBUFFER_FULL_TYPE == buffer->DCBtype) {
 	buffer->DCB.full.lb_tail = buffer->DCB.full.lb_start;
 	buffer->DCB.full.cb_tail = buffer->DCB.full.cb_head;
 	buffer->DCB.full.cb_tail_bit = buffer->DCB.full.cb_head_bit;
-	return buffer->DCB.full.buffer_count;
+    } else if(DCBUFFER_MATCHES_TYPE == buffer->DCBtype) {
+	buffer->DCB.matches.cur = buffer->DCB.matches.buff;
+    }
+}
+
+unsigned int
+DCB_commands_remain(CommandBuffer *buffer)
+{
+    unsigned long x;
+    if(DCBUFFER_FULL_TYPE == buffer->DCBtype) {
+	if(buffer->DCB.full.lb_head > buffer->DCB.full.lb_tail) {
+	    x=(buffer->DCB.full.buffer_count - (buffer->DCB.full.lb_end - 
+	    buffer->DCB.full.lb_head) - (buffer->DCB.full.lb_tail - 
+	    buffer->DCB.full.lb_start));
+//	    printf("com_remain: head > tail, x=%lu\n", x);
+	} else {
+	    x= (buffer->DCB.full.buffer_count - (buffer->DCB.full.lb_tail - 
+		buffer->DCB.full.lb_head));
+//	    printf("com_remain: head <= tail, x=%lu\n", x);
+	}
+	return x+1 > 1;
+    } else if(DCBUFFER_MATCHES_TYPE == buffer->DCBtype) {
+	return buffer->reconstruct_pos != buffer->ver_size;
     }
     return 0;
 }
+	
 
 void DCBufferFree(CommandBuffer *buffer)
 {
@@ -191,16 +274,18 @@ void DCBufferFree(CommandBuffer *buffer)
     if(DCBUFFER_FULL_TYPE == buffer->DCBtype) {
 	free(buffer->DCB.full.cb_start);
 	free(buffer->DCB.full.lb_start);
+    } else if(DCBUFFER_MATCHES_TYPE == buffer->DCBtype) {
+	free(buffer->DCB.matches.buff);
     }
 }
 
 void DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size, 
     unsigned long src_size, unsigned long ver_size, unsigned char type)
 {
-//    buffer->buffer_count=0;
     buffer->flags =0;
     buffer->src_size = src_size;
     buffer->ver_size = ver_size;
+    buffer->reconstruct_pos = 0;
     buffer->DCBtype = type;
     if(type == DCBUFFER_FULL_TYPE) {
 	buffer->DCB.full.buffer_count = 0;
@@ -226,6 +311,15 @@ void DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
 	    buffer->DCB.full.lb_start;
 	buffer->DCB.full.lb_end = buffer->DCB.full.lb_start + 
 	    buffer->DCB.full.buffer_size - 1;
+    } else if(DCBUFFER_MATCHES_TYPE == type) {
+	if((buffer->DCB.matches.buff = (DCLoc_match *)malloc(buffer_size * 
+	    sizeof(DCLoc_match)) )==NULL) {
+	    perror("shite, malloc failed\n");
+	    exit(EXIT_FAILURE);
+	}
+	buffer->DCB.matches.cur = buffer->DCB.matches.buff;
+	buffer->DCB.matches.buff_size = buffer_size;
+	buffer->DCB.matches.buff_count = 0;
     }
 }
 
@@ -233,13 +327,17 @@ void
 DCB_resize_matches(CommandBuffer *buffer)
 {
     assert(DCBUFFER_MATCHES_TYPE == buffer->DCBtype);
+    v1printf("resizing matches buffer from %lu to %lu\n", 
+	buffer->DCB.matches.buff_size, buffer->DCB.matches.buff_size * 2);
+    buffer->DCB.matches.buff_size *= 2;
     if((buffer->DCB.matches.buff = (DCLoc_match *)realloc(
-	buffer->DCB.matches.buff, buffer->DCB.matches.buff_size * 2))
-	== NULL) {
+	buffer->DCB.matches.buff, buffer->DCB.matches.buff_size * 
+	sizeof(DCLoc_match))) == NULL) {
 	v0printf("buffer resize failed\n");
 	exit(1);
     }
-    buffer->DCB.matches.buff_size *= 2;
+    buffer->DCB.matches.cur = buffer->DCB.matches.buff + 
+	buffer->DCB.matches.buff_count;
 }
 
 void

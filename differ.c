@@ -148,15 +148,15 @@ int main(int argc, char **argv)
 	seed_len, sample_rate, hash_size);
     v1printf("verbosity level(%u)\n", global_verbosity);
     v1printf("initializing Command Buffer...\n");
-    DCBufferInit(&buffer, 4096, ref_stat.st_size, ver_stat.st_size,
-	DCBUFFER_FULL_TYPE);
+    DCBufferInit(&buffer, 4, ref_stat.st_size, ver_stat.st_size,
+	DCBUFFER_MATCHES_TYPE);
+//	DCBUFFER_FULL_TYPE);
     v1printf("initializing Reference Hash...\n");
     init_RefHash(&rhash, &ref_cfh, seed_len, sample_rate, hash_size);
     print_RefHash_stats(&rhash);
     v1printf("running 1.5 pass correcting alg...\n");
     OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh);
     v1printf("outputing patch...\n");
-    v1printf("there were %lu commands\n", buffer.DCB.full.buffer_count);
     if(GDIFF4_FORMAT == patch_id) {
 	encode_result = gdiff4EncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
     } else if(GDIFF5_FORMAT == patch_id) {
@@ -170,6 +170,7 @@ int main(int argc, char **argv)
 	encode_result = bdeltaEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
     }
     v1printf("encode_result=%ld\n", encode_result);
+    v1printf("all commands processed? %u\n", DCB_commands_remain(&buffer)==0);
     v1printf("exiting\n");
     free_RefHash(&rhash);
     DCBufferFree(&buffer);

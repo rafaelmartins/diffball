@@ -69,7 +69,9 @@ gdiffEncodeDCBuffer(CommandBuffer *buffer,
     unsigned char off_is_sbytes=0;
     unsigned char out_buff[5];
     unsigned long count;
-    if(offset_type==ENCODING_OFFSET_VERS_POS || offset_type==ENCODING_OFFSET_DC_POS)
+    DCommand dc;
+    if(offset_type==ENCODING_OFFSET_VERS_POS 
+	|| offset_type==ENCODING_OFFSET_DC_POS)
 	off_is_sbytes=1;
     else
 	off_is_sbytes=0;
@@ -86,58 +88,58 @@ gdiffEncodeDCBuffer(CommandBuffer *buffer,
 	exit(1);
     }
     cwrite(out_cfh, out_buff, GDIFF_VER_LEN);
-    count = DCBufferReset(buffer);
-    while(count--){
-//	if(DCBF_cur_len(buffer)==0) {
-	if(DCBF_cur_len(buffer)==0) {
+    DCBufferReset(buffer);
+    count=0;
+    while(DCB_commands_remain(buffer)) {
+	DCB_get_next_command(buffer, &dc);
+//    while(count--){
+	if(dc.loc.len==0) {
 	    DCBufferIncr(buffer);
 	    continue;
 	}
-	if(current_command_type(buffer)==DC_ADD) {
+	if(dc.type == DC_ADD) {
+//	if(current_command_type(buffer)==DC_ADD) {
 	    v2printf("add command, delta_pos(%lu), fh_pos(%lu), len(%lu)\n",
-		delta_pos, fh_pos, DCBF_cur_len(buffer));
+		delta_pos, fh_pos, dc.loc.len);
 //	    u_off=DCBF_cur_len(buffer);
-	    u_off=DCBF_cur_len(buffer);
-	    if(DCBF_cur_len(buffer) <= 246) {
-		out_buff[0] = DCBF_cur_len(buffer);
+	    u_off = dc.loc.len;
+	    if(dc.loc.len <= 246) {
+		out_buff[0] = dc.loc.len;
 		cwrite(out_cfh, out_buff, 1);
 		delta_pos+=1;
-	    } else if (DCBF_cur_len(buffer) <= 0xffff) {
+	    } else if (dc.loc.len <= 0xffff) {
 		out_buff[0] = 247;
-		writeUBytesBE(out_buff + 1, DCBF_cur_len(buffer), 2);
+		writeUBytesBE(out_buff + 1, dc.loc.len, 2);
 		cwrite(out_cfh, out_buff, 3);
 		delta_pos+=3;
-	    } else if (DCBF_cur_len(buffer) <= 0xffffffff) {
+	    } else if (dc.loc.len <= 0xffffffff) {
 		out_buff[0] = 248;
-		writeUBytesBE(out_buff + 1, DCBF_cur_len(buffer), 4);
+		writeUBytesBE(out_buff + 1, dc.loc.len, 4);
 		cwrite(out_cfh, out_buff, 5);
 		delta_pos+=5;
 	    } else {
 		v2printf("wtf, encountered an offset larger then int size.  croaking.\n");
 		exit(1);
 	    }
-	    if(DCBF_cur_len(buffer) != 
-		copy_cfile_block(out_cfh, ver_cfh, DCBF_cur_off(buffer),
-		DCBF_cur_len(buffer))) 
+	    if(dc.loc.len != copy_cfile_block(out_cfh, ver_cfh, dc.loc.offset,
+		dc.loc.len))
 		abort();
 
-	    delta_pos += DCBF_cur_len(buffer);
-	    fh_pos += DCBF_cur_len(buffer);
+	    delta_pos += dc.loc.len;
+	    fh_pos += dc.loc.len;
 	} else {
 	    if(off_is_sbytes) {
 		if(offset_type==ENCODING_OFFSET_VERS_POS)
-		    s_off = (signed long)DCBF_cur_off(buffer) - 
-		    (signed long)fh_pos;
+		    s_off = (signed long)dc.loc.offset - (signed long)fh_pos;
 		else if(offset_type==ENCODING_OFFSET_DC_POS)
-		    s_off = (signed long)DCBF_cur_off(buffer) - 
-		    (signed long)dc_pos;		
+		    s_off = (signed long)dc.loc.offset - (signed long)dc_pos;
 		u_off = abs(s_off);
 		ob=signedBytesNeeded(s_off);
 	    } else {
-		u_off = DCBF_cur_off(buffer);
+		u_off = dc.loc.offset;
 		ob=unsignedBytesNeeded(u_off);
 	    }
-	    lb=unsignedBytesNeeded(DCBF_cur_len(buffer));
+	    lb=unsignedBytesNeeded(dc.loc.len);
 	    if(lb> INT_BYTE_COUNT) {
 		v2printf("wtf, too large of len in gdiff encoding. dieing.\n");
 		exit(1);
@@ -178,20 +180,20 @@ gdiffEncodeDCBuffer(CommandBuffer *buffer,
 	    else 
 		writeUBytesBE(out_buff + clen, u_off, ob);
 	    clen+= ob;
-	    writeUBytesBE(out_buff + clen, DCBF_cur_len(buffer), lb);
+	    writeUBytesBE(out_buff + clen, dc.loc.len, lb);
 	    clen+=lb;
 	    v2printf("copy delta_pos(%lu), fh_pos(%lu), type(%u), offset(%ld), len(%lu)\n",
 		delta_pos, fh_pos, out_buff[0], (off_is_sbytes ? s_off: 
-		u_off), DCBF_cur_len(buffer));
+		u_off), dc.loc.len);
 	    if(cwrite(out_cfh, out_buff, clen)!=clen) {
 		v2printf("shite, couldn't write copy command. eh?\n");
 		exit(1);
 	    }
-	    fh_pos += DCBF_cur_len(buffer);
+	    fh_pos += dc.loc.len;
 	    delta_pos+=1 + ob + lb;
 	    dc_pos += s_off;
 	}
-	DCBufferIncr(buffer);
+//	DCBufferIncr(buffer);
     }
     out_buff[0] = 0;
     cwrite(out_cfh, out_buff, 1);
@@ -218,6 +220,7 @@ gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 	v2printf("wtf, unknown offset_type for reconstruction(%u)\n",offset_type);
 	exit(1);
     }
+    assert(DCBUFFER_FULL_TYPE == dcbuff->DCBtype);
     cseek(patchf, 5, CSEEK_CUR);
     while(cread(patchf, buff, 1)==1 && *buff != 0) {
 	if(*buff > 0 && *buff <= 248) {
@@ -235,7 +238,8 @@ gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 	        len= readUBytesBE(buff, lb);
 	    } else
 		len=*buff;
-	    DCBufferAddCmd(dcbuff, DC_ADD, ctell(patchf, CSEEK_FSTART), len);
+	    DCB_add_add(dcbuff, ctell(patchf, CSEEK_FSTART), len);
+//	    DCBufferAddCmd(dcbuff, DC_ADD, ctell(patchf, CSEEK_FSTART), len);
 	    cseek(patchf, len, CSEEK_CUR);
 	} else if(*buff >= 249 ) {
 	    //copy command
@@ -277,7 +281,8 @@ gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 			dc_pos = u_off = dc_pos + s_off;
 		}
 		v2printf("offset(%lu), len(%lu)\n", u_off, len);
-		DCBufferAddCmd(dcbuff, DC_COPY, u_off, len);
+		DCB_add_copy(dcbuff, u_off, 0, len);
+//		DCBufferAddCmd(dcbuff, DC_COPY, u_off, len);
 		ver_pos+=len;
 	    }
     }

@@ -297,22 +297,26 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 		if (vs < vm) {
 		    v2printf("\tadding vstart(%lu), len(%lu), vend(%lu): (vs < vm)\n",
 			cfile_start_offset(ver_cfh) + vs, vm-vs, vm);
-		    DCBufferAddCmd(buffer, DC_ADD, 
-			cfile_start_offset(ver_cfh) + vs, vm - vs);
+		    DCB_add_add(buffer, vs, vm -vs);
+//		    DCBufferAddCmd(buffer, DC_ADD, 
+//			cfile_start_offset(ver_cfh) + vs, vm - vs);
 		}
 		v2printf("    copying offset(%lu), len(%lu)\n", 
 		    cfile_start_offset(ver_cfh) + vm, len);
-		DCBufferAddCmd(buffer, DC_COPY, 
-		    cfile_start_offset(rhash->ref_cfh) + rm, len);
+		DCB_add_copy(buffer, rm, vm, len);
+//		DCBufferAddCmd(buffer, DC_COPY, 
+//		    cfile_start_offset(rhash->ref_cfh) + rm, len);
 	    } else {
 		v2printf("    adding vstart(%lu)\n",
 		    cfile_start_offset(ver_cfh) + vs);
 		v2printf("    truncating(%lu) bytes: (vm < vs)\n", vs - vm);
-		DCBufferTruncate(buffer, vs - vm);
+		DCB_truncate(buffer, vs - vm);
+//		DCBufferTruncate(buffer, vs - vm);
 		v2printf("    replacement copy: offset(%lu), len(%lu)\n", 
 		    cfile_start_offset(rhash->ref_cfh) + rm, len);
-		DCBufferAddCmd(buffer, DC_COPY, 
-		    cfile_start_offset(rhash->ref_cfh) + rm, len);
+		DCB_add_copy(buffer, rm, vm, len);
+//		DCBufferAddCmd(buffer, DC_COPY, 
+//		    cfile_start_offset(rhash->ref_cfh) + rm, len);
 	    }
 	    vs = vm + len;
 	    vc = vs -1;
@@ -322,8 +326,9 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 	vc++;
     }
     if (vs != ver_len) {
-    	DCBufferAddCmd(buffer, DC_ADD, cfile_start_offset(ver_cfh) + vs, 
-	    ver_len - vs);
+	DCB_add_add(buffer, vs, ver_len - vs);
+//    	DCBufferAddCmd(buffer, DC_ADD, cfile_start_offset(ver_cfh) + vs, 
+//	    ver_len - vs);
     }
     free_adler32_seed(&ads);
     return 0;

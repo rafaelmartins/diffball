@@ -31,7 +31,7 @@ extern unsigned int global_use_md5;
 /* type for CommandBuffer.DCBtype */
 #define DCBUFFER_FULL_TYPE		0x1
 #define DCBUFFER_MATCHES_TYPE		0x2
-#define DCBUFFER_PASSES_TYPE		0x3
+#define DCBUFFER_PASSES_TYPE		0x4
 
 #define ADD_CFH_FREE_FLAG		0x1
 
@@ -46,7 +46,10 @@ typedef struct {
     unsigned long len;
 } DCLoc_match;
 
-
+typedef struct {
+    DCLoc loc;
+    unsigned char type;
+} DCommand;
 
 typedef struct {
     unsigned long src_size;
@@ -62,10 +65,9 @@ typedef struct {
 	    DCLoc *lb_start, *lb_end, *lb_head, *lb_tail;
 	} full;
 	struct {
-	    unsigned long buff_pos;
 	    unsigned long buff_count;
 	    unsigned long buff_size;
-	    DCLoc_match *buff;
+	    DCLoc_match *buff, *cur;
 	} matches;
 	struct {
 	    DCLoc_match **buff;
@@ -78,10 +80,6 @@ typedef struct {
 } CommandBuffer;
 
 
-#define DCBF_cur_len(buff)			\
-    ((buff)->DCB.full.lb_tail->len)
-#define DCBF_cur_off(buff)			\
-    ((buff)->DCB.full.lb_tail->offset)
 #define DCBUFFER_REGISTER_ADD_CFH(buff, handle)		\
     (buff)->add_cfh = (handle)
 #define DCBUFFER_FREE_ADD_CFH_FLAG(buff) (buff)->flags |= ADD_CFH_FREE_FLAG;
@@ -90,12 +88,18 @@ unsigned long inline current_command_type(CommandBuffer *buff);
 void DCBufferIncr(CommandBuffer *buffer);
 void DCBufferDecr(CommandBuffer *buffer);
 void DCBufferCollapseAdds(CommandBuffer *buffer);
-void DCBufferAddCmd(CommandBuffer *buffer, int type, unsigned long offset, unsigned long len);
-void DCBufferTruncate(CommandBuffer *buffer, unsigned long len);
 void DCBufferFree(CommandBuffer *buffer);
 void DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
     unsigned long src_size, unsigned long ver_size, unsigned char type);
-unsigned long DCBufferReset(CommandBuffer *buffer);
+void DCBufferReset(CommandBuffer *buffer);
+
+unsigned int DCB_commands_remain(CommandBuffer *buffer);
+void DCB_get_next_command(CommandBuffer *buffer, DCommand *dc);
+void DCB_truncate(CommandBuffer *buffer, unsigned long len);
+void DCB_add_add(CommandBuffer *buffer, unsigned long ver_pos, 
+    unsigned long len);
+void DCB_add_copy(CommandBuffer *buffer, unsigned long src_pos, 
+    unsigned long ver_pos, unsigned long len);
 
 void DCB_resize_full(CommandBuffer *buffer);
 void DCB_resize_matches(CommandBuffer *buffer);

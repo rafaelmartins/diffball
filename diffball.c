@@ -318,7 +318,7 @@ int main(int argc, char **argv)
     			target[target_count -1]->size % 512));
     	if(x!= ver_stat.st_size) {
     	v1printf("must be a null padded tarball. processing the remainder.\n");
-    	DCBufferAddCmd(&dcbuff, DC_ADD, x, ver_stat.st_size - x);
+	DCB_add_add(&dcbuff, x, ver_stat.st_size -x );
     }
 //    printf("matched(%lu), couldn't match(%lu) of entry count(%lu).\n", 
 //	match_count, target_count -match_count, target_count);

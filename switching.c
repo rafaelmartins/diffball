@@ -75,6 +75,7 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
     unsigned int lb, ob;
     unsigned char out_buff[256];
     unsigned long count, temp_len;
+    DCommand dc;
     unsigned long total_add_len=0;
     unsigned int last_com, temp;
     unsigned int is_neg = 0;
@@ -85,41 +86,41 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
     } else {
 	copy_off_array = copy_off_start;
     }
-    count = DCBufferReset(buffer);
+    DCBufferReset(buffer);
     cwrite(out_cfh, SWITCHING_MAGIC, SWITCHING_MAGIC_LEN);
     writeUBytesBE(out_buff, SWITCHING_VERSION, SWITCHING_VERSION_LEN);
     cwrite(out_cfh, out_buff, SWITCHING_VERSION_LEN);
     delta_pos += SWITCHING_MAGIC_LEN + SWITCHING_VERSION_LEN;
     total_add_len=0;
-    while(count--) {
-	if(DC_ADD==current_command_type(buffer))
-    	    total_add_len += DCBF_cur_len(buffer);
-    	DCBufferIncr(buffer);
+    while(DCB_commands_remain(buffer)) {
+	DCB_get_next_command(buffer, &dc);
+	if(DC_ADD==dc.type)
+    	    total_add_len += dc.loc.len;
     }
     writeUBytesBE(out_buff, total_add_len, 4);
     cwrite(out_cfh, out_buff, 4);
     delta_pos += 4;
-    count = DCBufferReset(buffer);
-    while(count--) {
-	if(current_command_type(buffer)==DC_ADD) {
-	    if(DCBF_cur_len(buffer) != copy_cfile_block(out_cfh, ver_cfh, 
-		DCBF_cur_off(buffer), DCBF_cur_len(buffer)))
+    DCBufferReset(buffer);
+    while(DCB_commands_remain(buffer)) {
+	DCB_get_next_command(buffer, &dc);
+	if(DC_ADD == dc.type) {
+	    if(dc.loc.len != copy_cfile_block(out_cfh, ver_cfh, 
+		dc.loc.offset, dc.loc.len)) 
 		abort();
-	    delta_pos += DCBF_cur_len(buffer);
+	    delta_pos += dc.loc.len;
     	}
-    	DCBufferIncr(buffer);
     }
     v2printf("output add block, len(%lu)\n", delta_pos);
-    count = DCBufferReset(buffer);
+    DCBufferReset(buffer);
     last_com = DC_COPY;
     dc_pos=0;
-    while(count--){
-	if(DCBF_cur_len(buffer)==0) {
-	    DCBufferIncr(buffer);
+    while(DCB_commands_remain(buffer)) {
+	DCB_get_next_command(buffer, &dc);
+	if(dc.loc.len == 0) {
 	    continue;
 	}
-	if(current_command_type(buffer)==DC_ADD) {
-	    temp_len = DCBF_cur_len(buffer);
+	if(DC_ADD == dc.type) {
+	    temp_len = dc.loc.len;
 	    if(temp_len >= add_len_start[3]) {
 	    	temp=3;
 	    	lb=30;
@@ -137,9 +138,10 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 	    writeUBitsBE(out_buff, temp_len, lb);
 	    out_buff[0] |= (temp << 6); 
 	    cwrite(out_cfh, out_buff, temp + 1);
-	    v2printf("writing add, pos(%lu), len(%lu)\n", delta_pos, DCBF_cur_len(buffer));
+	    v2printf("writing add, pos(%lu), len(%lu)\n", delta_pos, 
+		dc.loc.len);
 	    delta_pos += temp + 1;
-	    fh_pos += DCBF_cur_len(buffer);
+	    fh_pos += dc.loc.len;
 	    last_com = DC_ADD;
 	} else {
 	    if(last_com == DC_COPY) {
@@ -150,15 +152,15 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 	    }
 	    //yes this is a hack.  but it works.
 	    if(offset_type == ENCODING_OFFSET_DC_POS) {
-		s_off = DCBF_cur_off(buffer) - dc_pos;
+		s_off = dc.loc.offset - dc_pos;
 		//u_off = 2 * (abs(s_off));
 	    	u_off = abs(s_off);
 	    	v2printf("off(%lu), dc_pos(%lu), u_off(%lu), s_off(%ld): ", 
-		    DCBF_cur_off(buffer), dc_pos, u_off, s_off);
+		    dc.loc.offset, dc_pos, u_off, s_off);
 	    } else {
-		u_off = DCBF_cur_off(buffer);
+		u_off = dc.loc.offset;
 	    }
-	    temp_len = DCBF_cur_len(buffer);
+	    temp_len = dc.loc.len;
 	    if(temp_len >= copy_len_start[3]) {
 	    	temp=3;
 	    	lb=28;
@@ -172,7 +174,8 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 	    	temp=0;
 	    	lb=4;
 	    }
-	    //v2printf("len(%lu) falls into cat(%u) for copy_len\n", temp_len, temp);
+	    //v2printf("len(%lu) falls into cat(%u) for copy_len\n", 
+//		temp_len, temp);
 	    temp_len -= copy_len_start[temp];
 	    writeUBitsBE(out_buff, temp_len, lb);
 	    out_buff[0] |= (temp << 6);
@@ -216,13 +219,11 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 	    cwrite(out_cfh, out_buff, lb + temp + 1);
 	    v2printf("writing copy delta_pos(%lu), fh_pos(%lu), offset(%ld), len(%lu)\n",
 	    	delta_pos, fh_pos, (unsigned long)ENCODING_OFFSET_DC_POS,
-//		(offset_type==ENCODING_OFFSET_DC_POS ? s_off : u_off), 
-		DCBF_cur_len(buffer));
-	    fh_pos+=DCBF_cur_len(buffer);
+		dc.loc.len);
+	    fh_pos += dc.loc.len;
 	    delta_pos += lb + temp + 1;
 	    last_com=DC_COPY;
  	}
-	DCBufferIncr(buffer);
     }
     writeUBytesBE(out_buff, 0, 2);
     if(last_com==DC_COPY) {
@@ -282,7 +283,8 @@ signed int switchingReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff /*,
 		    len += add_len_start[lb];
 	    	}
 	    	if(len) {
-		    DCBufferAddCmd(dcbuff, DC_ADD, add_off, len);
+		    DCB_add_add(dcbuff, add_off, len);
+//		    DCBufferAddCmd(dcbuff, DC_ADD, add_off, len);
 		    add_off += len;
 	    	}
 	    	last_com = DC_ADD;
@@ -322,8 +324,10 @@ signed int switchingReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff /*,
 	    	    end_of_patch=1;
 	    	    continue;
 	    	}
-	    	if(len)
-		    DCBufferAddCmd(dcbuff, DC_COPY, u_off, len);
+	    	if(len) {
+		    DCB_add_copy(dcbuff, u_off, 0, len);
+//		    DCBufferAddCmd(dcbuff, DC_COPY, u_off, len);
+		}
 	    	last_com = DC_COPY;
 	    	v2printf("copy off(%ld), len(%lu)\n", u_off, len);
 	    }

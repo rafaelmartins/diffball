@@ -46,7 +46,8 @@ bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh, cfile *out_cfh)
     unsigned char buff[BUFFER_SIZE];
     unsigned long count, fh_pos, delta_pos;
     unsigned int lb;
-    count = DCBufferReset(buffer);
+    DCommand dc;
+    DCBufferReset(buffer);
     memcpy(buff, BDIFF_MAGIC, BDIFF_MAGIC_LEN);
     buff[BDIFF_MAGIC_LEN] = BDIFF_VERSION;
     /* I haven't studied the author of bdiff's alg well enough too know what
@@ -56,45 +57,43 @@ bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh, cfile *out_cfh)
     cwrite(out_cfh, buff, BDIFF_MAGIC_LEN + 5);
     delta_pos = 10;
     fh_pos = 0;
-    while(count--) {
-	if(DC_COPY==current_command_type(buffer)) {
+    count=0;
+    while(DCB_commands_remain(buffer)) {
+//    while(count--) {
+	DCB_get_next_command(buffer, &dc);
+	if(DC_COPY == dc.type) {
 	    v2printf("copy command, out_cfh(%lu), fh_pos(%lu), offset(%lu), len(%lu)\n",
-		delta_pos, fh_pos, DCBF_cur_off(buffer), 
-		DCBF_cur_len(buffer));
-	    fh_pos += DCBF_cur_len(buffer);
+		delta_pos, fh_pos, dc.loc.offset, dc.loc.len);
+	    fh_pos += dc.loc.len;
 	    lb = 5;
 	    buff[0] = 0;
-	    writeUBytesBE(buff + 1, DCBF_cur_off(buffer), 4);
-	    if(DCBF_cur_len(buffer) > 5 && 
-		DCBF_cur_len(buffer) <= 5 + 0x3f) {
-		buff[0] = DCBF_cur_len(buffer) -5;
+	    writeUBytesBE(buff + 1, dc.loc.offset, 4);
+	    if(dc.loc.len > 5 && dc.loc.len <= 5 + 0x3f) {
+		buff[0] = dc.loc.len -5 ;
 	    } else {
-		writeUBytesBE(buff + 5, DCBF_cur_len(buffer), 4);
+		writeUBytesBE(buff + 5, dc.loc.len, 4);
 		lb += 4;
 	    }
 	    delta_pos += lb;
 	    cwrite(out_cfh, buff, lb);
 	} else {
 	    v2printf("add  command, out_cfh(%lu), fh_pos(%lu), len(%lu)\n", 
-		delta_pos, fh_pos, DCBF_cur_len(buffer));
-	    fh_pos += DCBF_cur_len(buffer);
+		delta_pos, fh_pos, dc.loc.len);
+	    fh_pos += dc.loc.len;
 	    buff[0] = 0x80;
 	    lb = 1;
-	    if(DCBF_cur_len(buffer) > 5 && 
-		DCBF_cur_len(buffer) <= 5 + 0x3f) {
-		buff[0] |= DCBF_cur_len(buffer) - 5;
+	    if(dc.loc.len > 5 && dc.loc.len <= 5 + 0x3f) {
+		buff[0] |= dc.loc.len - 5;
 	    } else {
-		writeUBytesBE(buff + 1, DCBF_cur_len(buffer), 4);
+		writeUBytesBE(buff + 1, dc.loc.len, 4);
 		lb += 4;
 	    }
-	    delta_pos += lb + DCBF_cur_len(buffer);
+	    delta_pos += lb + dc.loc.len;
 	    cwrite(out_cfh, buff, lb);
-	    if(DCBF_cur_len(buffer) != 
-		copy_cfile_block(out_cfh, ver_cfh, DCBF_cur_off(buffer), 
-		DCBF_cur_len(buffer)))
+	    if(dc.loc.len != copy_cfile_block(out_cfh, ver_cfh, dc.loc.offset, 
+		dc.loc.len))
 		abort();
 	}
-	DCBufferIncr(buffer);
     }
     return 0;
 }
@@ -133,7 +132,8 @@ bdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 	    }
 	    fh_pos += len;
 	    v2printf(" offset(%lu), len=%lu\n", offset, len);
-	    DCBufferAddCmd(dcbuff, DC_COPY, offset, len);
+	    DCB_add_copy(dcbuff, offset, 0, len);
+//	    DCBufferAddCmd(dcbuff, DC_COPY, offset, len);
 	} else if ((buff[0] >> 6)==2) {
 	    buff[0] &= 0x3f;
 	    v2printf("got an add at %lu, fh_pos(%lu):", 
@@ -148,7 +148,8 @@ bdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 	    }
 	    fh_pos += len;
 	    v2printf(" len=%lu\n", len);
-	    DCBufferAddCmd(dcbuff, DC_ADD, ctell(patchf, CSEEK_FSTART), len);
+	    DCB_add_add(dcbuff, ctell(patchf, CSEEK_FSTART), len);
+//	    DCBufferAddCmd(dcbuff, DC_ADD, ctell(patchf, CSEEK_FSTART), len);
 	    cseek(patchf, len, CSEEK_CUR);
 	} else if((buff[0] >> 6)==1) {
 	    buff[0] &= 0x3f;
