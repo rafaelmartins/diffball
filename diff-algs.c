@@ -83,6 +83,7 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 //	index = hash_it(rhash, &ads);
 	hash_offset = lookup_offset(rhash, &ads);
 	if(hash_offset) {
+//	    v1printf("possible match for vc(%lu):", vc);
 	    if(hash_offset != cseek(rhash->ref_cfh, 
 		hash_offset, CSEEK_FSTART)) {
 
@@ -95,6 +96,12 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 		rbuff_end = cread(rhash->ref_cfh, rbuff, rbuff_size);
 	    }	
 	    if(memcmp(rbuff, vbuff+vc - vbuff_start, rhash->seed_len)!=0){
+//		if(!(rhash->type & RH_MOD_HASH)) {
+//		    v1printf("fucking collision: vc(%lu) ", vc);
+//		    v1printf("ent.chk(%x)!=%x\n", 
+//			rhash->hash.chk[get_checksum(&ads) % 
+//			    rhash->hr_size].chksum, get_checksum(&ads));
+//		}
 		bad_match++;
 		vc++;
 		continue;
@@ -218,6 +225,8 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 //	    ver_len - vs);
     }
     free_adler32_seed(&ads);
+    if(bad_match)
+    v1printf("bad_matches(%lu)\n", bad_match);
     return 0;
 }
 

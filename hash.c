@@ -102,7 +102,7 @@ free_RefHash(RefHash *rhash)
 	free(rhash->hash.chk);
     rhash->ref_cfh = NULL;
     rhash->seed_len = rhash->hr_size = rhash->sample_rate = 
-	rhash->inserts = rhash->duplicates = 0;
+	rhash->inserts = rhash->type = rhash->flags = rhash->duplicates = 0;
     return 0;
 }
 
@@ -292,7 +292,8 @@ RHash_find_matches(RefHash *rhash, cfile *ref_cfh)
 	    }
 	} else if(rhash->type & RH_RMOD_HASH) {
 	    chksum = get_checksum(&ads);
-	    index = hash_it(rhash, &ads);
+	    index = chksum % rhash->hr_size;
+//hash_it(rhash, &ads);
 	    if(rhash->hash.chk[index].chksum == chksum) {
 		rhash->hash.chk[index].offset = cfw->offset + cfw->pos - 
 		    rhash->seed_len;

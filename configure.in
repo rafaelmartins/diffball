@@ -7,7 +7,7 @@ AC_PROG_CC
 
 # toggling debug support.
 #AC_DEFINE(DEBUG_CFILE, 1, Toggle on cfile debug messages.)
-AC_DEFINE(DEV_VERSION, 1, Toggle on asserts.)
+#AC_DEFINE(DEV_VERSION, 1, Toggle on asserts.)
 #AC_DEFINE(DEBUG_HASH, 1, Toggle on extra hash tests and messages.)
 #AC_DEFINE(DEBUG_DCBUFFER, 1, Toggle on DCBUFFER checks.)
 
