@@ -14,7 +14,7 @@ int main(int argc, char **argv)
     int trg_fh;
     struct tar_entry **source, **target, *tar_ptr;
     void *vptr;
-    char source_md5[32], target_md5[32];
+    unsigned char source_md5[32], target_md5[32];
     unsigned long source_count, target_count;
     unsigned long x;
     char src_common[256], trg_common[256];  /* common dir's... */
@@ -107,7 +107,7 @@ int main(int argc, char **argv)
         if(vptr == NULL) {
             printf("'%s' not found!\n", source[x]->fullname_ptr);
         } else {
-            printf("'%s' found!\n", source[x]->fullname_ptr);
+            //printf("'%s' found!\n", source[x]->fullname_ptr);
         }
     }
 

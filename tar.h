@@ -39,7 +39,7 @@
 
 int check_str_chksum(const char *entry);
 inline unsigned long octal_str2long(char *string, unsigned int length);
-struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, char *md5sum);
+struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, unsigned char *md5sum);
 
 struct tar_entry {
     unsigned char       *name;
