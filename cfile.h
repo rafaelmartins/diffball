@@ -36,6 +36,8 @@
 #define CFILE_COMPUTE_MD5		(0x4)
 #define CFILE_OPEN_FH			(0x8)
 
+#define CFILE_SEEKABLE			(0x10)
+
 #define CFILE_MD5_FINALIZED		(0x10)
 #define CFILE_BUFFER_ALL		(0x20)
 #define CFILE_MEM_ALIAS			(0x40)
@@ -114,6 +116,7 @@ typedef struct _cfile {
     unsigned char	*data_md5;
 } cfile;
 
+#define CFH_IS_SEEKABLE(cfh)	(((cfh)->access_flags & CFILE_SEEKABLE) > 1)
 #define FREE_CFH_AT_CLOSE(cfh)	((cfh)->state_flags |= CFILE_FREE_AT_CLOSING)
 #define CFH_IS_CHILD(cfh)	((cfh)->state_flags & CFILE_CHILD_CFH)
 

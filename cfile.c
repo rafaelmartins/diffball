@@ -126,7 +126,10 @@ internal_copen(cfile *cfh, int fh, unsigned long raw_fh_start, unsigned long raw
     } else {
 	cfh->compressor_type = compressor_type;
     }
-
+    if(! ((cfh->access_flags & CFILE_WONLY) && 
+	(compressor_type != NO_COMPRESSOR)) ){
+	cfh->access_flags |= CFILE_SEEKABLE;
+    }
     switch(cfh->compressor_type) {
     case NO_COMPRESSOR:
 	dcprintf("copen: opening w/ no_compressor\n");
