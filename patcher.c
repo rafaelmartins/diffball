@@ -154,12 +154,15 @@ main(int argc, char **argv)
 	recon_val = xdelta1ReconstructDCBuff(&patch_cfh, &dcbuff, 1);
     } else if(BDELTA_FORMAT == patch_id) {
 	recon_val = bdeltaReconstructDCBuff(&patch_cfh, &dcbuff);
+    } else if(BSDIFF_FORMAT == patch_id) {
+	recon_val = bsdiffReconstructDCBuff(&patch_cfh, &dcbuff);
 //    } else if(UDIFF_FORMAT == patch_id) {
 //	recon_val = udiffReconstructDCBuff(&patch_cfh, &src_cfh, NULL, &dcbuff);
     }
     v1printf("reconstruction return=%ld\n", recon_val);
     v1printf("reconstructing target file based off of dcbuff commands...\n");
-    reconstructFile(&dcbuff, &src_cfh, &out_cfh);
+    DCBUFFER_REGISTER_COPY_SRC(&dcbuff, &src_cfh, NULL);
+    reconstructFile(&dcbuff, &out_cfh);
     if(BDELTA_FORMAT==patch_id) {
 	if(ctell(&out_cfh, CSEEK_ABS) < dcbuff.ver_size) {
 	    unsigned char buff[512];

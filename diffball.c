@@ -304,17 +304,18 @@ int main(int argc, char **argv)
 
     v1printf("outputing patch...\n");
     v1printf("there were %lu commands\n", dcbuff.DCB.full.buffer_count);
+    DCBUFFER_REGISTER_ADD_SRC(&dcbuff, &ver_full, NULL);
     if(GDIFF4_FORMAT == patch_format_id) { 
-        encode_result = gdiff4EncodeDCBuffer(&dcbuff, &ver_full, &out_cfh);
+        encode_result = gdiff4EncodeDCBuffer(&dcbuff, &out_cfh);
     } else if(GDIFF5_FORMAT == patch_format_id) {
-        encode_result = gdiff5EncodeDCBuffer(&dcbuff, &ver_full, &out_cfh);
+        encode_result = gdiff5EncodeDCBuffer(&dcbuff, &out_cfh);
     } else if(BDIFF_FORMAT == patch_format_id) {
-        encode_result = bdiffEncodeDCBuffer(&dcbuff, &ver_full, &out_cfh);
+        encode_result = bdiffEncodeDCBuffer(&dcbuff, &out_cfh);
     } else if(SWITCHING_FORMAT == patch_format_id) {
 	DCBufferCollapseAdds(&dcbuff);
-	encode_result = switchingEncodeDCBuffer(&dcbuff, &ver_full, &out_cfh);
+	encode_result = switchingEncodeDCBuffer(&dcbuff, &out_cfh);
     } else if (BDELTA_FORMAT == patch_format_id) {
-        encode_result = bdeltaEncodeDCBuffer(&dcbuff, &ver_full, &out_cfh);
+        encode_result = bdeltaEncodeDCBuffer(&dcbuff, &out_cfh);
     }
     DCBufferFree(&dcbuff);
     cclose(&ver_full);

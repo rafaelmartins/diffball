@@ -186,17 +186,23 @@ int main(int argc, char **argv)
     DCB_test_total_copy_len(&buffer);
     v1printf("outputing patch...\n");
     copen(&out_cfh, out_fh, 0, 0, patch_compressor, CFILE_WONLY);
+    DCBUFFER_REGISTER_ADD_SRC(&buffer, &ver_cfh, NULL);
     if(GDIFF4_FORMAT == patch_id) {
-	encode_result = gdiff4EncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
+	encode_result = gdiff4EncodeDCBuffer(&buffer, &out_cfh);
+//	encode_result = gdiff4EncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
     } else if(GDIFF5_FORMAT == patch_id) {
-	encode_result = gdiff5EncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
+	encode_result = gdiff5EncodeDCBuffer(&buffer, &out_cfh);
+//	encode_result = gdiff5EncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
     } else if(BDIFF_FORMAT == patch_id) {
-	encode_result = bdiffEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
+	encode_result = bdiffEncodeDCBuffer(&buffer, &out_cfh);
+//	encode_result = bdiffEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
     } else if(SWITCHING_FORMAT == patch_id) {
 	DCBufferCollapseAdds(&buffer);
-	encode_result = switchingEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
+	encode_result = switchingEncodeDCBuffer(&buffer, &out_cfh);
+//	encode_result = switchingEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
     } else if (BDELTA_FORMAT == patch_id) {
-	encode_result = bdeltaEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
+	encode_result = bdeltaEncodeDCBuffer(&buffer, &out_cfh);
+//	encode_result = bdeltaEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
     }
     v1printf("flushing and closing out file\n");
     cclose(&out_cfh);
