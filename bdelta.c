@@ -21,9 +21,9 @@
 #include <string.h>
 #include <assert.h>
 #include "dcbuffer.h"
-#include "raw.h"
 #include "cfile.h"
 #include "bit-functions.h"
+#include "bdelta.h"
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
@@ -47,7 +47,7 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *ver_cfh,
     matches=0;
     while(count--) {
 	prev = current;
-	current = get_current_command_type(dcbuff);
+	current = current_command_type(dcbuff);
 	if(! ((prev==DC_ADD && current==DC_COPY) ||
 	    (prev==DC_ADD && current==DC_ADD)) )
 	    matches++;
@@ -76,12 +76,12 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *ver_cfh,
     while(matches--) {
 	printf("handling match(%lu)\n", match_orig - matches);
 	add_len=0;
-	if(DC_ADD==get_current_command_type(dcbuff)) {
+	if(DC_ADD==current_command_type(dcbuff)) {
 	    do {
 		add_len += dcbuff->lb_tail->len;
 	    	count--;
 		DCBufferIncr(dcbuff);
-	    } while(count!=0 && get_current_command_type(dcbuff)==DC_ADD);
+	    } while(count!=0 && current_command_type(dcbuff)==DC_ADD);
 	    printf("writing add len=%lu\n", add_len);
 	}
 	/* basically a fall through to copy, if count!=0 */
@@ -116,7 +116,7 @@ printf("writing copy_len=%lu, offset=%lu, dc_pos=%lu, stored_off=0x%x\n",
     count = DCBufferReset(dcbuff);
     printf("writing add_block at %lu\n", ctell(patchf, CSEEK_FSTART));
     while(count--) {
-	if(get_current_command_type(dcbuff)==DC_ADD) {
+	if(current_command_type(dcbuff)==DC_ADD) {
 	    if(dcbuff->lb_tail->len != 
 		copy_cfile_block(patchf, ver_cfh, dcbuff->lb_tail->offset,
 		dcbuff->lb_tail->len) )

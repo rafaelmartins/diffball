@@ -27,10 +27,10 @@
 #define LONG_BIT_COUNT 64
 #define LONG_BYTE_COUNT 8
 
-inline int unsignedBitsNeeded(unsigned long int y);
-inline int signedBitsNeeded(signed long int y);
-inline int unsignedBytesNeeded(unsigned long int y);
-inline int signedBytesNeeded(signed long int y);
+inline unsigned int unsignedBitsNeeded(unsigned long int y);
+inline unsigned int signedBitsNeeded(signed long int y);
+inline unsigned int unsignedBytesNeeded(unsigned long int y);
+inline unsigned int signedBytesNeeded(signed long int y);
 
 unsigned long readUBytesBE(const unsigned char *buff, unsigned int l);
 unsigned long readUBytesLE(const unsigned char *buff, unsigned int l);
@@ -46,9 +46,9 @@ unsigned int writeSBytesBE(unsigned char *buff, signed long value,
 unsigned int writeSBytesLE(unsigned char *buff, signed long value,
     unsigned int l);
 
-int writeSBitsBE(unsigned char *out_buff, signed long value,
+unsigned int writeSBitsBE(unsigned char *out_buff, signed long value,
     unsigned int bit_count);
-int writeUBitsBE(unsigned char *out_buff, unsigned long value, 
+unsigned int writeUBitsBE(unsigned char *out_buff, unsigned long value, 
     unsigned int bit_count);
 
 #endif

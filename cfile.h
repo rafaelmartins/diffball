@@ -83,5 +83,6 @@ unsigned long cwrite(cfile *cfh, unsigned char *in_buff, unsigned long len);
 inline void crefresh(cfile *cfh);
 unsigned long ctell(cfile *cfh, unsigned int tell_type);
 unsigned long cseek(cfile *cfh, signed long offset, int offset_type);
-
+unsigned long copy_cfile_block(cfile *out_cfh, cfile *in_cfh, 
+    unsigned long in_offset, unsigned long len);
 #endif

@@ -25,7 +25,7 @@
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
-unsigned long inline get_current_command_type(CommandBuffer *buff) {
+unsigned long inline current_command_type(CommandBuffer *buff) {
 	return ((*buff->cb_tail >> buff->cb_tail_bit) & 0x01);
 }
 

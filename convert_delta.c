@@ -26,7 +26,6 @@
 #include "dcbuffer.h"
 #include "gdiff.h"
 #include "switching.h"
-#include "raw.h"
 #include "bdiff.h"
 
 int 
@@ -60,7 +59,7 @@ main(int argc, char **argv)
     }
     copen(&din_cfh, din_fh, 0, din_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     copen(&dout_cfh, dout_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
-    DCBufferInit(&dcbuff, 1000000);
+    DCBufferInit(&dcbuff, 1000000,0,0);
 //    offset_type = ENCODING_OFFSET_START;
     offset_type = ENCODING_OFFSET_DC_POS;
     printf("reconstructing dcbuffer...\n");
@@ -71,12 +70,11 @@ main(int argc, char **argv)
     printf("outputing patch...\n");
     gdiffEncodeDCBuffer(&dcbuff, offset_type, &din_cfh, &dout_cfh);
 //    switchingEncodeDCBuffer(&dcbuff, offset_type, &din_cfh, &dout_cfh);
-    if(argc > 3) {
+/*    if(argc > 3) {
 	copen(&dout2_cfh, dout2_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
 	printf("outputting second patch.\n");
-	rawEncodeDCBuffer(&dcbuff, offset_type, &din_cfh, &dout2_cfh);
 	cclose(&dout2_cfh);
-    }
+    }*/
     printf("finished.\n");
     cclose(&din_cfh);
     cclose(&dout_cfh);

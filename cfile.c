@@ -315,3 +315,28 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 	//printf("cseekd, called crefresh, raw_fh_pos(%lu)\n", cfh->raw_fh_pos);
 	return uncompr_offset;
 }
+
+/* while I realize this may not *necessarily* belong in cfile, 
+   eh, it's going here.
+   deal with it.  */
+unsigned long 
+copy_cfile_block(cfile *out_cfh, cfile *in_cfh, unsigned long in_offset, 
+    unsigned long len) 
+{
+#define BUFF_SIZE 4096
+    unsigned char buff[BUFF_SIZE];
+    unsigned int lb;
+    unsigned long bytes_wrote=0;;
+    if(in_offset!=cseek(in_cfh, in_offset, CSEEK_FSTART))
+	abort();
+    while(len) {
+	lb = MIN(BUFF_SIZE, len);
+	if( (lb!=cread(in_cfh, buff, lb)) ||
+	    (lb!=cwrite(out_cfh, buff, lb)) )
+	    abort;
+	len -= lb;
+	bytes_wrote+=lb;
+    }
+    return bytes_wrote;
+}
+

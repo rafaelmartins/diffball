@@ -69,7 +69,6 @@ xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
     cseek(patchf, -12, CSEEK_END);
     cread(patchf, buff, 4);
     control_offset = readUBytesBE(buff,4);
-//    printf("got a control_offset of %lu\n", control_offset);
     cseek(patchf, control_offset, CSEEK_FSTART);
     /* kludge. skipping 8 byte unknown, and to_file md5.*/
     cseek(patchf, 24, CSEEK_CUR);
@@ -107,7 +106,6 @@ xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 	count, ctell(patchf, CSEEK_FSTART));
     add_pos = add_start;
     while(count--) {
-//	printf("processing %lu command\n", count);
 	x = readXDInt(patchf, buff);
 	offset = readXDInt(patchf, buff);
 	len = readXDInt(patchf, buff);

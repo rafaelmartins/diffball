@@ -31,7 +31,6 @@
 #include "diff-algs.h"
 #include "gdiff.h"
 #include "switching.h"
-#include "raw.h"
 #include "bdiff.h"
 #include "bdelta.h"
 

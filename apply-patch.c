@@ -29,51 +29,26 @@ void
 reconstructFile(CommandBuffer *dcbuff, cfile *src_cfh, cfile *delta_cfh, 
     cfile *out_cfh)
 {
-	//unsigned long int u_off;
-	unsigned int const buff_size=4096;
-	unsigned char buff[buff_size];
-	unsigned long x, tmp;
-	dcbuff->lb_tail = dcbuff->lb_start;
-	dcbuff->cb_tail = dcbuff->cb_head;
-	dcbuff->cb_tail_bit = dcbuff->cb_head_bit;
-	while(dcbuff->buffer_count--){
-		if((*dcbuff->cb_tail & (1 << dcbuff->cb_tail_bit))>0) {
-		    //copies++;//clean this up.
-		    printf("copy command, offset(%lu), len(%lu)\n",
-		    dcbuff->lb_tail->offset, dcbuff->lb_tail->len);
-		    cseek(src_cfh, dcbuff->lb_tail->offset, CSEEK_FSTART);
-		    while(dcbuff->lb_tail->len) {
-	        	x = MIN(dcbuff->lb_tail->len, buff_size);
-	        	//printf("copying x(%u) of len(%u)\n", x, dcbuff->lb_tail->len);
-	        	if(cread(src_cfh, buff, x)!=x) {
-	        		printf("shite, couldn't read needed data from src_fh\n");
-	        		exit(1);
-	        	}
-		        if((tmp=cwrite(out_cfh, buff, x))!=x) {
-		   			printf("shite, couldn't only wrote(%lu) of (%lu) from the src_cfh to "
-		   			"out_cfh\n", tmp, x);
-		        	exit(1);
-				}
-				dcbuff->lb_tail->len -= x;
-			}
-		} else {
-		    printf("add command, offset(%lu), len(%lu)\n", 
-	        	dcbuff->lb_tail->offset, dcbuff->lb_tail->len);
-		    cseek(delta_cfh, dcbuff->lb_tail->offset, CSEEK_FSTART);
-	        while(dcbuff->lb_tail->len) {
-	        	x = MIN(dcbuff->lb_tail->len, buff_size);
-	        	if(cread(delta_cfh, buff, x)!=x) {
-	        		printf("shite, couldn't read needed data from delta\n");
-	        		exit(1);
-	        	}
-		        if(cwrite(out_cfh, buff, x)!=x) {
-		        	printf("shite, couldn't write the needed data from the delta to out_fh\n");
-		        	exit(1);
-				}
-				dcbuff->lb_tail->len -= x;
-			}
-		}
-		DCBufferIncr(dcbuff);
+    unsigned long x, tmp, count;
+    count = DCBufferReset(dcbuff);
+    while(count--) {
+	if(current_command_type(dcbuff)==DC_COPY) {
+	    printf("copy command, offset(%lu), len(%lu)\n",
+		dcbuff->lb_tail->offset, dcbuff->lb_tail->len);
+		cseek(src_cfh, dcbuff->lb_tail->offset, CSEEK_FSTART);
+	    if(dcbuff->lb_tail->len != 
+		copy_cfile_block(out_cfh, src_cfh, dcbuff->lb_tail->offset,
+		dcbuff->lb_tail->len))
+		abort();
+	} else {
+	    printf("add command, offset(%lu), len(%lu)\n", 
+		dcbuff->lb_tail->offset, dcbuff->lb_tail->len);
+	    if(dcbuff->lb_tail->len !=
+		copy_cfile_block(out_cfh, delta_cfh, dcbuff->lb_tail->offset, 
+		dcbuff->lb_tail->len))
+		abort();
+	}
+	DCBufferIncr(dcbuff);
     }
 }
 	

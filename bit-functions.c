@@ -18,7 +18,8 @@
 #include <stdlib.h>
 #include "bit-functions.h"
 
-inline int unsignedBitsNeeded(unsigned long int y)
+inline unsigned int 
+unsignedBitsNeeded(unsigned long int y)
 {
     unsigned int x=1;
     if (y == 0) {
@@ -29,12 +30,15 @@ inline int unsignedBitsNeeded(unsigned long int y)
 	x++;
     return x;    
 }
-inline int signedBitsNeeded(signed long int y)
+
+inline unsigned int 
+signedBitsNeeded(signed long int y)
 {
     return unsignedBitsNeeded(abs(y)) + 1;
 }
 
-inline int unsignedBytesNeeded(unsigned long int y)
+inline unsigned int 
+unsignedBytesNeeded(unsigned long int y)
 {
     unsigned int x;
     if (y == 0) {
@@ -45,7 +49,9 @@ inline int unsignedBytesNeeded(unsigned long int y)
     x= (x/8) + (x % 8 ? 1 : 0);
     return x;
 }
-inline int signedBytesNeeded(signed long int y)
+
+inline unsigned int 
+signedBytesNeeded(signed long int y)
 {
     unsigned int x;
     x=signedBitsNeeded(abs(y));
@@ -53,7 +59,8 @@ inline int signedBytesNeeded(signed long int y)
     return x;
 }
 
-unsigned long readUBytesBE(const unsigned char *buff, unsigned int l)
+unsigned long 
+readUBytesBE(const unsigned char *buff, unsigned int l)
 {
     const unsigned char *p;
     unsigned long num=0;
@@ -62,7 +69,8 @@ unsigned long readUBytesBE(const unsigned char *buff, unsigned int l)
     return (unsigned long)num;
 }
 
-unsigned long readUBytesLE(const unsigned char *buff, unsigned int l)
+unsigned long 
+readUBytesLE(const unsigned char *buff, unsigned int l)
 {
     unsigned long num=0;
     for(; l > 0; l--)
@@ -70,7 +78,8 @@ unsigned long readUBytesLE(const unsigned char *buff, unsigned int l)
     return (unsigned long)num;
 }
 
-signed long readSBytesBE(const unsigned char *buff, unsigned int l)
+signed long 
+readSBytesBE(const unsigned char *buff, unsigned int l)
 {
     unsigned long num;
     unsigned const char *p;
@@ -80,6 +89,7 @@ signed long readSBytesBE(const unsigned char *buff, unsigned int l)
     }
     return (signed long)(num * (*buff & 0x80 ? -1 : 1));
 }
+
 /*
 signed long readSBytesLE(const unsigned char *buff, unsigned int l)
 {
@@ -93,27 +103,31 @@ signed long readSBytesLE(const unsigned char *buff, unsigned int l)
     return (signed long)(num * (*buff & 0x80 ? -1 : 1));
 }
 */
-unsigned int writeUBytesBE(unsigned char *buff, unsigned long value, unsigned int l)
+
+unsigned int 
+writeUBytesBE(unsigned char *buff, unsigned long value, unsigned int l)
 {
     unsigned int x;
-    if((value >> (l * 8)) > 0) 
-	return 1;
     for(x=0; x < l; x++)
 	buff[x] = (value >> (l - 1 -x)*8) & 0xff;
+    if((value >> (l * 8)) > 0) 
+	return 1;
     return 0;
 }
 
-unsigned int writeUBytesLE(unsigned char *buff, unsigned long value, unsigned int l)
+unsigned int 
+writeUBytesLE(unsigned char *buff, unsigned long value, unsigned int l)
 {
     unsigned int x;
-//    if((value >> (l * 8)) > 0)
-//	return 1;
     for(x=0; l > 0; l--, x++) 
 	buff[x] = ((value >> (x * 8)) & 0xff);
+    if((value >> (l * 8)) > 0)
+	return 1;
     return 0;
 }
 
-unsigned int writeSBytesBE(unsigned char *buff, signed long value, unsigned int l)
+unsigned int 
+writeSBytesBE(unsigned char *buff, signed long value, unsigned int l)
 {
     if(writeUBytesBE(buff, (unsigned long)abs(value), l)!=0)
 	return 1;
@@ -124,7 +138,8 @@ unsigned int writeSBytesBE(unsigned char *buff, signed long value, unsigned int 
     return 0;
 }
 
-unsigned int writeSBytesLE(unsigned char *buff, signed long value, unsigned int l)
+unsigned int 
+writeSBytesLE(unsigned char *buff, signed long value, unsigned int l)
 {
     if(writeUBytesLE(buff, (unsigned long)abs(value), l)!=0)
 	return 1;
@@ -135,45 +150,24 @@ unsigned int writeSBytesLE(unsigned char *buff, signed long value, unsigned int 
     return 0;
 }
 
-/*
-int convertSBytesChar(unsigned char *out_buff, signed long value, unsigned char byte_count)
-{
-    convertUBytesChar(out_buff, abs(value), byte_count);
-    if(value < 0) {
-	if(out_buff[0] & 0x80)
-	    return -1; //num was too large.
-	out_buff[0] |= 0x80;
-    } else if (out_buff[0] & 0x80) { //num was too large.
-	return -1;
-    }
-    return 0;    
-}
-
-int convertUBytesChar(unsigned char *out_buff, unsigned long value, unsigned char byte_count)
-{
-    unsigned int x;
-    for(x=0; x < byte_count; x++)
-	out_buff[x] = (value >> (byte_count -1 -x)*8) & 0xff;
-    return 0;
-}
-*/
-
-int writeSBitsBE(unsigned char *out_buff, signed long value, unsigned int bit_count)
+unsigned int 
+writeSBitsBE(unsigned char *out_buff, signed long value, unsigned int bit_count)
 {
 	unsigned int start=0;
 	start = bit_count % 8;
     writeUBitsBE(out_buff, abs(value), bit_count);
     if(value < 0) {
 		if(out_buff[0] & (1 << start))
-	    	return -1; //num was too large.
+	    	return 1; //num was too large.
 		out_buff[0] |= (1 << start);
     } else if (out_buff[0] & (1 << start)) { //num was too large.
-		return -1;
+		return 1;
     }
     return 0;    
 }
 
-int writeUBitsBE(unsigned char *out_buff, unsigned long value, unsigned int bit_count)
+unsigned int 
+writeUBitsBE(unsigned char *out_buff, unsigned long value, unsigned int bit_count)
 {
     unsigned int start_bit, byte;
     signed int x;

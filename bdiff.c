@@ -46,7 +46,7 @@ bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh, cfile *out_cfh)
     delta_pos = 10;
     fh_pos = 0;
     while(count--) {
-	if(DC_COPY==get_current_command_type(buffer)) {
+	if(DC_COPY==current_command_type(buffer)) {
 	    printf("copy command, out_cfh(%lu), fh_pos(%lu), offset(%lu), len(%lu)\n",
 		delta_pos, fh_pos, buffer->lb_tail->offset, 
 		buffer->lb_tail->len);
@@ -54,13 +54,11 @@ bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh, cfile *out_cfh)
 	    lb = 5;
 	    buff[0] = 0;
 	    writeUBytesBE(buff + 1, buffer->lb_tail->offset, 4);
-//	    convertUBytesChar(buff + 1, buffer->lb_tail->offset, 4);
 	    if(buffer->lb_tail->len > 5 && 
 		buffer->lb_tail->len <= 5 + 0x3f) {
 		buff[0] = buffer->lb_tail->len -5;
 	    } else {
 		writeUBytesBE(buff + 5, buffer->lb_tail->len, 4);
-//		convertUBytesChar(buff + 5, buffer->lb_tail->len, 4);
 		lb += 4;
 	    }
 	    delta_pos += lb;
@@ -76,23 +74,14 @@ bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh, cfile *out_cfh)
 		buff[0] |= buffer->lb_tail->len - 5;
 	    } else {
 		writeUBytesBE(buff + 1, buffer->lb_tail->len, 4);
-//		convertUBytesChar(buff + 1, buffer->lb_tail->len, 4);
 		lb += 4;
 	    }
 	    delta_pos += lb + buffer->lb_tail->len;
 	    cwrite(out_cfh, buff, lb);
-	    len = buffer->lb_tail->len;
-	    if(cseek(ver_cfh, buffer->lb_tail->offset, CSEEK_FSTART) !=
-		buffer->lb_tail->offset)
+	    if(buffer->lb_tail->len != 
+		copy_cfile_block(out_cfh, ver_cfh, buffer->lb_tail->offset, 
+		buffer->lb_tail->len))
 		abort();
-	    while(len) {
-		lb = MIN(len, BUFFER_SIZE);
-		if(cread(ver_cfh, buff, lb)!= lb)
-		    abort();
-		if(cwrite(out_cfh, buff, lb)!= lb)
-		    abort();
-		len -= lb;
-	    }
 	}
 	DCBufferIncr(buffer);
     }

@@ -30,7 +30,6 @@
 #include "gdiff.h"
 #include "bdiff.h"
 #include "switching.h"
-#include "raw.h"
 #include "xdelta1.h"
 #include "bdelta.h"
 

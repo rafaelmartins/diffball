@@ -50,7 +50,7 @@ typedef struct {
     unsigned long copy_len_bytes[5];
 } DCStats;
 
-unsigned long inline get_current_command_type(CommandBuffer *buff);
+unsigned long inline current_command_type(CommandBuffer *buff);
 void updateDCCopyStats(DCStats *stats, signed long pos_offset, signed long dc_offset, unsigned long len);
 void DCBufferIncr(CommandBuffer *buffer);
 void DCBufferDecr(CommandBuffer *buffer);
