@@ -87,10 +87,9 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 	    if(hash_offset != cseek(rhash->ref_cfh, 
 		hash_offset, CSEEK_FSTART)) {
 
-		perror("cseek error for ref\n");
 		v3printf("ctell(%lu), wanted(%lu)\n", ctell(rhash->ref_cfh, CSEEK_FSTART), 
 		   hash_offset);
-		abort();
+		return EOF_ERROR;
 	    } else {
 		rbuff_start = hash_offset;
 		rbuff_end = cread(rhash->ref_cfh, rbuff, rbuff_size);
@@ -309,7 +308,7 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, cfile *ver_cfh,
 		hash_size, sample_rate);
 	    init_RefHash(&rhash, ref_cfh, seed_len, sample_rate, 
 		hash_size, RH_BUCKET_HASH);
-	    RHash_insert_block(&rhash, ref_cfh, 0, cfile_len(ref_cfh));
+	    RHash_insert_block(&rhash, ref_cfh, 0L, cfile_len(ref_cfh));
 	    print_RefHash_stats(&rhash);
 	    v1printf("making initial run...\n");
 	    DCB_llm_init_buff(buff, 128);

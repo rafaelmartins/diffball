@@ -42,6 +42,7 @@
 #define CFILE_CHILD_CFH			(0x80)
 #define CFILE_EOF			(0x100)
 #define CFILE_DATA_SEEK_NEEDED		(0x200)
+#define CFILE_FREE_AT_CLOSING		(0x400)
 
 #define BZIP2_DEFAULT_COMPRESS_LEVEL	9
 #ifdef DEBUG_CFILE
@@ -75,7 +76,9 @@ typedef struct {
     unsigned char *buff;
 } cfile_window;
 
-typedef struct {
+typedef struct _cfile **cfile_ptr_array;
+
+typedef struct _cfile {
     unsigned short cfh_id;
     int			raw_fh;
     unsigned long	raw_fh_len;
@@ -84,10 +87,10 @@ typedef struct {
     unsigned long	state_flags;
     union {
 	struct {
-	    unsigned short last;
-	    unsigned short handle_count;
+	    unsigned long	last;
+	    unsigned long	handle_count;
 	} parent;
-	unsigned short *last_ptr;
+	unsigned long *last_ptr;
     } lseek_info;
 
     unsigned long	data_fh_offset;
@@ -110,6 +113,7 @@ typedef struct {
     unsigned char	*data_md5;
 } cfile;
 
+#define FREE_CFH_AT_CLOSE(cfh)	((cfh)->state_flags |= CFILE_FREE_AT_CLOSING)
 #define CFH_IS_CHILD(cfh)	((cfh)->state_flags & CFILE_CHILD_CFH)
 
 #define LAST_LSEEKER(cfh) (CFH_IS_CHILD(cfh) ?				\

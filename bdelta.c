@@ -125,21 +125,18 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *patchf)
 	writeUBytesLE(buff + intsize, add_len, intsize);
 	writeUBytesLE(buff + (2 * intsize), copy_len, intsize);
 	cwrite(patchf, buff, (3 * intsize));
-//	DCBufferIncr(dcbuff);
 	count--;
     }
     /* control block wrote. */
     DCBufferReset(dcbuff);
     v2printf("writing add_block at %lu\n", ctell(patchf, CSEEK_FSTART));
     while(DCB_commands_remain(dcbuff)) {
-//    while(count--) {
 	DCB_get_next_command(dcbuff, &dc);
 	if(DC_ADD == dc.type) {
 	    if(dc.loc.len != copyDCB_add_src(dcbuff, &dc, patchf)) {
-		abort();
+		return EOF_ERROR;
 	    }
 	}
-//	DCBufferIncr(dcbuff);
     }
     return 0;
 }

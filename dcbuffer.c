@@ -388,7 +388,7 @@ DCB_resize_llm_free(CommandBuffer *buff)
 {
     if((buff->DCB.llm.free = (void **)realloc(buff->DCB.llm.free, 
 	buff->DCB.llm.free_size * 2 * sizeof(void *)))==NULL) {
-	abort();
+	return MEM_ERROR;
     }
     buff->DCB.llm.free_size *= 2;
 }
@@ -403,8 +403,7 @@ DCB_resize_llmatches(CommandBuffer *buff)
     buff->DCB.llm.buff_size *= 2;
     if((buff->DCB.llm.buff = (LL_DCLmatch *)realloc(buff->DCB.llm.buff, 
 	buff->DCB.llm.buff_size * sizeof(LL_DCLmatch))) == NULL) {
-	v0printf("buffer resize failed\n");
-	exit(1);
+	return MEM_ERROR;
     }
     buff->DCB.llm.cur = buff->DCB.llm.buff + buff->DCB.llm.buff_count;
 }
@@ -522,13 +521,11 @@ DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
 	  buffer->DCB.full.buffer_size.  it makes one hell of a difference. */
 	if((buffer->DCB.full.cb_start =
 	    (unsigned char *)malloc(buffer_size))==NULL){
-	    perror("shite, malloc failed\n");
-	    exit(EXIT_FAILURE);
+	    return MEM_ERROR;
 	}
 	if((buffer->DCB.full.add_src_id = (unsigned char *)malloc(buffer_size)) 
 	    == NULL){
-	    perror("shite, malloc failed\n");
-	    exit(EXIT_FAILURE);
+	    return MEM_ERROR;
 	}
 	buffer->DCB.full.cb_head = buffer->DCB.full.cb_tail = 
 	    buffer->DCB.full.cb_start;
@@ -536,8 +533,7 @@ DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
 	buffer->DCB.full.cb_head_bit = buffer->DCB.full.cb_tail_bit = 0;
 	if((buffer->DCB.full.lb_start = (DCLoc *)malloc(sizeof(DCLoc) * 
 	    buffer->DCB.full.buffer_size))==NULL){
-	    perror("shite, malloc failed\n");
-	    exit(EXIT_FAILURE);
+	    return MEM_ERROR;
 	}
         buffer->DCB.full.lb_head = buffer->DCB.full.lb_tail = 
 	    buffer->DCB.full.lb_start;
@@ -547,8 +543,7 @@ DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
     } else if(DCBUFFER_MATCHES_TYPE == type) {
 	if((buffer->DCB.matches.buff = (DCLoc_match *)malloc(buffer_size * 
 	    sizeof(DCLoc_match)) )==NULL) {
-	    perror("shite, malloc failed\n");
-	    exit(EXIT_FAILURE);
+	    return MEM_ERROR;
 	}
 	buffer->DCB.matches.cur = buffer->DCB.matches.buff;
 	buffer->DCB.matches.buff_size = buffer_size;
@@ -557,7 +552,7 @@ DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
 	buffer->DCB.llm.main = buffer->DCB.llm.main_head = NULL;
 	if((buffer->DCB.llm.free = (void **)malloc(10 * sizeof(void *)))
 	    ==NULL) {
-	    abort();
+	    return MEM_ERROR;
 	}
 	buffer->DCB.llm.free_size = 10;
 	buffer->DCB.llm.free_count = 0;
@@ -578,8 +573,7 @@ DCB_resize_matches(CommandBuffer *buffer)
     if((buffer->DCB.matches.buff = (DCLoc_match *)realloc(
 	buffer->DCB.matches.buff, buffer->DCB.matches.buff_size * 
 	sizeof(DCLoc_match))) == NULL) {
-	v0printf("buffer resize failed\n");
-	exit(1);
+	return MEM_ERROR;
     }
     buffer->DCB.matches.cur = buffer->DCB.matches.buff + 
 	buffer->DCB.matches.buff_count;
@@ -594,19 +588,15 @@ DCB_resize_full(CommandBuffer *buffer)
     if((buffer->DCB.full.cb_start = (char *)realloc(
 	buffer->DCB.full.cb_start, buffer->DCB.full.buffer_size /4 ))
 	==NULL) {
-
-	v0printf("resizing command buffer failed, exiting\n");
-	exit(EXIT_FAILURE);
+	return MEM_ERROR;
     } else if((buffer->DCB.full.add_src_id = (char *)realloc(
 	buffer->DCB.full.add_src_id, buffer->DCB.full.buffer_size /4))
 	==NULL) {
-	v0printf("resizing command buffer failed, exiting\n");
-	exit(EXIT_FAILURE);
+	return MEM_ERROR;
     } else if((buffer->DCB.full.lb_start = 
 	(DCLoc *)realloc(buffer->DCB.full.lb_start, 
 	buffer->DCB.full.buffer_size * 2 * sizeof(DCLoc)) )==NULL) {
-	v0printf("resizing command buffer failed, exiting\n");
-	exit(EXIT_FAILURE);
+	return MEM_ERROR;
     }
     buffer->DCB.full.buffer_size *= 2;
     buffer->DCB.full.cb_head = buffer->DCB.full.cb_start;
@@ -678,7 +668,7 @@ DCB_insert(CommandBuffer *buff)
 	assert(buff->DCB.llm.main_head==NULL ? buff->DCB.llm.main == NULL : 1);
 	if((buff->DCB.llm.buff = (LL_DCLmatch *)realloc(buff->DCB.llm.buff, 
 	    buff->DCB.llm.buff_count * sizeof(LL_DCLmatch)))==NULL) {
-	    abort();
+	    return MEM_ERROR;
 	}
 	// link the buggers
 	for(x=0; x < buff->DCB.llm.buff_count -1 ; x++) {
@@ -723,8 +713,7 @@ DCB_llm_init_buff(CommandBuffer *buff, unsigned long buff_size)
     assert(DCBUFFER_LLMATCHES_TYPE == buff->DCBtype);
     if((buff->DCB.llm.buff = (LL_DCLmatch *)malloc(buff_size * 
 	sizeof(LL_DCLmatch)) )==NULL) {
-	perror("shite, malloc failed\n");
-	exit(EXIT_FAILURE);
+	return MEM_ERROR;
     }
     buff->DCB.llm.cur = buff->DCB.llm.buff;
     buff->DCB.llm.buff_size = buff_size;

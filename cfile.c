@@ -33,7 +33,7 @@ cfile_identify_compressor(int fh)
 {
     unsigned char buff[2];
     if(read(fh, buff, 2)!=2) {
-	return -1;
+	return EOF_ERROR;
     } else {
 	lseek(fh, -2, SEEK_CUR);
     }
@@ -106,7 +106,7 @@ internal_copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
 	dcprintf("copen: autodetecting comp_type: ");
 	ret_val = cfile_identify_compressor(fh);
 	if(ret_val < 0) {
-	    abort();
+	    return IO_ERROR;
 	}
 	dcprintf("got %i\n", ret_val);
 	cfh->compressor_type = ret_val;
@@ -125,7 +125,7 @@ internal_copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
 	    cfh->data.size = CFILE_DEFAULT_BUFFER_SIZE;
 	}
 	if((cfh->data.buff = (unsigned char *)malloc(cfh->data.size))==NULL) {
-	    abort();
+	    return MEM_ERROR;
         }
 	dcprintf("copen: buffer size(%lu), buffer_all(%u)\n", cfh->data.size,
 	    access_flags & CFILE_BUFFER_ALL);
@@ -144,11 +144,11 @@ internal_copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
 	cfh->data_total_len = 0;
 	if((cfh->bzs = (bz_stream *)
 	    malloc(sizeof(bz_stream)))==NULL) {
-	    abort();
+	    return MEM_ERROR;
 	} else if((cfh->data.buff = (unsigned char *)malloc(cfh->data.size))==NULL) {
-	    abort();
-        } else if((cfh->raw.buff = (unsigned char *)malloc(cfh->raw.size))==NULL) {
-	    abort();
+	    return MEM_ERROR;
+	} else if((cfh->raw.buff = (unsigned char *)malloc(cfh->raw.size))==NULL) {
+	    return MEM_ERROR;
         }
 	cfh->bzs->bzalloc = NULL;
 	cfh->bzs->bzfree =  NULL;
@@ -178,11 +178,11 @@ internal_copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
 	cfh->data_total_len = 0;
 	if((cfh->zs = (z_stream *)malloc(sizeof(z_stream)))
 	    ==NULL) { 
-	    abort();
+	    return MEM_ERROR;
 	} else if((cfh->data.buff = (unsigned char *)malloc(cfh->data.size))==NULL) {
-	    abort();
+	    return MEM_ERROR;
         } else if((cfh->raw.buff = (unsigned char *)malloc(cfh->raw.size))==NULL) {
-	    abort();
+	    return MEM_ERROR;
         }
 	internal_gzopen(cfh);
 	cfh->data.pos = cfh->data.offset = cfh->data.end = 0;
@@ -211,13 +211,13 @@ internal_gzopen(cfile *cfh)
     cfh->raw.offset = 2;
 	
     if(ENSURE_LSEEK_POSITION(cfh)) {
-	abort();
+	return IO_ERROR;
     }
     x = read(cfh->raw_fh, cfh->raw.buff, MIN(cfh->raw.size, 
 	cfh->raw_total_len -2));
     cfh->raw.end = x;
     if(inflateInit2(cfh->zs, -MAX_WBITS) != Z_OK) {
-	abort();
+	return IO_ERROR;
     }
 
 /* pulled straight out of zlib's gzio.c. */
@@ -228,7 +228,7 @@ internal_gzopen(cfile *cfh)
 #define GZ_COMMENT	0x10
 
     if(cfh->raw.buff[0]!= Z_DEFLATED || (cfh->raw.buff[1] & GZ_RESERVED)) {
-	abort();
+	return IO_ERROR;
     }
     /* save flags, since it's possible the gzip header > cfh->raw.size */
     x = cfh->raw.buff[1];
@@ -241,7 +241,7 @@ internal_gzopen(cfile *cfh)
 	    cfh->raw.offset += cfh->raw.pos;
 	    cfh->raw.pos = cfh->raw.end;
 	    if(raw_cseek(cfh)) {
-		abort();
+		return IO_ERROR;
 	    }
 	}
     }
@@ -300,12 +300,20 @@ cclose(cfile *cfh)
 	free(cfh->bzs);
     }
     if(cfh->compressor_type == GZIP_COMPRESSOR) {
-//	gzclose(cfh->gz_handle);
-	//free(cfh->gz_handle);
+	if(cfh->access_flags & CFILE_WONLY) {
+	    deflateEnd(cfh->zs);
+	} else {
+	    inflateEnd(cfh->zs);
+	}
+	free(cfh->zs);
     }
-    cfh->raw.pos = cfh->raw.end = cfh->raw.size = cfh->raw.offset = 
-	cfh->data.pos = cfh->data.end = cfh->data.size = cfh->data.offset = 
-	cfh->raw_total_len = cfh->data_total_len = 0;
+    if(cfh->state_flags & CFILE_FREE_AT_CLOSING) {
+	free(cfh);
+    } else {
+	cfh->raw.pos = cfh->raw.end = cfh->raw.size = cfh->raw.offset = 
+	    cfh->data.pos = cfh->data.end = cfh->data.size = cfh->data.offset = 
+	    cfh->raw_total_len = cfh->data_total_len = 0;
+    }
     return 0;
 }
 
@@ -361,7 +369,7 @@ cseek(cfile *cfh, signed long offset, int offset_type)
     else if (CSEEK_FSTART==offset_type)
 	data_offset = offset;
     else
-	abort(); /*lovely error handling eh? */
+	return IO_ERROR;
 
     assert(data_offset >= 0);
 
@@ -392,14 +400,14 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 	    cfh->data.offset = cfh->raw.offset = cfh->raw.pos = 0;
 	} else {
 	    if(ENSURE_LSEEK_POSITION(cfh)) {
-		abort();
+		return IO_ERROR;
 	    }
 	}
 	dcprintf("cseek: zs: data_off(%lu), data.offset(%lu)\n", data_offset, cfh->data.offset);
 
 	while(cfh->data.offset + cfh->data.end < data_offset) {
 	    if(crefill(cfh)==0) {
-		abort();
+		return EOF_ERROR;
 	    }
 	}
 	cfh->data.pos = data_offset - cfh->data.offset;
@@ -426,11 +434,11 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 	}
 	dcprintf("cseek: bz2: data_off(%lu), data.offset(%lu)\n", data_offset, cfh->data.offset);
 	if(ENSURE_LSEEK_POSITION(cfh)) {
-	    abort();
+	    return IO_ERROR;
 	}
 	while(cfh->data.offset + cfh->data.end < data_offset) {
 	    if(crefill(cfh)==0) {
-		abort();
+		return EOF_ERROR;
 	    }
 	}
 	cfh->data.pos = data_offset - cfh->data.offset;
@@ -458,8 +466,7 @@ raw_cseek(cfile *cfh)
 	    cfh->raw.end, SEEK_SET) != (cfh->raw.offset + 
 	    cfh->raw_fh_offset + cfh->raw.end));
     }
-    return 1L;
-
+    return IO_ERROR;
 }
 
 unsigned long
@@ -483,7 +490,7 @@ cflush(cfile *cfh)
 	case NO_COMPRESSOR:
 	    if(cfh->data.pos != 
 		write(cfh->raw_fh, cfh->data.buff, cfh->data.pos))
-		abort();
+		return IO_ERROR;
 	    cfh->data.offset += cfh->data.pos;
 	    cfh->data.pos=0;
 	    break;
@@ -492,7 +499,7 @@ cflush(cfile *cfh)
 	    if(cfh->raw.pos == cfh->raw.end) {
 		if(cfh->raw.pos != write(cfh->raw_fh, cfh->raw.buff, 
 		    cfh->raw.size))
-		    abort();
+		    return IO_ERROR;
 		cfh->raw.offset += cfh->raw.end;
 		cfh->raw.pos = 0;
 	    }
@@ -503,16 +510,17 @@ cflush(cfile *cfh)
 		cfh->bz_stream->avail_out = cfh->raw.size;
 	    }
 	    if(BZ_RUN_OK != BZ2_bzCompress(cfh->bz_stream, BZ_RUN)) {
-		abort();
+		return IO_ERROR;
 	    }
-	    break;*/
+	    break;
 	case GZIP_COMPRESSOR:
 	    if(cfh->data.pos != gzwrite(cfh->gz_handle, cfh->data.buff, 
 		cfh->data.pos)) 
-		abort();
+		return IO_ERROR;
 	    cfh->data.offset += cfh->data.pos;
 	    cfh->data.pos=0;
 	    break;
+*/
 	}
     }
     return 0;
@@ -522,20 +530,11 @@ unsigned long
 crefill(cfile *cfh)
 {
     unsigned long x;
-//    if(RAW_LSEEK_IS_NEEDED(cfh)) {
-//	if(raw_lseek(cfh)) {
-//	    abort();
-//	}
-//    }
-//    if(RAW_LSEEK_IS_NEEDED(cfh) || (cfh->state_flags & CFILE_DATA_SEEK_NEEDED)) {
-//	dcprintf("crefill: calling cseek (CFILE_SEEK_NEEDED)\n");
-//	cseek(cfh, cfh->data.offset, CSEEK_FSTART);
-//    }
     int err;
     switch(cfh->compressor_type) {
     case NO_COMPRESSOR:
 	if(ENSURE_LSEEK_POSITION(cfh)) {
-	    abort();
+	    return IO_ERROR;
 	}
 	cfh->data.offset += cfh->data.end;
 	x = read(cfh->raw_fh, cfh->data.buff, MIN(cfh->data.size, 
@@ -558,7 +557,7 @@ crefill(cfile *cfh)
 		    (cfh->raw.end - cfh->bzs->avail_in) < cfh->raw_total_len)) {
 		    dcprintf("crefill: bz2, refilling raw: ");
 		    if(ENSURE_LSEEK_POSITION(cfh)) {
-			abort();
+			return IO_ERROR;
 		    }
 		    cfh->raw.offset += cfh->raw.end;
 		    x = read(cfh->raw_fh, cfh->raw.buff, MIN(cfh->raw.size, 
@@ -577,7 +576,7 @@ crefill(cfile *cfh)
 		which should be handled (rather then aborting) */
 		if(err != BZ_OK && err != BZ_STREAM_END) {
 		    v0printf("hmm, bzip2 didn't return BZ_OK, borking cause of %i.\n", err);
-		    abort();
+		    return IO_ERROR;
 		}
 		if(err==BZ_STREAM_END) {
 		    dcprintf("encountered stream_end\n");
@@ -605,7 +604,7 @@ crefill(cfile *cfh)
 		    (cfh->raw.end - cfh->zs->avail_in) < cfh->raw_total_len)) {
 		    dcprintf("crefill: zs, refilling raw: ");
 		    if(ENSURE_LSEEK_POSITION(cfh)) {
-			abort();
+			return IO_ERROR;
 		    }
 		    cfh->raw.offset += cfh->raw.end;
 		    x = read(cfh->raw_fh, cfh->raw.buff, MIN(cfh->raw.size, 
@@ -621,8 +620,7 @@ crefill(cfile *cfh)
 		err = inflate(cfh->zs, Z_NO_FLUSH);
 
 		if(err != Z_OK && err != Z_STREAM_END) {
-		    v0printf("hmm, zlib didn't return Z_OK, borking cause of %i.\n", err);
-		    abort();
+		    return IO_ERROR;
 		}
 		if(err==Z_STREAM_END) {
 		    dcprintf("encountered stream_end\n");
@@ -670,12 +668,12 @@ copy_cfile_block(cfile *out_cfh, cfile *in_cfh, unsigned long in_offset,
     unsigned int lb;
     unsigned long bytes_wrote=0;;
     if(in_offset!=cseek(in_cfh, in_offset, CSEEK_FSTART))
-	abort();
+	return EOF_ERROR;
     while(len) {
 	lb = MIN(CFILE_DEFAULT_BUFFER_SIZE, len);
 	if( (lb!=cread(in_cfh, buff, lb)) ||
 	    (lb!=cwrite(out_cfh, buff, lb)) )
-	    abort;
+	    return EOF_ERROR;
 	len -= lb;
 	bytes_wrote+=lb;
     }
@@ -690,12 +688,12 @@ copy_add_block(cfile *out_cfh, cfile *src_cfh, off_u64 src_offset,
     unsigned int lb;
     unsigned long bytes_wrote=0;;
     if(src_offset!=cseek(src_cfh, src_offset, CSEEK_FSTART))
-	abort();
+	return EOF_ERROR;
     while(len) {
 	lb = MIN(CFILE_DEFAULT_BUFFER_SIZE, len);
 	if( (lb!=cread(src_cfh, buff, lb)) ||
 	    (lb!=cwrite(out_cfh, buff, lb)) )
-	    abort;
+	    return EOF_ERROR;
 	len -= lb;
 	bytes_wrote+=lb;
     }

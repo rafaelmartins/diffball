@@ -17,6 +17,7 @@
 */
 #include <stdlib.h>
 #include <math.h>
+#include "defs.h"
 #include "primes.h"
 
 #define sqr(x) ((x) * (x))
@@ -87,131 +88,129 @@ init_primes(PRIME_CTX *ctx)
 7607,7621,7639,7643,7649,7669,7673,7681,7687,7691,7699,7703,7717,7723,7727,7741,
 7753,7757,7759,7789,7793,7817,7823,7829,7841,7853,7867,7873,7877,7879,7883,7901,
 7907,7919,7933};
-	unsigned int x;
-//	printf("init_primes\n");
-	if((ctx->base_primes = (unsigned int *)malloc(1000 * sizeof(int)))==NULL) {
-		abort();
-	}
-	ctx->prime_count=1000;
-	ctx->array_size = 1000;
-	for(x=0; x < ctx->prime_count; x++)
-		ctx->base_primes[x] = primes[x];
+
+    unsigned int x;
+    if((ctx->base_primes = (unsigned int *)malloc(1000 * sizeof(int)))==NULL) {
+	return MEM_ERROR;
+    }
+    ctx->prime_count=1000;
+    ctx->array_size = 1000;
+    for(x=0; x < ctx->prime_count; x++)
+	ctx->base_primes[x] = primes[x];
 }
 
 void 
 free_primes(PRIME_CTX *ctx)
 {
-//	printf("free_primes\n");
-	free(ctx->base_primes);
-	ctx->prime_count = ctx->array_size = 0;
+    free(ctx->base_primes);
+    ctx->prime_count = ctx->array_size = 0;
 }
 
 void 
 find_next_prime(PRIME_CTX *ctx)
 {
-	unsigned long prime, upper, x;
-	int is_prime=0;
-	if(ctx->prime_count == ctx->array_size) {
-		ctx->array_size += 1000;
-		if((ctx->base_primes=(unsigned int *)realloc(ctx->base_primes,
-			(ctx->array_size)*sizeof(int)))==NULL) {
-			/* do something more constructive... */
-			exit(1);
-		}
+    unsigned long prime, upper, x;
+    int is_prime=0;
+    if(ctx->prime_count == ctx->array_size) {
+	ctx->array_size += 1000;
+	if((ctx->base_primes=(unsigned int *)realloc(ctx->base_primes,
+	    (ctx->array_size)*sizeof(int)))==NULL) {
+	    return MEM_ERROR;	
 	}
-	prime = ctx->base_primes[ctx->prime_count-1] + 2;
-	while(! is_prime) {
-		upper = ceil(sqrt(prime));
-		is_prime=1;
-		for(x=0; is_prime && ctx->base_primes[x] <= upper; x++) {
-			if(prime % ctx->base_primes[x]==0) {
-				is_prime=0;
-			}
-		}
-		if(! is_prime) {
-			prime+=2;		
-		}
+    }
+    prime = ctx->base_primes[ctx->prime_count-1] + 2;
+    while(! is_prime) {
+	upper = ceil(sqrt(prime));
+	is_prime=1;
+	for(x=0; is_prime && ctx->base_primes[x] <= upper; x++) {
+	    if(prime % ctx->base_primes[x]==0) {
+		is_prime=0;
+	    }
 	}
-	ctx->base_primes[ctx->prime_count] = prime;
-	ctx->prime_count++;
+	if(! is_prime) {
+	    prime+=2;		
+	}
+    }
+    ctx->base_primes[ctx->prime_count] = prime;
+    ctx->prime_count++;
 }
 
 unsigned long 
 get_nearest_prime(PRIME_CTX *ctx, unsigned long near)
 {
-	unsigned long x, y, div, prime;
-	int is_prime;
-	if(near < ctx->base_primes[ctx->prime_count -1]) {
-		x=0;
-		while(ctx->base_primes[x] < near) {
-			x++;
-		}
-		if(x==0) {
-			return ctx->base_primes[x];
-		} else if(abs(near - ctx->base_primes[x]) > 
-			abs(near - ctx->base_primes[x-1])) {
-			return ctx->base_primes[x-1];
-		} else {
-			return ctx->base_primes[x];
-		}
+    unsigned long x, y, div, prime;
+    int is_prime;
+    if(near < ctx->base_primes[ctx->prime_count -1]) {
+	x=0;
+	while(ctx->base_primes[x] < near) {
+	    x++;
 	}
-	div=0;
-	if(!(near % 2)) {
-		near++;
-	}
-	/* dealing w/ upper limit of unsinged longs. */
-	if(near==0xffffffff) {
-		near-=2;
-	}
-	if(sqr(ctx->base_primes[ctx->prime_count -1]) < near) {
-		while(sqr(ctx->base_primes[ctx->prime_count -1]) < near &&
-			ctx->base_primes[ctx->prime_count -1] != 65521) {
-			find_next_prime(ctx);
-		}
-		div=ctx->prime_count -1;
+	if(x==0) {
+	    return ctx->base_primes[x];
+	} else if(abs(near - ctx->base_primes[x]) > 
+	    abs(near - ctx->base_primes[x-1])) {
+	    return ctx->base_primes[x-1];
 	} else {
-		x=0;
-		while(sqr(ctx->base_primes[x]) < near) {
-			x++;
-		}
-		div=x;
-	}	
-	for(x=0, is_prime=1; x< div && is_prime; x++) {
-		if(near % ctx->base_primes[x]==0) {
-			is_prime=0;
-		}
+	    return ctx->base_primes[x];
 	}
-	if(is_prime) {
-		return near;
+    }
+    div=0;
+    if(!(near % 2)) {
+	near++;
+    }
+    /* dealing w/ upper limit of unsinged longs. */
+    if(near==0xffffffff) {
+	near-=2;
+    }
+    if(sqr(ctx->base_primes[ctx->prime_count -1]) < near) {
+	while(sqr(ctx->base_primes[ctx->prime_count -1]) < near &&
+	    ctx->base_primes[ctx->prime_count -1] != 65521) {
+	    find_next_prime(ctx);
 	}
-	y=0;
-	prime=0;
-	while(prime==0) {
-		is_prime=1;
-		y+=2;
-		/*again, dealing w/ upper limit of unsigned longs. */
-		if(near < 0xffffffff -y) {
-			for(x=0; x <= div && is_prime; x++) {
-				if((near +y) % ctx->base_primes[x]==0) {
-					is_prime=0;
-				}
-			}
-			if(is_prime) {
-				prime = near +y;
-			}
-		}
-		if(prime==0) {
-			is_prime=1;
-			for(x=0; x <= div && is_prime; x++) {
-				if((near -y) % ctx->base_primes[x]==0) {
-					is_prime=0;
-				}
-			}
-			if(is_prime) {
-				prime = near -y;
-			}
-		}
+	div=ctx->prime_count -1;
+     } else {
+	x=0;
+	while(sqr(ctx->base_primes[x]) < near) {
+	    x++;
 	}
-	return prime;
+	div=x;
+    }	
+    for(x=0, is_prime=1; x< div && is_prime; x++) {
+	if(near % ctx->base_primes[x]==0) {
+	    is_prime=0;
+	}
+    }
+    if(is_prime) {
+	return near;
+    }
+    y=0;
+    prime=0;
+    while(prime==0) {
+	is_prime=1;
+	y+=2;
+	/*again, dealing w/ upper limit of unsigned longs. */
+	if(near < 0xffffffff -y) {
+	    for(x=0; x <= div && is_prime; x++) {
+		if((near +y) % ctx->base_primes[x]==0) {
+		    is_prime=0;
+		}
+	    }
+	    if(is_prime) {
+		prime = near +y;
+	    }
+	}
+	if(prime==0) {
+	    is_prime=1;
+	    for(x=0; x <= div && is_prime; x++) {
+		if((near -y) % ctx->base_primes[x]==0) {
+		    is_prime=0;
+		}
+	    }
+	    if(is_prime) {
+		prime = near -y;
+	    }
+	}
+    }
+    return prime;
 }
 

@@ -17,7 +17,10 @@
 */
 #ifndef _HEADER_DEFS
 #define _HEADER_DEFS 1
+
 #include "config.h"
+#include <errno.h>
+
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
@@ -33,8 +36,12 @@ typedef unsigned long off_u64;
 typedef signed  long  off_s64;
 #endif
 
-#define PATCH_TRUNCATED	0x1
-#define PATCH_CORRUPT	0x2
+#define PATCH_TRUNCATED		(-1)
+#define PATCH_CORRUPT_ERROR 	(-2)
+#define IO_ERROR		(-3)
+#define EOF_ERROR		(-4)
+#define MEM_ERROR		(-5)
+#define FORMAT_ERROR		(-6)
 
 #define v0printf(expr...) fprintf(stderr, expr);
 
@@ -51,6 +58,8 @@ typedef signed  long  off_s64;
 #define v3printf(expr...)  if(global_verbosity>2){fprintf(stderr,expr);}
 #define v4printf(expr...)  if(global_verbosity>3){fprintf(stderr,expr);}
 #endif
+
+#define SLEEP_DEBUG 1
 
 #ifdef DEBUG_CFILE
 #include <stdio.h>

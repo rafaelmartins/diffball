@@ -19,7 +19,6 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
-//#include <search.h>
 #include "string-misc.h"
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -54,10 +53,13 @@ struct poptOption options[] = {
 
 int src_common_len=0, trg_common_len=0;
 
-int main(int argc, char **argv)
+int 
+main(int argc, char **argv)
 {
     int src_fh, trg_fh, out_fh;
-    struct tar_entry **source, **target, *tar_ptr;
+    tar_entry **source = NULL;
+    tar_entry **target = NULL;
+    tar_entry *tar_ptr = NULL;
     void *vptr;
     unsigned long source_count, target_count;
     unsigned long x, patch_format_id, encode_result;
@@ -144,6 +146,7 @@ int main(int argc, char **argv)
     }
     copen(&ref_full, src_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY |
 	CFILE_OPEN_FH);
+    copen(&ver_full, trg_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     if(sample_rate==0) {
 	sample_rate = COMPUTE_SAMPLE_RATE(hash_size, cfile_len(&ref_full));
     }
@@ -157,14 +160,16 @@ int main(int argc, char **argv)
 
     copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY | CFILE_OPEN_FH);
     v1printf("reading tar entries from src\n");
-    source = read_fh_to_tar_entry(src_fh, &source_count);
+    if(read_fh_to_tar_entry(&ref_full, &source, &source_count))
+	exit(EXIT_FAILURE);
     v1printf("reading tar entries from trg\n");
-    target = read_fh_to_tar_entry(trg_fh, &target_count);
+    if(read_fh_to_tar_entry(&ver_full, &target, &target_count))
+	exit(EXIT_FAILURE);
     v1printf("source tarball's entry count=%lu\n", source_count);
     v1printf("target tarball's entry count=%lu\n", target_count);
 
     v1printf("qsorting\n");
-    qsort((struct tar_entry **)source, source_count, sizeof(struct tar_entry *), cmp_tar_entries);
+    qsort((tar_entry **)source, source_count , sizeof(tar_entry *), cmp_tar_entries);
     v1printf("qsort done\n");
     
 /* alg to basically figure out the common dir prefix... eg, if everything 
@@ -241,18 +246,18 @@ int main(int argc, char **argv)
     v1printf("looking for matching filenames in the archives...\n");
     for(x=0; x< target_count; x++) {
 	v1printf("processing %lu of %lu\n", x + 1, target_count);
-	copen(&ver_window, trg_fh, (512 * target[x]->file_loc),
+	copen_child_cfh(&ver_window, &ver_full, (512 * target[x]->file_loc),
             (512 * target[x]->file_loc) + 512 + (target[x]->size==0 ? 0 :
             target[x]->size + 512 - (target[x]->size % 512==0 ? 
 	    512 : target[x]->size % 512)),
             NO_COMPRESSOR, CFILE_RONLY | CFILE_BUFFER_ALL);
         vptr = bsearch((const void **)&target[x], (const void **)source, 
-	    source_count, sizeof(struct tar_entry **), cmp_tar_entries);
+	    source_count, sizeof(tar_entry **), cmp_tar_entries);
         if(vptr == NULL) {
 	    v1printf("didn't find a match for %.255s, skipping\n", 
 		target[x]->fullname);
         } else {
-            tar_ptr = (struct tar_entry *)*((struct tar_entry **)vptr);
+            tar_ptr = (tar_entry *)*((tar_entry **)vptr);
             v1printf("found match between %.255s and %.255s\n", target[x]->fullname,
 		tar_ptr->fullname);
 	    v2printf("differencing src(%lu:%lu) against trg(%lu:%lu)\n",
@@ -265,7 +270,7 @@ int main(int argc, char **argv)
 	    v2printf("file_loc(%lu), size(%lu)\n", target[x]->file_loc,
         	target[x]->size);
             match_count++;
-            copen(&ref_window, src_fh, (512 * tar_ptr->file_loc), 
+            copen_child_cfh(&ref_window, &ref_full, (512 * tar_ptr->file_loc), 
         	(512 * tar_ptr->file_loc) + 512 + (tar_ptr->size==0 ? 0 :
         	tar_ptr->size + 512 - (tar_ptr->size % 512==0 ? 512 : 
         	tar_ptr->size % 512)),
@@ -298,7 +303,6 @@ int main(int argc, char **argv)
     free(target);
 
     v1printf("beginning search for gaps, and unprocessed files\n");
-    copen(&ver_full, trg_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     MultiPassAlg(&dcbuff, &ref_full, &ver_full, hash_size);
     cclose(&ref_full);
 
@@ -328,8 +332,8 @@ int main(int argc, char **argv)
 int 
 cmp_tar_entries(const void *te1, const void *te2)
 {
-    struct tar_entry *p1=*((struct tar_entry **)te1);
-    struct tar_entry *p2=*((struct tar_entry **)te2);
+    tar_entry *p1=*((tar_entry **)te1);
+    tar_entry *p2=*((tar_entry **)te2);
     return(strcmp((char *)(p1->working_name), 
     	(char *)(p2->working_name)));
 }

@@ -184,8 +184,7 @@ init_RefHash(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len,
     if(rhash->type & RH_MOD_HASH) {
 	if((rhash->hash.mod=(unsigned long*)malloc(sizeof(unsigned long) * 
 	    (rhash->hr_size)))==NULL) {
-		perror("Shite.  couldn't allocate needed memory for reference hash table.\n");
-		exit(EXIT_FAILURE);
+	    return MEM_ERROR;
 	}
 	// init the bugger==0
 	for(x=0; x < rhash->hr_size; x++) {
@@ -195,8 +194,7 @@ init_RefHash(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len,
     } else if(rhash->type & (RH_RMOD_HASH | RH_CMOD_HASH)) {
 	if((rhash->hash.chk=(chksum_ent*)malloc(sizeof(chksum_ent) * 
 	    (rhash->hr_size)))==NULL) {
-	    perror("Shite.  couldn't allocate needed memory for reference hash table.\n");
-	    exit(EXIT_FAILURE);
+	    return MEM_ERROR;
 	}
 	// init the bugger==0
 	for(x=0; x < rhash->hr_size; x++) {
@@ -206,14 +204,12 @@ init_RefHash(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len,
     } else if (rhash->type & RH_SORT_HASH){
 	if((rhash->hash.chk = (chksum_ent *)malloc(sizeof(chksum_ent) * 
 	    rhash->hr_size))==NULL) {
-	    perror("shite, couldn't alloc needed memory for ref hash\n");
-	    exit(EXIT_FAILURE);
+	    return MEM_ERROR;
 	}
     } else if (rhash->type & RH_RSORT_HASH) {
 	if((rhash->hash.chk = (chksum_ent *)malloc(sizeof(chksum_ent) *
 	    rhash->hr_size))==NULL) {
-	    perror("couldn't alloc needed memory for ref hash\n");
-	    exit(EXIT_FAILURE);
+	    return MEM_ERROR;
 	}
     } else if(rhash->type & (RH_BUCKET_HASH | RH_RBUCKET_HASH)) {
 	if((rhash->hash.bucket.depth = (unsigned char *)malloc(
@@ -222,8 +218,7 @@ init_RefHash(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len,
 	    rhash->hr_size * sizeof(unsigned short *)))==NULL ||
 	    (rhash->hash.bucket.offset = (off_u64 **)malloc(
 	    rhash->hr_size * sizeof(off_u64 *)))==NULL) {
-	    perror("shite, couldn't alloc needed memory for ref hash\n");
-	    exit(EXIT_FAILURE);
+	    return MEM_ERROR;
 	}
 	for(x=0; x < rhash->hr_size; x++) {
 	    rhash->hash.bucket.offset[x] = NULL;
@@ -277,7 +272,20 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 	return 0;
     }
 
-    update_adler32_seed(&ads, cfw->buff + cfw->pos, rhash->seed_len);
+    if(cfw->pos + rhash->seed_len < cfw->end) {
+	update_adler32_seed(&ads, cfw->buff + cfw->pos, rhash->seed_len);
+    } else {
+	skip = rhash->seed_len;
+	while(skip) {
+	    update_adler32_seed(&ads, cfw->buff + cfw->pos, cfw->end - 
+		cfw->pos);
+	    skip -= cfw->end - cfw->pos;
+	    cfw = next_page(ref_cfh);
+	    if(cfw->end==0) {
+		return EOF_ERROR;
+	    }
+	}
+    }
     missed=0;
     worth_continuing=1;
     for(cfw->pos += rhash->seed_len; cfw->offset + cfw->pos < ref_end && 
@@ -286,7 +294,7 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 	if(cfw->pos >= cfw->end) {
 	    cfw = next_page(ref_cfh);
 	    if(cfw->end==0) {
-		abort();
+		return MEM_ERROR;
 	    }
 	}
 
@@ -329,8 +337,7 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 	    if(rhash->hash.bucket.depth[index]==0) {
 //		v0printf("initing bucket at index(%u)\n", index);
 		if(RH_bucket_resize(rhash, index, RH_BUCKET_MIN_ALLOC)) {
-		    perror("shite, malloc bucket failed.\n");
-		    abort();
+		    return MEM_ERROR;
 		}
 		rhash->hash.bucket.chksum[index][0] = chksum;
 		if(rhash->type & (RH_BUCKET_HASH)) {
@@ -370,8 +377,7 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 			if (RH_bucket_resize(rhash, index, 
 			    MIN(rhash->hash.bucket.max_depth, 
 			    (rhash->hash.bucket.depth[index] << 1)))) {
-			    perror("shite, realloc bucket failed.\n");
-			    abort();
+			    return MEM_ERROR;
 			}
 		    }
 		    if(rhash->hash.bucket.chksum[index][low] < chksum) {
@@ -442,8 +448,7 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 		    rhash->hr_size + 1000);
 		if((rhash->hash.chk = (chksum_ent *)realloc(rhash->hash.chk, 
 		    (rhash->hr_size + 1000) * sizeof(chksum_ent)))==NULL){
-		    perror("crap.  realloc failed.\n");
-		    exit(EXIT_FAILURE);
+		    return MEM_ERROR;
 		}
 		rhash->hr_size +=1000;
 	    }
@@ -459,8 +464,7 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 		    rhash->hr_size + 1000);
 		if((rhash->hash.chk = (chksum_ent *)realloc(rhash->hash.chk, 
 		    (rhash->hr_size + 1000) * sizeof(chksum_ent)))==NULL){
-		    perror("crap.  realloc failed.\n");
-		    exit(EXIT_FAILURE);
+    		    return MEM_ERROR;
 		}
 		rhash->hr_size +=1000;
 	    }
@@ -588,8 +592,7 @@ RHash_sort(RefHash *rhash)
 	rhash->inserts -= rhash->duplicates;
 	if((rhash->hash.chk = (chksum_ent *)realloc(rhash->hash.chk, 
 	    rhash->inserts * sizeof(chksum_ent)))==NULL) {
-	    perror("hmm, weird, realloc failed\n");
-	    exit(EXIT_FAILURE);
+	    return MEM_ERROR;
 	}
 	rhash->hr_size = rhash->inserts;
 	v1printf("hash is %lu bytes\n", rhash->hr_size * sizeof(chksum_ent));
@@ -614,8 +617,7 @@ RHash_sort(RefHash *rhash)
 	rhash->inserts -= rhash->duplicates;
 	if((rhash->hash.chk = (chksum_ent *)realloc(rhash->hash.chk, 
 	    rhash->inserts * sizeof(chksum_ent)))==NULL) {
-	    perror("hmm, weird, realloc failed\n");
-	    exit(EXIT_FAILURE);
+	    return MEM_ERROR;
 	}
 	rhash->hr_size = rhash->inserts;
 	v1printf("hash is %lu bytes\n", rhash->hr_size * sizeof(chksum_ent));
@@ -657,8 +659,7 @@ RHash_cleanse(RefHash *rhash)
 	if(rhash->inserts) {
 	    if((rhash->hash.chk = (chksum_ent *)realloc(rhash->hash.chk, 
 		rhash->inserts * sizeof(chksum_ent)))==NULL) {
-		perror("hmm, weird, realloc failed\n");
-		exit(EXIT_FAILURE);
+		return MEM_ERROR;
 	    }
 	} else {
 	    v1printf("no valid entries left, free'ing\n");
@@ -694,8 +695,7 @@ RHash_cleanse(RefHash *rhash)
 	if(rhash->inserts) {
 	    if((rhash->hash.chk = (chksum_ent *)realloc(rhash->hash.chk, 
 		rhash->inserts * sizeof(chksum_ent)))==NULL) {
-		perror("hmm, weird, realloc failed\n");
-		exit(EXIT_FAILURE);
+		return MEM_ERROR;
 	    }
 	} else {
 	    v1printf("no valid entries left, freeing\n");
@@ -731,8 +731,7 @@ RHash_cleanse(RefHash *rhash)
 		    (rhash->hash.bucket.offset[x] = (off_u64 *) realloc(
 		    rhash->hash.bucket.offset[x], sizeof(off_u64) * 
 		    rhash->hash.bucket.depth[x])) == NULL) {
-		    perror("shite, realloc failed.\n");
-		    abort();
+		    return MEM_ERROR;
 		}
 	    }
 	}

@@ -51,56 +51,49 @@ inline unsigned long octal_str2long(char *string, unsigned int length)
     return(x);
 }
 
-struct tar_entry 
-**read_fh_to_tar_entry(int src_fh, unsigned long *total_count) 
+int
+read_fh_to_tar_entry(cfile *src_fh, tar_entry ***tar_entries, 
+    unsigned long *total_count) 
 {
-    struct tar_entry **file, *entry;
+    tar_entry *entry, **file;
     unsigned char block[512];
     unsigned long offset=0, array_size=100000;
     unsigned long count =0;
     unsigned int read_bytes;
     unsigned int name_len, prefix_len;
     unsigned int extra_size;
-    if((file = (struct tar_entry **)calloc(array_size,sizeof(struct tar_entry *)))==NULL){
-	perror("crud, couldn't allocate necesary memory.  What gives?\n");
-	exit(EXIT_FAILURE);
+    if((file = (tar_entry **)calloc(array_size,sizeof(tar_entry *)))==NULL){
+	return MEM_ERROR;
     }
     extra_size=0;
-    while((read_bytes=read(src_fh, block, 512))==512 
-/*&& strnlen(block)!=0*/) {
+    while((read_bytes=cread(src_fh, block, 512))==512) {
 	if(strnlen(block, 512)==0)  {
 	    break;
 	}
-	if((entry=(struct tar_entry *)malloc(sizeof(struct tar_entry)))==NULL){
-	    v0printf("shite, low on good ole mem.\n");
-	    abort();
+	if((entry=(tar_entry *)malloc(sizeof(tar_entry)))==NULL){
+	    return MEM_ERROR;
 	}
 	if (! check_str_chksum((const char *)block)) {
-	    v0printf("shite chksum didn't match on tar header\n");
-	    abort();
+	    return MEM_ERROR;
 	}
 	if('L'==block[TAR_TYPEFLAG_LOC]) {
 	    extra_size = 1024;
 	    v2printf("handling longlink\n");
 	    name_len = octal_str2long(block + TAR_SIZE_LOC, TAR_SIZE_LEN) -1;
-	    if((read_bytes=read(src_fh, block, 512))!=512) {
-		v0printf("shite, unexpected eof\n");
-		abort();
+	    if((read_bytes=cread(src_fh, block, 512))!=512) {
+		return EOF_ERROR;
 	    }
 	    if((entry->fullname = 
 		(unsigned char *)malloc(name_len))==NULL){
-		v0printf("shite, lack o' the good ole mem.\n");
-		abort();
+		return EOF_ERROR;
 	    }
 	    entry->working_name = entry->fullname;
 	    memcpy(entry->fullname, block, name_len);
-	    if((read_bytes=read(src_fh, block, 512))!=512){
-		v0printf("shite, unexpected eof\n");
-		abort();
+	    if((read_bytes=cread(src_fh, block, 512))!=512){
+		return EOF_ERROR;
 	    }
 	    if(! check_str_chksum((const char *)block)) {
-		v0printf("shite chksum didn't match on tar header\n");
-		abort();
+		return PATCH_CORRUPT_ERROR;
 	    }
 	    entry->working_len = name_len;
 	    entry->size = octal_str2long(block + TAR_SIZE_LOC, TAR_SIZE_LEN);
@@ -112,8 +105,7 @@ struct tar_entry
 	    prefix_len += (prefix_len==0 ? 0 : 1);
 	    if((entry->working_name = entry->fullname = 
 		(unsigned char *)malloc(name_len + prefix_len))==NULL){
-		v0printf("shite, lack o' the good ole mem.\n");
-		abort();
+		return MEM_ERROR;
 	    }
 	    if(prefix_len) {
 		memcpy(entry->fullname, block + TAR_PREFIX_LOC, prefix_len -1);
@@ -135,13 +127,12 @@ struct tar_entry
             int x= entry->size>>9;
             if (entry->size % 512)
                 x++;
-            //lseek(src_fh, (long)(x * 512), 1);
             offset += x + 1;
             while(x-- > 0){
 // wtf...
-                if(read(src_fh, &block, 512)==512){
-                } else 
-                    perror("Unexpected end of file encountered, exiting\n");
+                if(cread(src_fh, block, 512)!=512){
+		    return EOF_ERROR;
+		}
             }    
         } else {
             offset++;
@@ -152,18 +143,17 @@ struct tar_entry
         }
         if(count==array_size) {
             /* out of room, resize */
-            if ((file = (struct tar_entry **)realloc(
-            	file,(array_size+=50000)*sizeof(struct tar_entry *)))==NULL){
-                v0printf("Eh?  Ran out of room for file array...\n");
-                exit(EXIT_FAILURE);
+            if ((file = (tar_entry **)realloc(
+            	file,(array_size+=50000)*sizeof(tar_entry *)))==NULL){
+		return MEM_ERROR;
             }
         }
 	file[count++] = entry;
     }
     *total_count = count;
-    if ((file=(struct tar_entry **)realloc(file,count*sizeof(struct tar_entry *)))==NULL){
-        perror("Shit.\nNo explanation, just Shit w/ a capital S.\n");
-        exit(EXIT_FAILURE);
+    if ((file=(tar_entry **)realloc(file,count*sizeof(tar_entry *)))==NULL){
+	return MEM_ERROR;
     }
-    return file;
+    *tar_entries = file;
+    return 0;
 }

@@ -45,11 +45,10 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
     unsigned char add_copy, newline_complaint=0;
     unsigned char buff[512];
     cread(patchf, buff, 3);
-//    assert(0==memcmp(buff, "---",3));
     if(0!=memcmp(buff, "---", 3))
-	goto CORRUPTED_PATCH;
+	return PATCH_CORRUPT_ERROR;
     if(2!=skip_lines_forward(patchf, 2))
-	abort();
+	return PATCH_CORRUPT_ERROR;
     s_lastoff = 0;
     s_lastline = 1;
     DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL);
@@ -57,12 +56,10 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 	cread(patchf, buff, 4);
 	if('\\'==buff[0]) {
 	    v2printf("got me a (hopefully) 'No newline...'\n");
-//	    assert(22==cread(patchf, buff + 4, 22));
 	    if(22!=cread(patchf, buff + 4, 22))
-		goto TRUNCATED_PATCH;
+		return EOF_ERROR;
 	    if(0!=memcmp(buff, "\\ No newline at end of file", 26))
-		goto CORRUPTED_PATCH;
-//	    assert(memcmp(buff,"\\ No newline at end of file", 26)==0);
+		return PATCH_CORRUPT_ERROR;
 	    skip_lines_forward(patchf,1);
 	    /* hokay. this is a kludge, not even innovative/good enough to be 
 	       called a hack. */
@@ -71,11 +68,10 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 	    continue;
 	} else if ('B'==buff[0]) {
 	    /* handle the "Binary file x and y differ" by puking. */
-	    abort();
+	    return PATCH_CORRUPT_ERROR;
 	}
 	if(0!=memcmp(buff, "@@ -", 4))
-	    goto CORRUPTED_PATCH;
-//	assert(0==memcmp(buff, "@@ -",4));
+	    return PATCH_CORRUPT_ERROR;
 	s_line = getUDec(patchf);
 	v2printf("for segment, s_line(%lu), s_lastline(%lu):", s_line, 
 	    s_lastline);
@@ -88,11 +84,9 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 	else
 	    s_len = 1;
 	if(2!=cread(patchf, buff, 2))
-	    goto TRUNCATED_PATCH;
+	    return EOF_ERROR;
 	if(0!=memcmp(buff, " +", 2))
-	    goto CORRUPTED_PATCH;
-//	assert(2==cread(patchf,buff,2));
-//	assert(0==memcmp(buff, " +",2));
+	    return PATCH_CORRUPT_ERROR;
 	v_line = getUDec(patchf);
 	cread(patchf, buff, 1);
 	if(buff[0]==',')
@@ -124,8 +118,6 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 		    offset = ctell(src_cfh, CSEEK_FSTART);
 		    v2printf("adding copy for add_copy: ");
 		    DCB_add_copy(dcbuff, s_lastoff, 0, offset - s_lastoff);
-//		    DCBufferAddCmd(dcbuff, DC_COPY, s_lastoff, 
-//			offset - s_lastoff);
 		    s_lastoff = offset;
 		    //s_lastline++; 
 		    add_copy=0;
@@ -152,29 +144,22 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 	    } else if('\\'==buff[0]) {
 		v2printf("got me a (hopefully) 'No newline...'\n");
 		if(26!=cread(patchf, buff + 1, 26))
-		    goto TRUNCATED_PATCH;
+		    return EOF_ERROR;
 		if(0!=memcmp(buff, "\\ No newline at end of file", 26))
-		    goto CORRUPTED_PATCH;
-//		assert(26==cread(patchf, buff + 1, 26));
-//		assert(memcmp(buff,"\\ No newline at end of file", 26)==0);
+		    return PATCH_CORRUPT_ERROR;
 		skip_lines_forward(patchf,1);
 		/* kludge.  May be a wrong assumption, but diff's complaints 
 		   about lack of newline at the end of a file should first be 
 		   for the source file.  This little puppy is used for that */
 		newline_complaint=1;
 	    } else {
-		goto CORRUPTED_PATCH;
+		return PATCH_CORRUPT_ERROR;
 	    }
 	} 
 	v2printf("so ends that segment\n");
     }
     if(ctell(src_cfh, CSEEK_FSTART)!=cfile_len(src_cfh))
 	DCB_add_copy(dcbuff, s_lastoff, 0, cfile_len(src_cfh) - s_lastoff);
-//	DCBufferAddCmd(dcbuff, DC_COPY, s_lastoff, cfile_len(src_cfh) - s_lastoff);
     return 0;
 
-    TRUNCATED_PATCH:
-	return PATCH_TRUNCATED;
-    CORRUPTED_PATCH:
-	return PATCH_CORRUPT;
 }

@@ -82,8 +82,7 @@ gdiffEncodeDCBuffer(CommandBuffer *buffer,
     else if(offset_type==ENCODING_OFFSET_DC_POS)
 	writeUBytesBE(out_buff, GDIFF_VER5_MAGIC, GDIFF_VER_LEN);
     else {
-	v2printf("wtf, gdiff doesn't know offset_type(%u). bug.\n",offset_type);
-	exit(1);
+	return PATCH_CORRUPT_ERROR;
     }
     cwrite(out_cfh, out_buff, GDIFF_VER_LEN);
     DCBufferReset(buffer);
@@ -113,11 +112,10 @@ gdiffEncodeDCBuffer(CommandBuffer *buffer,
 		cwrite(out_cfh, out_buff, 5);
 		delta_pos+=5;
 	    } else {
-		v2printf("wtf, encountered an offset larger then int size.  croaking.\n");
-		exit(1);
+		return FORMAT_ERROR;
 	    }
 	    if(dc.loc.len != copyDCB_add_src(buffer, &dc, out_cfh)) {
-		abort();
+		return EOF_ERROR;
 	    }
 
 	    delta_pos += dc.loc.len;
@@ -133,12 +131,10 @@ gdiffEncodeDCBuffer(CommandBuffer *buffer,
 	    }
 	    lb=unsignedBytesNeeded(dc.loc.len);
 	    if(lb> INT_BYTE_COUNT) {
-		v2printf("wtf, too large of len in gdiff encoding. dieing.\n");
-		exit(1);
+		return FORMAT_ERROR;
 	    }
 	    if(ob > LONG_BYTE_COUNT) {
-		v2printf("wtf, too large of offset in gdiff encoding. dieing.\n");
-		exit(1);
+		return FORMAT_ERROR;
 	    }
 	    clen=1;
 	    if(lb <= BYTE_BYTE_COUNT)
@@ -179,14 +175,12 @@ gdiffEncodeDCBuffer(CommandBuffer *buffer,
 		delta_pos, fh_pos, out_buff[0], (off_is_sbytes ? 
 		    dc_pos + s_off : u_off), dc.loc.len);
 	    if(cwrite(out_cfh, out_buff, clen)!=clen) {
-		v2printf("shite, couldn't write copy command. eh?\n");
-		exit(1);
+		return IO_ERROR;
 	    }
 	    fh_pos += dc.loc.len;
 	    delta_pos+=1 + ob + lb;
 	    dc_pos += s_off;
 	}
-//	DCBufferIncr(buffer);
     }
     out_buff[0] = 0;
     cwrite(out_cfh, out_buff, 1);
@@ -222,8 +216,7 @@ gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 		else if (*buff==248)
 		    lb=4;
 		if(cread(patchf, buff, lb)!=lb) {
-		    v2printf("shite, error reading.  \n");
-		    exit(1);
+		    return EOF_ERROR;
 		}
 	        len= readUBytesBE(buff, lb);
 	    } else
@@ -255,8 +248,7 @@ gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 		    lb=4;
 	    	}
 		if(cread(patchf, buff + 1, lb + ob)!= lb + ob) {
-		     v2printf("error reading in lb/ob for copy...\n");
-		     exit(1);
+		    return EOF_ERROR;
 		}
 		if(off_is_sbytes) {
 		    s_off=readSBytesBE(buff + 1, ob);
@@ -271,7 +263,6 @@ gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 		}
 		v2printf("offset(%lu), len(%lu)\n", u_off, len);
 		DCB_add_copy(dcbuff, u_off, 0, len);
-//		DCBufferAddCmd(dcbuff, DC_COPY, u_off, len);
 		ver_pos+=len;
 	    }
     }

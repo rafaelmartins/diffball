@@ -43,7 +43,7 @@ bsdiff_overlay_add(CommandBuffer *dcb, DCommand *dc,
     src_offsets = (off_u32 *)dcb->extra_patch_data;
     if(src_offsets[dcb->DCB.full.add_index -1] != 
 	cseek(src_cfh, 	src_offsets[dcb->DCB.full.add_index -1], CSEEK_FSTART)) {
-	    abort();
+	    return EOF_ERROR;
 	return 0;
     } else if(dc->loc.offset != cseek(diff_cfh, dc->loc.offset, CSEEK_FSTART)) {
 	return 0;
@@ -103,7 +103,7 @@ bsdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
     off_u32 ver_size;
     off_u32 ver_pos, src_pos;
     if(cread(patchf, buff, 32)!=32) {
-	abort();
+	return EOF_ERROR;
     }
     if(memcmp(buff, BSDIFF4_MAGIC, BSDIFF_MAGIC_LEN)==0) {
 	ver = 4;
@@ -111,33 +111,31 @@ bsdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 	memcmp(buff, BSDIFF_QS_MAGIC, BSDIFF_MAGIC_LEN) == 0) {
 	ver = 3;
     } else {
-	abort();
+	return PATCH_CORRUPT_ERROR;
     }
 
     if((diff_cfh = (cfile *)malloc(sizeof(cfile)))==NULL ||
 	(ver == 4 && (extra_cfh = (cfile *)malloc(sizeof(cfile)))==NULL)) {
-
-	abort();
+	return MEM_ERROR;
     }
     ctrl_len = readUBytesLE(buff + 8, 4);
     diff_len = readUBytesLE(buff + 16, 4);
     ver_size = readUBytesLE(buff + 24, 4);
     if(copen_child_cfh(&ctrl_cfh, patchf, 32, ctrl_len + 32,
 	BZIP2_COMPRESSOR, CFILE_RONLY)) {
-	abort();
+	return MEM_ERROR;
     } else if (copen_child_cfh(diff_cfh, patchf, ctrl_len + 32, 
 	diff_len + ctrl_len + 32, BZIP2_COMPRESSOR, 
 	CFILE_RONLY)) {
-	abort();
+	return MEM_ERROR;
     } else if(ver  == 4 && copen_child_cfh(extra_cfh, patchf, 
 	ctrl_len + diff_len + 32, cfile_len(patchf),
 	BZIP2_COMPRESSOR, CFILE_RONLY)) {
-	abort();
+	return MEM_ERROR;
     }
     
     if((src_offsets = (off_u32 *)malloc(sizeof(off_u32) * src_offset_size))==NULL) {
-	perror("Couldn't alloc needed memory.\n");
-	abort();
+	return MEM_ERROR;
     }
 
     DCBUFFER_REGISTER_ADD_SRC(dcbuff, diff_cfh, &bsdiff_overlay_add);
@@ -154,7 +152,7 @@ bsdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 	    src_offset_size += 1000;
 	    if((src_offsets = (off_u32 *)realloc(src_offsets, 
 		sizeof(off_u32) * src_offset_size + 1000))==NULL) {
-		abort();
+		return MEM_ERROR;
 	    }
 	}
 	len1 = readUBytesLE(buff, 4);
@@ -181,7 +179,7 @@ bsdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 		if(cfw->pos == cfw->end) {
 		    cfw = next_page(diff_cfh);
 		    if(cfw->end==0) {
-			abort();
+			return EOF_ERROR;
 		    }
 		}
 
@@ -189,7 +187,6 @@ bsdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 		if(cfw->buff[cfw->pos]==0 && processing_add) {
 		    DCB_add_add(dcbuff, add_start, cfw->offset +
 			cfw->pos - add_start, 0);
-		    y+= cfw->offset + cfw->pos - add_start;
 		    processing_add = 0;
 		    add_start = cfw->pos + cfw->offset;
 		} else if(cfw->buff[cfw->pos]!=0 && processing_add==0){ 
@@ -203,7 +200,7 @@ bsdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 			src_offset_size += 1000;
 			if((src_offsets = (off_u32 *)realloc(src_offsets,
 			    sizeof(off_u32) * src_offset_size))==NULL) {
-			    abort();
+			    return MEM_ERROR;
 			}
 		    }
 		}
@@ -211,13 +208,10 @@ bsdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 	    }
 	    if(processing_add) {
 		DCB_add_add(dcbuff, add_start, cfw->pos + cfw->offset  - add_start, 0);
-		y+=cfw->offset + cfw->pos - add_start;
 	    } else {
 		DCB_add_copy(dcbuff, add_start - diff_offset + src_pos, 0,//dcbuff->reconstruct_pos, 
 		    diff_offset + len1 - add_start);
-		y+= diff_offset + len1 - add_start;
 	    }
-	    if(len1 != y) {abort();};
 	    diff_offset += len1;
 	    src_pos += len1;
 	    ver_pos += len1;
@@ -228,7 +222,7 @@ bsdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 		src_offset_size += 1000;
 		if((src_offsets = (off_u32 *)realloc(src_offsets,
 		    sizeof(off_u32) * src_offset_size))==NULL) {\
-		    abort();
+		    return MEM_ERROR;
 		}
 	    }
 	    DCB_add_add(dcbuff, extra_offset, len2, 1);
@@ -243,8 +237,8 @@ bsdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 	extra_offset, diff_offset, ctrl_cfh.data.pos + ctrl_cfh.data.offset, 
 	dcbuff->reconstruct_pos);
     if(ver_pos != ver_size) {
-	printf("bitch...\n");
-	abort();
+	printf("error detected, aborting...\n");
+	return PATCH_CORRUPT_ERROR;
     }
     DCB_REGISTER_EXTRA_PATCH_DATA(dcbuff, src_offsets);
     return 0;

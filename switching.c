@@ -105,7 +105,7 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 	DCB_get_next_command(buffer, &dc);
 	if(DC_ADD == dc.type) {
 	    if(dc.loc.len != copyDCB_add_src(buffer, &dc, out_cfh)) {
-		abort();
+		return EOF_ERROR;
 	    }
 	    delta_pos += dc.loc.len;
     	}
@@ -257,8 +257,7 @@ signed int switchingReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff /*,
 	v2printf("using ENCODING_OFFSET_START\n");
 	copy_off_array = copy_off_start;
     } else { 
-	v2printf("wtf, unknown offset_type for reconstruction(%u)\n",offset_type);
-	exit(1);
+	return FORMAT_ERROR;
     }
     cseek(patchf, SWITCHING_MAGIC_LEN + SWITCHING_VERSION_LEN, CSEEK_FSTART);
     assert(ctell(patchf, CSEEK_FSTART)==SWITCHING_MAGIC_LEN + 

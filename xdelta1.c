@@ -84,6 +84,7 @@ xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
     cread(patchf, buff, 4);
     flags = readUBytesBE(buff, 4);
     cread(patchf, buff, 4);
+
     // the header is 32 bytes, then 2 word's, each the length of the 
     // src/trg file name.
     add_start = 32 + readUBytesBE(buff, 2) + readUBytesBE(buff + 2, 2);
@@ -97,38 +98,46 @@ xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
     if(flags & XD_COMPRESSED_FLAG) {
 	v2printf("compressed segments detected\n");
 	if((ctrl_cfh = (cfile *)malloc(sizeof(cfile)))==NULL) {
-	    abort();
+	    return MEM_ERROR;
 	}
 	copen_child_cfh(ctrl_cfh, patchf, control_offset, control_end, 
 	    GZIP_COMPRESSOR, CFILE_RONLY);
     } else {
 	ctrl_cfh = patchf;
     }
+
     /* kludge. skipping 8 byte unknown, and to_file md5.*/
     cseek(ctrl_cfh, 24, CSEEK_CUR);
+
     /* read the frigging to length, since it's variable */
     x = readXDInt(ctrl_cfh, buff);
 	v2printf("to_len(%lu)\n", x);
+
     /* two bytes here I don't know about... */
     cseek(ctrl_cfh, 2, CSEEK_CUR);
     /* get and skip the segment name's len and md5 */
     x = readXDInt(ctrl_cfh, buff);
 	//v2printf("seg1_len(%lu)\n", x);
     cseek(ctrl_cfh, x + 16, CSEEK_CUR);
+
     /* read the damned segment patch len. */
     x = readXDInt(ctrl_cfh, buff);
+
     /* skip the seq/has data bytes */
     /* handle sequential/has_data info */
     cread(ctrl_cfh, buff, 2);
     add_is_sequential = buff[1];
+
     v2printf("patch sequential? (%u)\n", add_is_sequential);
+
     /* get and skip the next segment name len and md5. */
     x = readXDInt(ctrl_cfh, buff);
-	//v2printf("seg2_len(%lu)\n", x);
     cseek(ctrl_cfh, x + 16, CSEEK_CUR);
+
     /* read the damned segment patch len. */
     x = readXDInt(ctrl_cfh, buff);
     v2printf("seg2_len(%lu)\n", x);
+
     /* handle sequential/has_data */
     cread(ctrl_cfh, buff, 2);
     copy_is_sequential = buff[1];
@@ -142,12 +151,12 @@ xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
     if(flags & XD_COMPRESSED_FLAG) {
 	add_pos = 0;
 	if((add_cfh = (cfile *)malloc(sizeof(cfile)))==NULL) {
-	    abort();
+	    return MEM_ERROR;
 	}
 	copen_child_cfh(add_cfh, patchf, add_start, control_offset, 
 	    GZIP_COMPRESSOR, CFILE_RONLY);
 	DCBUFFER_REGISTER_ADD_SRC(dcbuff, add_cfh, NULL);
-	DCBUFFER_FREE_ADD_CFH_FLAG(dcbuff);
+	FREE_CFH_AT_CLOSE(add_cfh);
     } else {
 	add_pos = add_start;
 	DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL);

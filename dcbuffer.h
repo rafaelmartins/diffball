@@ -155,8 +155,6 @@ typedef struct _CommandBuffer {
 	(buff)->DCB.llm.ver_start = cfile_start_offset((cfh));		\
     }
 
-#define DCBUFFER_FREE_ADD_CFH_FLAG(buff) (buff)->flags |= ADD_CFH_FREE_FLAG;
-
 unsigned long inline current_command_type(CommandBuffer *buff);
 unsigned long default_dcb_add_func(CommandBuffer *dcb, DCommand *dc, 
     cfile *out_cfh);

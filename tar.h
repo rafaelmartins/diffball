@@ -17,6 +17,10 @@
 */
 #ifndef _HEADER_TAR
 #define _HEADER_TAR 1
+
+#include "defs.h"
+#include "cfile.h"
+
 /* the data structs were largely taken/modified/copied from gnutar's header file.
    I had to go there for the stupid gnu extension... */
 #define TAR_NAME_LOC		0
@@ -53,12 +57,7 @@
 #define TAR_DEVMINOR_LEN	8
 #define TAR_PREFIX_LEN		155
 
-
-int check_str_chksum(const char *entry);
-inline unsigned long octal_str2long(char *string, unsigned int length);
-struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count);
-
-struct tar_entry {
+typedef struct {
     unsigned long	file_loc;
     unsigned long       entry_num;
     unsigned long	size;
@@ -67,40 +66,15 @@ struct tar_entry {
     unsigned short int  fullname_len;
     unsigned char	*working_name;
     unsigned int	working_len;
-//    unsigned char       *fullname_ptr;
-//    unsigned short int	fullname_ptr_len;
-};
+} tar_entry;
 
-/*
-struct tar_entry {
-    unsigned char       *name;
-    unsigned short int  name_len;
-    unsigned long int   mode;
-    unsigned long int   uid;
-    unsigned long int   gid;
-    unsigned long       size;
-    unsigned char       mtime[12];
-    unsigned long       chksum;
-    unsigned char       typeflag;
-    unsigned char       *linkname;
-    unsigned short int  linkname_len;
-    unsigned char       magic[6];
-    unsigned char       version[2];
-    unsigned char       *uname;
-    unsigned short int  uname_len;
-    unsigned char       *gname;
-    unsigned short int  gname_len;
-    unsigned long int   devmajor;
-    unsigned long int   devminor;
-    unsigned char       prefix_len;
-    unsigned long	file_loc;
-    unsigned int        entry_num;
-//concattenation of prefix and name, +1 extra for null, +1 for slash if prefix is not null 
-    unsigned char       *fullname;
-    unsigned short int  fullname_len;
-    unsigned char       *fullname_ptr;
-    unsigned short int	fullname_ptr_len;
-};*/
+
+int check_str_chksum(const char *entry);
+inline unsigned long octal_str2long(char *string, unsigned int length);
+signed int read_fh_to_tar_entry(cfile *src_fh, tar_entry ***file,
+    unsigned long *total_count);
+//struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count);
+
 
 #endif
 

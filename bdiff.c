@@ -91,7 +91,7 @@ bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *out_cfh)
 	    delta_pos += lb + dc.loc.len;
 	    cwrite(out_cfh, buff, lb);
 	    if(dc.loc.len != copyDCB_add_src(buffer, &dc, out_cfh)) {
-		abort();
+		return EOF_ERROR;
 	    }
 	}
     }
@@ -120,14 +120,14 @@ bdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 	    v2printf("got a copy at %lu, fh_pos(%lu): ", 
 		ctell(patchf, CSEEK_FSTART), fh_pos);
 	    if(4 != cread(patchf, buff + 1, 4)) {
-		abort();
+		return EOF_ERROR;
 	    }
 	    offset = readUBytesBE(buff + 1, 4);
 	    if(buff[0]) {
 		len = readUBytesBE(buff, 1) + 5;
 	    } else {
 		if(4 != cread(patchf, buff, 4)) {
-		    abort();
+		    return EOF_ERROR;
 		}
 		len = readUBytesBE(buff, 4);
 	    }
@@ -142,7 +142,7 @@ bdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 		len = readUBytesBE(buff, 1) + 5;
 	    } else {
 		if(4 != cread(patchf, buff, 4)) {
-		    abort();
+		    return EOF_ERROR;
 		}
 		len = readUBytesBE(buff, 4);
 	    }
@@ -155,13 +155,13 @@ bdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 	    v2printf("got a checksum at %lu\n", ctell(patchf, CSEEK_FSTART));
 	    if(buff[0] <= 1) {
 		if(16 != cread(patchf, buff + 1, 16)) 
-		    abort();
+		    return EOF_ERROR;
 		if(buff[0]==0) 
 		    memcpy(src_md5, buff + 1, 16);
 		else 
 		    memcpy(ver_md5, buff + 1, 16);
 	    } else {
-		abort();
+		return EOF_ERROR;
 	    }
 	}
     }
