@@ -92,10 +92,10 @@ AM_CONDITIONAL(COMPILE_PROFILING_CFLAGS, test x$enable_profiling = xtrue)
 AC_PROG_CC
 
 # Checks for libraries.
-AC_CHECK_LIB(popt, poptGetContext)
-AC_CHECK_LIB(crypto, EVP_get_digestbyname)
-AC_CHECK_LIB(bz2, BZ2_bzCompressInit)
-AC_CHECK_LIB(z, gzdopen)
+AC_CHECK_LIB(popt, poptGetContext, , AC_MSG_ERROR([libpopt not found]))
+AC_CHECK_LIB(crypto, EVP_get_digestbyname, , AC_MSG_ERROR([libcrypto not found]))
+AC_CHECK_LIB(bz2, BZ2_bzCompressInit, , AC_MSG_ERROR([libbz2 not found]))
+AC_CHECK_LIB(z, gzdopen, , AC_MSG_ERROR([libz not found]))
 AC_CHECK_LIB(m, ceil)
 
 # Checks for header files.
