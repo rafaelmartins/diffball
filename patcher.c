@@ -31,16 +31,24 @@
 #include "dcbuffer.h"
 
 unsigned int global_verbosity = 0;
-unsigned int out_compressor = 0;
-unsigned int output_to_stdout = 0;
-unsigned int global_use_md5 = 0;
-char  *patch_format;
 
-struct poptOption options[] = {
-    STD_OPTIONS(output_to_stdout),
-    FORMAT_OPTIONS("patch-format", 'f', patch_format),
-    POPT_TABLEEND
+static struct option long_opts[] = {
+    STD_LONG_OPTIONS,
+    FORMAT_LONG_OPTION("patch-format", 'f'),
+    END_LONG_OPTS
 };
+
+static struct usage_options help_opts[] = {
+    STD_HELP_OPTIONS,
+    FORMAT_HELP_OPTION("patch-format", 'f', "Override patch auto-identification"),
+    USAGE_FLUFF("Normal usage is patcher src-file patch(s) reconstructed-file\n"
+    "if you need to override the auto-identification (eg, you hit a bug), use -f.  Note this settings\n"
+    "affects -all- used patches, so it's use should be limited to applying a single patch"),
+    END_HELP_OPTS
+};
+
+static char short_opts[] = STD_SHORT_OPTIONS "f:";
+
 
 int
 main(int argc, char **argv)
@@ -51,39 +59,40 @@ main(int argc, char **argv)
     cfile src_cfh, out_cfh;
     cfile patch_cfh[256];
     CommandBuffer dcbuff[2];
-    poptContext p_opt;
     unsigned long x;
     signed int src_id;
     signed int err;
-    signed long optr;
-    char  *src_name;
-    char  *out_name;
+    char  *src_name = NULL;
+    char  *out_name = NULL;
     unsigned long patch_count;
     unsigned char reorder_commands = 0;
     unsigned char bufferless = 1;
-    char  **patch_name, **p;
+    char  **patch_name;
     unsigned long int patch_id[256];
     signed long int recon_val=0;
+    unsigned int out_compressor = 0;
+    unsigned int output_to_stdout = 0;
+    unsigned int global_use_md5 = 0;
+    char  *patch_format = NULL;
+    int optr = 0;
+    
+    #define DUMP_USAGE(exit_code) \
+	print_usage("patcher", "src_file patch(es) [trg_file|or to stdout]", help_opts, exit_code);
 
-    p_opt = poptGetContext("patcher", argc, (const char **)argv, options, 0);
-    while((optr=poptGetNextOpt(p_opt)) != -1) {
-	if(optr < -1) {
-	    usage("patcher", p_opt, 1, poptBadOption(p_opt,
-		POPT_BADOPTION_NOALIAS), poptStrerror(optr));
-	}
+    while((optr = getopt_long(argc, argv, short_opts, long_opts, NULL)) != -1) {
 	switch(optr) {
 	case OVERSION:
-	    print_version("patcher");
-	    exit(0);
+	    print_version("patcher");	exit(0);
 	case OUSAGE:
-	    usage("patcher", p_opt, 0, NULL, NULL);
-	    break;
+	    DUMP_USAGE(0);
 	case OVERBOSE:
-	    global_verbosity++;
-	    break;
+	    global_verbosity++;		break;
 	case OHELP:
-	    print_help("patcher", p_opt);
-	    break;
+	    DUMP_USAGE(0);
+	case OSTDOUT:
+	    output_to_stdout = 1;	break;
+	case 'f':
+	    patch_format = optarg;	break;
 	case OBZIP2:
 	    if(out_compressor) {
 		// bitch at em.
@@ -98,23 +107,26 @@ main(int argc, char **argv)
 	    break;
 	}
     }
-    if( ((src_name=(char *)poptGetArg(p_opt))==NULL) || 
+    if( ((src_name=(char *)get_next_arg(argc, argv))==NULL) || 
 	(stat(src_name, &src_stat))) {
-	usage("patcher", p_opt, 1, "Must specify an existing source file.", 0);
-    } else if((patch_name = (char **)poptGetArgs(p_opt)) == NULL) {
-    	usage("patcher", p_opt, 1, "Must specify an existing patch file.", 0);
+	v0printf("Must specify an existing source file!- %s not found\n", src_name);
+	DUMP_USAGE(EXIT_USAGE);
+    } else if (optind >= argc) {
+	v0printf("Must specify a patch file!\n")
+	DUMP_USAGE(EXIT_USAGE);
     }
-    patch_count = 0;
-    for(p=patch_name; *p != NULL; p++)
-    	patch_count++;
+    patch_count = argc - optind;
+    patch_name = optind + argv;
     if(output_to_stdout) {
 	out_fh = 1;
 	if(patch_count == 0) {
-	    usage("patcher", p_opt, 1, "Must specify an existing patch file.", 0);
+	    v0printf("Must specify an existing patch file!\n");
+	    DUMP_USAGE(EXIT_USAGE);
 	}
     } else {
     	if(patch_count == 1) {
-    	    usage("patcher", p_opt, 1, "Must specify a name for the reconstructed file.", 0);
+	    v0printf("Must specify a name for the reconstructed file!\n");
+	    DUMP_USAGE(EXIT_USAGE);
     	}
 	out_name = patch_name[patch_count - 1];
 	patch_name[patch_count] = NULL;
@@ -127,7 +139,7 @@ main(int argc, char **argv)
     for(x=0; x < patch_count; x++) {
         if(stat(patch_name[x], &patch_stat)) {
 	   v0printf("error stat'ing patch file '%s'\n", patch_name[x]);
-           usage("patcher", p_opt, 1, "Must specify an existing patch file.", 0);
+	   exit(EXIT_FAILURE);
         }
     	if((patch_fh[x] = open(patch_name[x], O_RDONLY,0))==-1) {
 	    v0printf( "error opening patch file '%s'\n", patch_name[x]);
@@ -162,7 +174,7 @@ main(int argc, char **argv)
     	cseek(&patch_cfh[x], 0, CSEEK_FSTART);
     }
 
-    if(patch_count == 1 || reorder_commands != 0) {
+    if(patch_count != 1 || reorder_commands != 0) {
     	bufferless = 0;
     	v1printf("disabling bufferless, patch_count(%lu) != 1\n", patch_count);
     } else {
@@ -179,7 +191,9 @@ main(int argc, char **argv)
     v1printf("src_fh size=%lu\n", (unsigned long)src_stat.st_size);
     copen(&src_cfh, src_fh, 0, src_stat.st_size, AUTODETECT_COMPRESSOR, 
 	CFILE_RONLY);
-
+    if(src_cfh.compressor_type != NO_COMPRESSOR) {
+    	reorder_commands = 1;
+    }
     for(x=0; x < patch_count; x++) {
         if(x == patch_count - 1 && reorder_commands == 0 && bufferless) {
             v1printf("not reordering, and bufferless is %u, going bufferless\n", bufferless);
@@ -296,7 +310,6 @@ main(int argc, char **argv)
     } else {
     	v1printf("reconstruction completed successfully\n");
     }
-    poptFreeContext(p_opt);
     DCBufferFree(&dcbuff[(patch_count - 1) % 2]);
     cclose(&out_cfh);
     cclose(&src_cfh);

@@ -36,6 +36,10 @@ typedef unsigned long off_u64;
 typedef signed  long  off_s64;
 #endif
 
+#define MAX_SEED_LEN	65535
+#define MAX_SAMPLE_RATE	32767
+#define MAX_HASH_SIZE	2147483647	//if you have 2gb for a hash size... yeah, feel free to donate hardware/memory to me :)
+
 #define PATCH_TRUNCATED		(-1)
 #define PATCH_CORRUPT_ERROR 	(-2)
 #define IO_ERROR		(-3)
@@ -45,7 +49,6 @@ typedef signed  long  off_s64;
 #define DATA_ERROR		(-7)
 
 #define v0printf(expr...) fprintf(stderr, expr);
-
 
 #ifdef DEV_VERSION
 #include <assert.h>

@@ -32,20 +32,26 @@
 #include "errors.h"
 
 unsigned int global_verbosity=0;
-unsigned long sample_rate=0;
-unsigned long seed_len = 0;
-unsigned long hash_size = 0;
-unsigned int patch_compressor = 0;
-unsigned int patch_to_stdout = 0;
-unsigned int global_use_md5 = 0;
 char  *patch_format;
 
-struct poptOption options[] = {
-    STD_OPTIONS(patch_to_stdout),
-    DIFF_OPTIONS(seed_len, sample_rate,hash_size),
-    FORMAT_OPTIONS("patch-format", 'f', patch_format),
-    POPT_TABLEEND
+struct option long_opts[] = {
+    STD_LONG_OPTIONS,
+    DIFF_LONG_OPTIONS,
+    FORMAT_LONG_OPTION("patch-format", 'f'),
+    END_LONG_OPTS
 };
+
+struct usage_options help_opts[] = {
+    STD_HELP_OPTIONS,
+    DIFF_HELP_OPTIONS,
+    FORMAT_HELP_OPTION("patch-format", 'f', "format to output the patch in"),
+    USAGE_FLUFF("differ expects 3 args- source, target, name for the patch\n"
+    "if output to stdout is enabled, only 2 args required- source, target\n"
+    "Example usage- differ older-version newerer-version upgrade-patch"),
+    END_HELP_OPTS
+};
+
+char short_opts[] = STD_SHORT_OPTIONS DIFF_SHORT_OPTIONS "f:";
 
 int main(int argc, char **argv)
 {
@@ -54,33 +60,51 @@ int main(int argc, char **argv)
     int ref_fh, ver_fh, out_fh;
     signed int ref_id, ver_id;
     CommandBuffer buffer;
-    poptContext p_opt;
 
-    signed long optr;
-    char  *src_file;
-    char  *trg_file;
-    char  *patch_name;
+    int optr;
+    char  *src_file = NULL;
+    char  *trg_file = NULL;
+    char  *patch_name = NULL;
     unsigned long patch_id = 0;
     signed long encode_result=0;
-    p_opt = poptGetContext("differ", argc, (const char **)argv, options, 0);
-    while((optr=poptGetNextOpt(p_opt)) != -1) {
-	if(optr < -1) {
-	    usage("differ", p_opt, 1, poptBadOption(p_opt, POPT_BADOPTION_NOALIAS), 
-		poptStrerror(optr));
-	}
+    unsigned long sample_rate=0;
+    unsigned long seed_len = 0;
+    unsigned long hash_size = 0;
+    unsigned int patch_compressor = 0;
+    unsigned int patch_to_stdout = 0;
+    unsigned int global_use_md5 = 0;
+
+    #define DUMP_USAGE(exit_code)	\
+	print_usage("differ", "src_file trg_file [patch_file|or to stdout]", help_opts, exit_code);
+
+    while((optr = getopt_long(argc, argv, short_opts, long_opts, NULL)) != -1) {
 	switch(optr) {
 	case OVERSION:
-	    print_version("differ");
-	    exit(0);
+	    print_version("differ");	exit(0);
 	case OUSAGE:
-	    usage("differ", p_opt, 0, NULL, NULL);
-	    break;
-	case OVERBOSE:
-	    global_verbosity++;
-	    break;
 	case OHELP:
-	    print_help("differ", p_opt);
+	    DUMP_USAGE(0);
+	case OVERBOSE:
+	    global_verbosity++;		break;
+	case OSAMPLE:
+	    sample_rate = atol(optarg);
+	    if(sample_rate == 0 || sample_rate > MAX_SAMPLE_RATE) DUMP_USAGE(EXIT_USAGE);
 	    break;
+	case OSEED:
+	    seed_len = atol(optarg);
+	    if(seed_len == 0 || seed_len > MAX_SEED_LEN) DUMP_USAGE(EXIT_USAGE);
+	    break;
+	case OHASH:
+	    hash_size = atol(optarg);
+	    if(hash_size == 0 || hash_size > MAX_HASH_SIZE) DUMP_USAGE(EXIT_USAGE);
+	    break;
+	case OSTDOUT:
+	    patch_to_stdout = 1;	break;
+	case 'f':
+	    patch_format = optarg;	break;
+	default:
+	    v0printf("invalid arg- %s\n", argv[optind]);
+	    DUMP_USAGE(EXIT_USAGE);
 /*	case OBZIP2:
 	    if(patch_compressor) {
 		// bitch at em.
@@ -96,28 +120,31 @@ int main(int argc, char **argv)
 */
 	}
     }
-    if( ((src_file=(char *)poptGetArg(p_opt))==NULL) || 
-	(stat(src_file, &ref_stat))) 
-	usage("differ", p_opt, 1, "Must specify an existing source file.",NULL);
-    if( ((trg_file=(char *)poptGetArg(p_opt))==NULL) || 
-	(stat(trg_file, &ver_stat)) )
-	usage("differ", p_opt, 1, "Must specify an existing target file.",NULL);
+    if( ((src_file=(char *)get_next_arg(argc,argv)) == NULL) ||
+	(stat(src_file, &ref_stat)) ) {
+	v0printf("Must specify an existing source file.\n");
+	exit(EXIT_USAGE);
+    }
+    if( ((trg_file=(char *)get_next_arg(argc, argv)) == NULL) ||
+	(stat(trg_file, &ver_stat)) ) {
+	v0printf("Must specify an existing target file.\n");
+	exit(EXIT_USAGE);
+    }
     if(patch_to_stdout != 0) {
 	out_fh = 1;
     } else {
-	if((patch_name = (char *)poptGetArg(p_opt))==NULL)
-	    usage("differ", p_opt, 1, "Must specify a name for the patch file.",NULL);
+	if((patch_name = (char *)get_next_arg(argc, argv)) == NULL) {
+	    v0printf("Must specify a name for the patch file!\n");
+	    exit(EXIT_USAGE);
+	}
 	if((out_fh = open(patch_name, O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1) {
-	    v0printf( "error creating patch file '%s' (open failed)\n",
-	    patch_name);
+	    v0printf( "error creating patch file '%s' (open failed)\n", patch_name);
 	    exit(1);
 	}
     }
-    if (NULL!=poptGetArgs(p_opt)) {
-	usage("differ", p_opt, 1, poptBadOption(p_opt, POPT_BADOPTION_NOALIAS),
-	"unknown option");
+    if (NULL!=get_next_arg(argc, argv)) {
+	DUMP_USAGE(EXIT_USAGE);
     }
-    poptFreeContext(p_opt);
     if ((ref_fh = open(src_file, O_RDONLY,0)) == -1) {
 	v0printf( "error opening src_file\n");
 	exit(EXIT_FAILURE);

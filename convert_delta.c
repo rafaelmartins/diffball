@@ -30,17 +30,29 @@
 #include "options.h"
 
 unsigned int global_verbosity = 0;
-unsigned int patch_compressor = 0;
-unsigned int output_to_stdout = 0;
-unsigned int global_use_md5 = 0;
-char *src_format, *trg_format;
 
-struct poptOption options[] = {
-    STD_OPTIONS(output_to_stdout),
-    FORMAT_OPTIONS("src-format", 's', src_format),
-    FORMAT_OPTIONS("trg-format", 't', trg_format),
-    POPT_TABLEEND
+struct option long_opts[] = {
+    STD_LONG_OPTIONS,
+    FORMAT_LONG_OPTION("src-format",'s'),
+    FORMAT_LONG_OPTION("trg-format",'t'),
+    END_LONG_OPTS
 };
+
+struct usage_options help_opts[] = {
+    STD_HELP_OPTIONS,
+    FORMAT_HELP_OPTION("src-format", 's', "override auto-identification and specify source patches format"),
+    FORMAT_HELP_OPTION("trg-format", 't', "override default and specify new patches format"),
+    USAGE_FLUFF("convert_delta either expects 2 args (src patch, and new patches name), or just the source\n"
+    "patches name if the option to dump to stdout has been given\n"
+    "examples\n"
+    "this would convert from the (auto-identified) xdelta format, to the default switching format\n"
+    "convert_delta kde.xdelta kde.patch\n\n"
+    "this would convert from the (auto-identified) xdelta format, to the gdiff4 format\n"
+    "convert_delta kde.xdelta -t gdiff4 kde.patch\n"),
+    END_HELP_OPTS
+};
+
+char short_opts[] = STD_SHORT_OPTIONS "s:t:";
 
 int 
 main(int argc, char **argv)
@@ -49,30 +61,40 @@ main(int argc, char **argv)
     struct stat in_stat;
     CommandBuffer dcbuff;
     cfile in_cfh, out_cfh;
-    poptContext p_opt;
-    signed long optr;
+    int optr;
     int src_id;
     char *src_file, *trg_file;
     unsigned long int src_format_id, trg_format_id=0;
     signed long recon_val=0, encode_result=0;
+    unsigned int patch_compressor = 0;
+    unsigned int output_to_stdout = 0;
+    unsigned int global_use_md5 = 0;
+    char *src_format = NULL, *trg_format = NULL;
 
-    p_opt = poptGetContext("convert_delta", argc, (const char **)argv, 
-	options, 0);
-    while((optr=poptGetNextOpt(p_opt)) != -1) {
+    #define DUMP_USAGE(exit_code) \
+	print_usage("convert_delta", "src_patch [new_patch|or to stdout]", help_opts, exit_code)
+
+    while((optr = getopt_long(argc, argv, short_opts, long_opts, NULL)) != -1) {
 	switch(optr) {
 	case OVERSION:
-	    print_version("convert_delta");
-	    exit(0);
+	    print_version("convert_delta");	exit(0);
 	case OUSAGE:
-	    usage("convert_delta", p_opt, 0, NULL, NULL);
-	    break;
+	case OHELP:
+	    DUMP_USAGE(0);
 	case OVERBOSE:
 	    global_verbosity++;
 	    break;
-	case OHELP:
-	    print_help("convert_delta", p_opt);
-	    break;
-	case OBZIP2:
+	case 'f':
+	    src_format = optarg;	break;
+	case 't':
+	    trg_format = optarg;	break;
+	case OSTDOUT:
+	    output_to_stdout = 1;	break;
+	default:
+	    v0printf("unknown option %s\n", argv[optind]);
+	    DUMP_USAGE(EXIT_USAGE);
+
+/*	case OBZIP2:
 	    if(patch_compressor) {
 		// bitch at em.
 	    } else 
@@ -84,24 +106,28 @@ main(int argc, char **argv)
 	    } else 
 		patch_compressor = GZIP_COMPRESSOR;
 	    break;
+*/
 	}
     }
-    if( ((src_file=(char *)poptGetArg(p_opt))==NULL) || 
-	(stat(src_file, &in_stat)))
-	usage("convert_delta", p_opt, 1, "Must specify an existing patch.", NULL);
+    if( ((src_file=(char *)get_next_arg(argc, argv))==NULL) || 
+	(stat(src_file, &in_stat))) {
+	v0printf("Must specify an existing patch\n");
+	exit(EXIT_USAGE);
+    }
     if(output_to_stdout) {
 	out_fh = 1;
     } else {
-	if((trg_file = (char *)poptGetArg(p_opt))==NULL)
-	    usage("convert_delta", p_opt, 1, "Must specify a name for the new patch.", NULL);
-        if((out_fh = open(trg_file, O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1){
+	if((trg_file = (char *)get_next_arg(argc, argv))==NULL) {
+	    v0printf("Must specify a name for the new patch\n");
+	    exit(EXIT_USAGE);
+        }
+	if((out_fh = open(trg_file, O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1){
 	    v0printf( "error creating output file '%s'\n", trg_file);
 	    exit(1);
 	}
     }
-    if(NULL!= poptGetArgs(p_opt)) {
-	usage("convert_delta", p_opt, 1, poptBadOption(p_opt, POPT_BADOPTION_NOALIAS),
-	    "unknown option");
+    if(NULL!= get_next_arg(argc,argv)) {
+	DUMP_USAGE(EXIT_USAGE);
     }
     if((in_fh = open(src_file, O_RDONLY, 0))==-1) {
 	v0printf( "error opening patch '%s'\n", src_file);
@@ -127,7 +153,8 @@ main(int argc, char **argv)
     }
 
     if(trg_format==NULL) {
-	usage("convert_delta", p_opt, 1, "new files format is required\n", NULL);
+	v0printf("new files format is required\n");
+	DUMP_USAGE(EXIT_USAGE);
     } else {
 	trg_format_id = check_for_format(trg_format, strlen(trg_format));
 	if(trg_format_id==0) {
@@ -135,7 +162,6 @@ main(int argc, char **argv)
 	    exit(1);
 	}
     }
-    poptFreeContext(p_opt);
     DCBufferInit(&dcbuff, 4096,0,0, DCBUFFER_FULL_TYPE);
     src_id = internal_DCB_register_cfh_src(&dcbuff, NULL, &bail_if_called_func, 
     	&bail_if_called_func, DC_COPY, 0);

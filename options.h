@@ -17,32 +17,91 @@
 */
 #ifndef _HEADER_OPTIONS
 #define _HEADER_OPTIONS 1
-#include <popt.h>
 
-enum {OVERSION=100, OVERBOSE,OUSAGE,OHELP,OFORMAT,OSEED,OSAMPLE,OSTDOUT,OBZIP2,OGZIP};
-/*lname, sname, info, ptr, val, desc, args */
-#define DIFF_OPTIONS(seed_len, sample_rate, hash_size)		\
-{"seed-len",	'b', POPT_ARG_INT, &(seed_len),0,0,0},		\
-{"sample-rate",	's', POPT_ARG_LONG, &(sample_rate),0,0,0},	\
-{"hash-size",	'a', POPT_ARG_LONG, &(hash_size),0,0,0}
 
-#define STD_OPTIONS(stdout)					\
-{"version",		'V', POPT_ARG_NONE,0,OVERSION,0,0},	\
-{"verbose",		'v', POPT_ARG_NONE,0,OVERBOSE,0,0},	\
-{"to-stdout",		'c', POPT_ARG_NONE,&(stdout), 0,0,0},	\
+#include <getopt.h>
+
+//move this. but to where?
+#define EXIT_USAGE -2
+
+//enum {OVERSION=100, OVERBOSE,OUSAGE,OHELP,OFORMAT,OSEED,OSAMPLE,OSTDOUT,OBZIP2,OGZIP};
+
+struct usage_options {
+    char	short_arg;
+    char	*long_arg;
+    char	*description;
+};
+
+#define USAGE_FLUFF(fluff)	\
+{0, 0, fluff}
+
+#define OVERSION	'V'
+#define OVERBOSE	'v'
+#define OUSAGE		'u'
+#define OHELP		'h'
+#define OSEED		'b'
+#define OSAMPLE		's'
+#define OHASH		'a'
+#define OSTDOUT		'c'
+#define OBZIP2		'j'
+#define OGZIP		'z'
+
+#define DIFF_SHORT_OPTIONS					\
+"b:s:a:"
+
+#define DIFF_LONG_OPTIONS					\
+{"seed-len",	1, 0, OSEED},					\
+{"sample-rate", 1, 0, OSAMPLE},					\
+{"hash-size",	1, 0, OHASH}					\
+
+#define DIFF_HELP_OPTIONS					\
+{OSEED, "seed-len",	"set the seed len"},			\
+{OSAMPLE, "sample-rate","set the sample rate"},			\
+{OHASH,	"hash-size",	"set the hash size"}
+
+
+#define STD_SHORT_OPTIONS					\
+"Vvcuh"
+
 /*{"bzip2-compress",	'j', POPT_ARG_NONE,0, OBZIP2,0,0},	\
-{"gzip-compress",	'z', POPT_ARG_NONE,0, OGZIP,0,0} */	\
-{"use-md5",		'm', POPT_ARG_NONE, &global_use_md5, 0,0,0},	\
-{"usage",		'\0',POPT_ARG_NONE,0,OUSAGE,0,0},		\
-{"help",		'h', POPT_ARG_NONE,0,OHELP,0,0}
+{"gzip-compress",	'z', POPT_ARG_NONE,0, OGZIP,0,0} 	\
+{"use-md5",		'm', POPT_ARG_NONE, &global_use_md5, 0,0,0},*/	\
 
-#define FORMAT_OPTIONS(long, short, string)		\
-{long, short, POPT_ARG_STRING, &string, 0,"Format type","see man page for valid formats"}
+#define STD_LONG_OPTIONS					\
+{"version",		0, 0, OVERSION},			\
+{"verbose",		0, 0, OVERBOSE},			\
+{"to-stdout",		0, 0, OSTDOUT},				\
+{"usage",		0, 0, OUSAGE},				\
+{"help",		0, 0, OHELP}
 
+#define STD_HELP_OPTIONS					\
+{OVERSION, "version", 	"print version"},			\
+{OVERBOSE, "verbose", 	"increase verbosity"},			\
+{OSTDOUT, "to-stdout", 	"output to stdout"},			\
+{OUSAGE, "usage", 	"give this help"},			\
+{OHELP, "help",		"give this help"}
+
+
+//note no FORMAT_SHORT_OPTION
+
+#define FORMAT_LONG_OPTION(long, short) 				\
+{long,	1, 0, short}
+
+#define FORMAT_HELP_OPTION(long,short,description)			\
+{short, long, description}
+
+#define END_HELP_OPTS {0, NULL, NULL}
+#define END_LONG_OPTS {0,0,0,0}
+
+
+/*#define get_next_arg(argc, argv)				\
+(((argc) > optind && (argv)[optind++]) || NULL)
+*/
+// refresher for those who're going wtf, optind is an external (ab)used by getopt
+char *get_next_arg(int argc, char **argv);
 void print_version(const char *prog);
-void print_help(const char *prog, poptContext con);
-void usage(const char *prog, poptContext p_opt, int exitcode, const char *error, 
-    const char *addl);
+void print_usage(const char *prog, const char *usage_portion, struct usage_options *textq, int exit_code);
+
 
 #endif
 

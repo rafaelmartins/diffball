@@ -1273,7 +1273,7 @@ create_DCBSearch_index(CommandBuffer *dcb)
     	s->index_size = 1;
     else
 	s->index_size = ceil(dcb->DCB.full.cl.com_count / 2);
-    v0printf("index_size = %lu\n", s->index_size);
+    v1printf("index_size = %lu\n", s->index_size);
     s->quanta = ceil(dcb->ver_size / s->index_size);
     s->index_size = ceil(dcb->ver_size / s->quanta);
     s->index = (unsigned long *)malloc(sizeof(unsigned long) * s->index_size);

@@ -40,21 +40,8 @@ unsigned int src_common_len=0, trg_common_len=0;
 int cmp_ver_tar_ent_to_src_tar_ent(const void *te1, const void *te2);
 int cmp_tar_ents(const void *te1, const void *te2);
 
-unsigned long sample_rate=0;
-unsigned long seed_len = 0;
-unsigned long hash_size = 0;
 int error;
 unsigned int patch_compressor = 0;
-unsigned int patch_to_stdout = 0;
-char  *patch_format;
-
-struct poptOption options[] = {
-    STD_OPTIONS(patch_to_stdout),
-    DIFF_OPTIONS(seed_len, sample_rate, hash_size),
-    FORMAT_OPTIONS("patch-format", 'f', patch_format),
-    POPT_TABLEEND
-};
-
 
 int 
 main(int argc, char **argv)
@@ -64,6 +51,8 @@ main(int argc, char **argv)
     tar_entry **src_ptrs = NULL;
     tar_entry *target = NULL;
     tar_entry *tar_ptr = NULL;
+    unsigned int patch_to_stdout = 0;
+    char *patch_format = NULL;
     void *vptr;
     signed err;
     signed int ref_id, ver_id;
@@ -72,38 +61,68 @@ main(int argc, char **argv)
     unsigned long x, patch_format_id;
     char src_common[512], trg_common[512], *p;  /* common dir's... */
     unsigned long match_count;
+    long sample_rate = 0, seed_len = 0, hash_size = 0;
 	
     cfile ref_full, ref_window, ver_window, ver_full, out_cfh;
     struct stat ref_stat, ver_stat;
     RefHash rhash_win;
     CommandBuffer dcbuff;
-    poptContext p_opt;
 
-    signed long optr;
-    char  *src_file;
-    char  *trg_file;
-    char  *patch_name;
+//    signed long optr;
+    int optr;
+    char  *src_file = NULL;
+    char  *trg_file = NULL;
+    char  *patch_name = NULL;
 
-    p_opt = poptGetContext("diffball", argc, (const char **)argv, options, 0);
-    while((optr=poptGetNextOpt(p_opt)) != -1) {
-	if(optr < -1) {
-	    usage("diffball", p_opt, 1, poptBadOption(p_opt, POPT_BADOPTION_NOALIAS), 
-		poptStrerror(optr));
-	}
+    static struct option long_opts[] = {
+	STD_LONG_OPTIONS,
+	DIFF_LONG_OPTIONS,
+	FORMAT_LONG_OPTION("patch-format",'f'),
+	END_LONG_OPTS
+    };
+
+    static struct usage_options help_opts[] = {
+	STD_HELP_OPTIONS,
+	DIFF_HELP_OPTIONS,
+	FORMAT_HELP_OPTION("patch-format",'f', "specify the generated patches format"),
+	USAGE_FLUFF("Diffball expects normally 3 args- the source file, the target file,\n"
+	"and the name for the new patch.  If it's told to output to stdout, it will- in which\n"
+	"case only 2 non-options arguements are allowed.\n"
+	"Example usage: diffball linux-2.6.8.tar linux-2.6.9.tar linux-2.6.8-2.6.9.patch"),
+   	END_HELP_OPTS
+    };
+
+    #define DUMP_USAGE(exit_code)  \
+	print_usage("diffball", "src_file trg_file [patch_file|or to stdout]", help_opts, exit_code)
+    char short_opts[] = STD_SHORT_OPTIONS DIFF_SHORT_OPTIONS "f:";
+    
+    while((optr = getopt_long(argc, argv, short_opts, long_opts, NULL)) != -1) {
 	switch(optr) {
+	case 'f':
+	    patch_format = optarg;		break;
+	case OSAMPLE:
+	    sample_rate = atol(optarg);
+	    if(sample_rate == 0 || sample_rate > MAX_SAMPLE_RATE) DUMP_USAGE(EXIT_USAGE);
+	    break;
+	case OHASH:
+	    hash_size = atol(optarg);
+	    if(hash_size == 0 || hash_size > MAX_HASH_SIZE) DUMP_USAGE(EXIT_USAGE);
+	    break;
+	case OSEED:
+	    seed_len = atol(optarg);
+	    if(seed_len == 0 || seed_len > MAX_SEED_LEN) DUMP_USAGE(EXIT_USAGE);
+	    break;
 	case OVERSION:
-	    print_version("diffball");
-	    exit(0);
+	    print_version("diffball");		exit(0);
 	case OVERBOSE:
-	    global_verbosity++;
-	    break;
+	    global_verbosity++;	    		break;
+	case OSTDOUT:
+	    patch_to_stdout = 1;		break;
 	case OUSAGE:
-	    usage("diffball", p_opt, 0, NULL, NULL);
-	    break;
+	    DUMP_USAGE(0);			break;
 	case OHELP:
-	    print_help("diffball", p_opt);
-	    break;
-	case OBZIP2:
+	    DUMP_USAGE(0);			break;
+/*	case OBZIP2:
 	    if(patch_compressor) {
 		// bitch at em.
 	    } else
@@ -114,39 +133,48 @@ main(int argc, char **argv)
 		// bitch at em.
 	    } else 
 		patch_compressor = GZIP_COMPRESSOR;
-	    break;
+	    break;*/
+	default:
+	    v0printf("invalid arg- %s\n", argv[optind]);
+	    DUMP_USAGE(EXIT_USAGE);
 	}
     }
-    if( ((src_file=(char *)poptGetArg(p_opt))==NULL) || 
-	(stat(src_file, &ref_stat))) 
-	usage("diffball", p_opt, 1, "Must specify an existing source file.", NULL);
-    if( ((trg_file=(char *)poptGetArg(p_opt))==NULL) || 
-	(stat(trg_file, &ver_stat)) )
-	usage("diffball", p_opt, 1, "Must specify an existing target file.", NULL);
+    if( ((src_file = (char *)get_next_arg(argc, argv)) == NULL) ||
+	(stat(src_file, &ref_stat))) {
+//	usage("diffball", p_opt, 1, "Must specify an existing source file.", NULL);
+	if(src_file)
+	    v0printf("%s not found!\n", src_file);
+	DUMP_USAGE(EXIT_USAGE);
+    }
+    if( ((trg_file=(char *)get_next_arg(argc, argv)) == NULL) ||
+	(stat(trg_file, &ver_stat)) ) {
+//	usage("diffball", p_opt, 1, "Must specify an existing target file.", NULL);
+	if (trg_file)
+	    v0printf("%s not found!\n", trg_file);
+	DUMP_USAGE(EXIT_USAGE);
+    }
     if(patch_format==NULL) {
 	patch_format_id = DEFAULT_PATCH_ID;
     } else {
 	patch_format_id = check_for_format(patch_format, strlen(patch_format));
 	if(patch_format_id==0) {
 	    v0printf( "Unknown format '%s'\n", patch_format);
-	    exit(1);
+	    exit(EXIT_USAGE);
 	}
     }
     if(patch_to_stdout != 0) {
 	out_fh = 1;
     } else {
-	if((patch_name = (char *)poptGetArg(p_opt))==NULL)
-	    usage("diffball", p_opt, 1, "Must specify a name for the patch file.", NULL);
+	if((patch_name = (char *)get_next_arg(argc, argv)) == NULL)
+	    DUMP_USAGE(EXIT_USAGE);
 	if((out_fh = open(patch_name, O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1) {
 	    v0printf( "error creating patch file (open failed)\n");
 	    exit(1);
 	}
     }
-    if(NULL!=poptGetArgs(p_opt)) {
-	usage("diffball", p_opt, 1, poptBadOption(p_opt, POPT_BADOPTION_NOALIAS),
-	"unknown option");
+    if(NULL != get_next_arg(argc, argv)) {
+	DUMP_USAGE(EXIT_USAGE);
     }
-    poptFreeContext(p_opt);
     if(hash_size==0) {
 	hash_size = MIN(DEFAULT_MAX_HASH_COUNT, ref_stat.st_size);
     }
