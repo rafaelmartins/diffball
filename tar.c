@@ -71,9 +71,11 @@ read_fh_to_tar_entry(cfile *src_fh, tar_entry ***tar_entries,
 	    break;
 	}
 	if((entry=(tar_entry *)malloc(sizeof(tar_entry)))==NULL){
+	    v0printf("failed to allocate memory for tar_entry\n");
 	    return MEM_ERROR;
 	}
 	if (! check_str_chksum((const char *)block)) {
+	    v0printf("checksum failed on a tarfile, bailing\n");
 	    return MEM_ERROR;
 	}
 	if('L'==block[TAR_TYPEFLAG_LOC]) {
@@ -81,18 +83,22 @@ read_fh_to_tar_entry(cfile *src_fh, tar_entry ***tar_entries,
 	    v2printf("handling longlink\n");
 	    name_len = octal_str2long(block + TAR_SIZE_LOC, TAR_SIZE_LEN) -1;
 	    if((read_bytes=cread(src_fh, block, 512))!=512) {
+		v0printf("unexpected EOF on tarfile, bailing\n");
 		return EOF_ERROR;
 	    }
 	    if((entry->fullname = 
 		(unsigned char *)malloc(name_len))==NULL){
+		v0printf("unable to allocate memory for name_len, bailing\n");
 		return EOF_ERROR;
 	    }
 	    entry->working_name = entry->fullname;
 	    memcpy(entry->fullname, block, name_len);
 	    if((read_bytes=cread(src_fh, block, 512))!=512){
+		v0printf("unable to allocate memory for fullname, bailing\n");
 		return EOF_ERROR;
 	    }
 	    if(! check_str_chksum((const char *)block)) {
+		v0printf("tar checksum failed for tar entry %lu, bailing\n", count);
 		return PATCH_CORRUPT_ERROR;
 	    }
 	    entry->working_len = name_len;
@@ -105,6 +111,7 @@ read_fh_to_tar_entry(cfile *src_fh, tar_entry ***tar_entries,
 	    prefix_len += (prefix_len==0 ? 0 : 1);
 	    if((entry->working_name = entry->fullname = 
 		(unsigned char *)malloc(name_len + prefix_len))==NULL){
+		v0printf("unable to allocate needed memory, bailing\n");
 		return MEM_ERROR;
 	    }
 	    if(prefix_len) {
@@ -131,6 +138,7 @@ read_fh_to_tar_entry(cfile *src_fh, tar_entry ***tar_entries,
             while(x-- > 0){
 // wtf...
                 if(cread(src_fh, block, 512)!=512){
+		v0printf("EOF encountered early, bailing\n");
 		    return EOF_ERROR;
 		}
             }    
@@ -145,6 +153,7 @@ read_fh_to_tar_entry(cfile *src_fh, tar_entry ***tar_entries,
             /* out of room, resize */
             if ((file = (tar_entry **)realloc(
             	file,(array_size+=50000)*sizeof(tar_entry *)))==NULL){
+		v0printf("unable to allocate %lu tar entries (needed), bailing\n", array_size);
 		return MEM_ERROR;
             }
         }
@@ -152,6 +161,7 @@ read_fh_to_tar_entry(cfile *src_fh, tar_entry ***tar_entries,
     }
     *total_count = count;
     if ((file=(tar_entry **)realloc(file,count*sizeof(tar_entry *)))==NULL){
+	v0printf("error reallocing tar array (specifically releasing, odd), bailing\n");
 	return MEM_ERROR;
     }
     *tar_entries = file;

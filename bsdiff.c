@@ -32,7 +32,7 @@ unsigned long
 bsdiff_overlay_copy(DCommand *dc, 
     cfile *out_cfh)
 {
-    unsigned char buff1[CFILE_DEFAULT_BUFFER_SIZE];
+/*    unsigned char buff1[CFILE_DEFAULT_BUFFER_SIZE];
     unsigned char buff2[CFILE_DEFAULT_BUFFER_SIZE];
     cfile *src_cfh, *diff_cfh;
     DCB_ptr dcb;
@@ -46,7 +46,7 @@ bsdiff_overlay_copy(DCommand *dc,
 
     assert(src_cfh != NULL);
     assert(diff_cfh != NULL);
-
+*/
 /*    src_offsets = (off_u32 *)dcb->extra_patch_data;
     if(src_offsets[dcb->DCB.full.add_index -1] != 
 	cseek(src_cfh, 	src_offsets[dcb->DCB.full.add_index -1], CSEEK_FSTART)) {
@@ -56,6 +56,7 @@ bsdiff_overlay_copy(DCommand *dc,
 	return 0;
     }
 */
+/*
     src_pos = dcb->DCB.full.lb_start[dc->cmd_pos -1].offset;
     if(src_pos != cseek(src_cfh, src_pos, CSEEK_FSTART) ||
 	dc->data.src_pos != cseek(diff_cfh, dc->data.src_pos, CSEEK_FSTART)) {
@@ -80,6 +81,7 @@ bsdiff_overlay_copy(DCommand *dc,
 	len -= x;
     }
     return dc->data.len - len;
+*/
 }
 
 

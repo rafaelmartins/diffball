@@ -28,7 +28,10 @@ cmp_DCommand(const void *vd1, const void *vd2)
     DCommand *d1, *d2;
     d1 = (DCommand *)vd1;
     d2 = (DCommand *)vd2;
-    return	d1->src_id != d2->src_id ? d1->src_id - d2->src_id :
+//    return	d1->src_id != d2->src_id ? d1->src_id - d2->src_id :
+//		d1->data.src_pos != d2->data.src_pos ? d1->data.src_pos - d2->data.src_pos :
+//		d1->data.len - d2->data.len;
+    return	d1->dcb_src != d2->dcb_src ? (d1->dcb_src < d2->dcb_src ? -1 : 1)  : 
 		d1->data.src_pos != d2->data.src_pos ? d1->data.src_pos - d2->data.src_pos :
 		d1->data.len - d2->data.len;
 }
@@ -101,15 +104,19 @@ read_seq_write_rand(CommandBuffer *dcb, DCommand *dc_array, unsigned long array_
     unsigned long max_pos = 0, pos = 0;
     unsigned long offset;
     signed long tmp_len;
-    cfile *cfh = NULL;
-    unsigned long old_id = 0;
+//    cfile *cfh = NULL;
+//    unsigned long old_id = 0;
+    DCB_registered_src *cur_src;
+    dcb_src_read_func read_func;
+    u_dcb_src u_src;
     #define END_POS(x) ((x).data.src_pos + (x).data.len)
     while(end < array_size) {
-	old_id = dc_array[end].src_id;
+	cur_src = dc_array[end].dcb_src;
+//	old_id = dc_array[end].src_id;
 	start = end;
 	pos = dc_array[start].data.src_pos;
 	max_pos = END_POS(dc_array[start]);
-	while(start < array_size && (end == array_size || old_id == dc_array[end].src_id)) {
+	while(start < array_size && (end == array_size || cur_src == dc_array[end].dcb_src)) {
 	    if(pos < dc_array[start].data.src_pos) {
 		pos = dc_array[start].data.src_pos;
 		max_pos = END_POS(dc_array[start]);
@@ -125,21 +132,25 @@ read_seq_write_rand(CommandBuffer *dcb, DCommand *dc_array, unsigned long array_
 	    if(end < start) {
 		end = start;
 	    }
-	    while(end < array_size && dc_array[end].data.src_pos < max_pos && dc_array[end].src_id == dc_array[start].src_id) {
+	    while(end < array_size && dc_array[end].data.src_pos < max_pos && dc_array[end].dcb_src == dc_array[start].dcb_src) {
 		max_pos = MAX(END_POS(dc_array[end]), max_pos);
 		end++;
 	    }
 	    if(pos == max_pos) {
 		continue;
 	    }
-	    cfh = dcb->srcs[dc_array[start].src_id].cfh;
+/*	    cfh = dcb->srcs[dc_array[start].src_id].cfh;
 	    if(pos != cseek(cfh, pos, CSEEK_FSTART)) {
 		v0printf("bailing, io_error 1\n");
 		return IO_ERROR;
 	    }
+*/
+	    u_src = dc_array[start].dcb_src->src_ptr;
+	    read_func = dc_array[start].dcb_src->read_func;
 	    while(pos < max_pos) {
 		len = MIN(max_pos - pos, buf_size);
-		x=cread(cfh, buf, len);
+//		x=cread(cfh, buf, len);
+		x=read_func(u_src, pos, buf, len);
 		if(len != x){
 		    v0printf("x=%lu, len=%lu\n", x, len);
 		    v0printf("bailing, io_error 2\n");

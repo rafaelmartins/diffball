@@ -1,115 +1,17 @@
-A very general (and likely quite off) intended schedule for versions (and work 
-that needs completion prior to hitting said version)...
-That said and done, I need to re-order this to match reality, certain version 
-mile-stones I've almost finished prior to finishing the interceding milestone 
-work.
+Command line hash_size is not always abided by, notable BUCKET/RBUCKET- will 
+be fixed in the next release.
 
-0.4			Oct/Nov 2003.
-DONE	* option code in diffball, patcher, differ, and convert_delta
-DONE	* function that is format aware, handles magic sig's.
-DONE	* seperate my modifications of gdiff format into v5, and enable a 
-	  specific v4 spec.
-DONE	* md5 support in cfile- basically flag the cfile at opening, add func 
-	  for finalizing/retrieving md5.  Refactor cfile (buffering system) 
-	  for compression support to be added.
-DONE	* code cleanup.  EG, add extern global verbosity option for control of
-	  printf statements, start adding better definitions throughout code 
-	  for compilation (eg via compile flags/options disabling certain 
-	  sections of code).
-DONE	* code a solution for handling md5's in file format- basically 
-	  handle the goofy nature of some formats (bdelta's lack of a complete 
-	  set of reconstruction commands for instance).  Enable checking of 
-	  md5's if they're included in file (xdelta format).
-	* Actually *use* the md5 solution from above.
-STARTED	* start enabling checking of returned values.  Basically start cleaning
-	  out the use of abort's and exit's, and use appropriate return values.
-DONE	* relevant man pages
-DONE	* have a basic (not necessarily cleanest/best) gzip compressor setup so 
-	  compressed xdelta can be handled.
-STARTED	* add a set of functions for pulling add len/offset pairs for formats
-	  reasoning being, make it a default function so I can move optimizing
-	  multiple adds (from diffball) into a single add command in the format
-	  encoding.
-	* standardize/fix the hash_size, do it in terms of elements or actual 
-	  memory size?  thinking memory size, since MOD_HASH is 4 bytes each 
-	  element, while CMOD_HASH is 8 bytes...
-DONE	* abstract dcbuffer to support different types of add/copies sets-
-	  ex: bsdiff has technically two add commands, and a copy-
-	  basically it's copy overlay, along w/ standard add.
-	  Bit of a kludge, needs to be generalized a bit, since it only supports 
-	  2 add srcs currently.
-DONE	* bsdiff support (hokay, so I got ambitious)
-DONE	* multipass support
-DONE	* verified hash.  Basically, scan the version file for chksum's 
-	  needed, then scan the reference file for said chksum's.  Doing 
-	  this allows for a hash entry to be verified, eg mark it such 
-	  that these two chksum's match.  Way of cutting down on bad 
-	  matches/worthless seeks.
+remove CommandBuffer.default_(add,copy)_src.  It's a kludge.
 
-0.50			Dec 2003
-STARTED	* write *GOOD* man pages (eye of the beholder?)
-DONE	* DCBuffer should be a general struct, with different ways of 
-	  storing entries.  Full for patching/conversion, matches for
-	  standard differencing (difference is it eliminates storing 
-	  add's in memory, saving memory), llmatches for 
-	  multipass/insert support.  llmatches is a linked list variant 
-	  of the matches struct.
-	* add patch info functions, for polling info on existant patches.
-	  possibly a new binary, although might be overkill.
-STARTED	* bsdiff support, possibly included into 0.4.
-	* xdelta write support- could do it as of pre-0.4, although md5 support
-	  is needed, and the lovely serialsource memory allocation problem- 
-	  basically the unknown 8 bytes sandwiched between add data and control
-	  block.  Contact bdharring at wisc.edu if anyone has ideas/better 
-	  solution for the serialsource stored memory requirement.
-	  No clue why the hell that is stored there let alone if that's what 
-	  it is...
-	* check into, and support if viable, past xdelta formats.
-	  likely the serialsource issue listed above is going to be 
-	  problematic- I'm betting that had a hand in the breaking of backwards
-	  compatability in xdelta...
-STARTED	* optimizations of buffering system.  Do something about the 
-	  duplication of buffered data between cfile and differencing alg.
-DONE	* Possibly a 'cfileExposeBuffer' type command, that returns a const 
-	  unsigned char * to the internal cfile buffer.
-STARTED	* refactor memalias for differing alg.  Basically adjustment of 
-	  returned values, although exposeBuffer (above) might solve this.
-	  I don't like the buffer window into a buffer.  Pointless...
-DONE	* have working compression support in cfile.  Not saying it be'll 
-	  great, just saying have it working.
+Fix patch support for xdelta delta -0 file1 file2 patch; bzip2 -vk9 patch; patcher file1 patch test
+It seems to think the uncompressed length is less then what it is.
 
-0.60			Dec 2003/Feb 2004
-	* add a correcting one pass differencing alg.
-	  This would be good for backup solutions, differencing in one pass.
-	  If you want this, contact me and I'll be a bit more expedient about it, 
-	  otherwise I'll write it when I find a need/time.
-	* possibly add flag to correcting algs, to flag correcting support 
-	  on/off (correcting basically allows for correction (duh))- although 
-	  correcting does slow things down (maybe not by much), possibly give 
-	  them (user/dev) the option?
+read_seq_write_rand currently doesn't handle overlay srcs incredibly well.  Actually, overlay srcs have issues.
+Supporting all off the desired features, while keeping things flexible enough to incoporate overlay formats is proving tricky.
 
-0.80			March 2004
-STARTED	* gnudiff support working, for both recursive and  non-recursive patch.
-	* possibly adjust formats (encoding/decoding) such that they are 
-	  multiple functions... eg, attempt to make it such that the needed 
-	  command space (CommandBuffer) can be optimized down, so that it 
-	  doesn't require the entire set of delta commands to be stored in mem.
-	* suffix based alg.
+reconstruction via multiple patches- framework is being laid, but using another commandbuffer as a src for another commandbuffer needs 
+finishing.
 
-0.90			June 2004
-	* assuming good design/api, this won't be hard, but begin *initial*
-	  creation of a library api.  Subject to change obviously by 1.00, but
-	  have something fairly concrete ready to roll.
-STARTED	* optimize existing formats, differencing algs, buffering system.
-STARTED	* reiterating, *OPTIMIZE BUFFERING SYSTEM*.
-	* dev version of vcdiff.
+Aside from that, if  you've found weird behavior, email a bug
+report to me at bdharring@wisc.edu .
 
-1.00			July 2004
-	* enter into a full production release.
-	* locked down library api (obviously).
-
-1.0x			Post July 2004
-	* whatever optimizations/bug fixes needed.
-
-Tentative versioning and time release obviously...
-Dang crystal ball...

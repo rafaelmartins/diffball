@@ -48,16 +48,24 @@ internal_DCB_register_dcb_src(CommandBuffer *dcb, CommandBuffer *dcb_src,
     dcb_src_copy_func copy_func,
     unsigned char type, unsigned char flags)
 {
-    v3printf("registering dcb_src(%x), as buffer id(%u)\n", (unsigned long)dcb, dcb->src_count);
+    v3printf("hmm, called dcb_register_dcb_src... but it's not implemented...\n");
+/*    v3printf("registering dcb_src(%lx), as buffer id(%u)\n", (unsigned long)dcb, dcb->src_count);
     if(dcb->src_count == dcb->src_array_size && internal_DCB_resize_srcs(dcb)) {
 	return MEM_ERROR;
     }
-    dcb->srcs[dcb->src_count].dcb = dcb_src;
-    dcb->src_flags[dcb->src_count] = flags;
-    dcb->src_type[dcb->src_count] = ((type & 0x1) | DCB_DCB_SRC);
-    dcb->src_read_func[dcb->src_count] = (read_func == NULL ? default_dcb_src_read_func : read_func);
-    dcb->src_copy_func[dcb->src_count] = (copy_func == NULL ? default_dcb_src_copy_func : copy_func);
+    dcb->srcs[dcb->src_count].src_ptr.dcb = dcb_src;
+    dcb->srcs[dcb->src_count].flags = flags;
+    if (flags & DCB_OVERLAY_SRC) {
+	v3printf("registinerg overlay src\n");
+    } else {
+	dcb->srcs[dcb->src_count].ov = NULL;
+    }
+    dcb->srcs[dcb->src_count].type = ((type & 0x1) | DCB_DCB_SRC);
+    dcb->srcs[dcb->src_count].read_func = (read_func == NULL ? default_dcb_src_cfh_read_func : read_func);
+    dcb->srcs[dcb->src_count].copy_func = (copy_func == NULL ? default_dcb_src_cfh_copy_func : copy_func);
     return dcb->src_count - 1;
+*/
+    return 0l;
 }
 
 int
@@ -71,11 +79,18 @@ internal_DCB_register_cfh_src(CommandBuffer *dcb, cfile *cfh,
 	return MEM_ERROR;
     }
     v2printf("registering %u src\n", dcb->src_count);
-    dcb->srcs[dcb->src_count].cfh = cfh;
-    dcb->src_flags[dcb->src_count] = flags;
-    dcb->src_type[dcb->src_count] = ((type & 0x1) | DCB_CFH_SRC);
-    dcb->src_read_func[dcb->src_count] = (read_func == NULL ? default_dcb_src_read_func : read_func);
-    dcb->src_copy_func[dcb->src_count] = (copy_func == NULL ? default_dcb_src_copy_func : copy_func);
+    dcb->srcs[dcb->src_count].src_ptr.cfh = cfh;
+    dcb->srcs[dcb->src_count].flags = flags;
+    dcb->srcs[dcb->src_count].type = ((type & 0x1) | DCB_CFH_SRC);
+    dcb->srcs[dcb->src_count].read_func = (read_func == NULL ? default_dcb_src_cfh_read_func : read_func);
+    dcb->srcs[dcb->src_count].copy_func = (copy_func == NULL ? default_dcb_src_cfh_copy_func : copy_func);
+    if(DCBUFFER_FULL_TYPE != dcb->DCBtype) {
+	if(type & DC_COPY) {
+	    dcb->default_copy_src = dcb->srcs + dcb->src_count;
+	} else {
+	    dcb->default_add_src = dcb->srcs + dcb->src_count;
+	}
+    }
     dcb->src_count++;
     return dcb->src_count - 1;
 }
@@ -83,17 +98,8 @@ internal_DCB_register_cfh_src(CommandBuffer *dcb, cfile *cfh,
 int
 internal_DCB_resize_srcs(CommandBuffer *dcb)
 {
-    if((dcb->srcs = (dcb_src *)realloc(dcb->srcs, sizeof(dcb_src) 
+    if((dcb->srcs = (DCB_registered_src *)realloc(dcb->srcs, sizeof(DCB_registered_src) 
 	* dcb->src_array_size * 2))==NULL) {
-	return MEM_ERROR;
-    } else if((dcb->src_read_func = (dcb_src_read_func *)realloc(dcb->src_read_func, 
-	sizeof(dcb_src_read_func) * dcb->src_array_size * 2))==NULL) {
-	return MEM_ERROR;
-    } else if((dcb->src_copy_func = (dcb_src_copy_func *)realloc(dcb->src_copy_func, 
-	sizeof(dcb_src_copy_func) * dcb->src_array_size * 2))==NULL) {
-	return MEM_ERROR;
-    } else if((dcb->extra_offsets = (DCLoc **)realloc(dcb->extra_offsets,
-	sizeof(DCLoc *) * dcb->src_array_size * 2))==NULL) {
 	return MEM_ERROR;
     }
     dcb->src_array_size *= 2;
@@ -107,7 +113,7 @@ inline current_command_type(CommandBuffer *buff)
     if(DCBUFFER_FULL_TYPE == buff->DCBtype) {
 //        return ((*buff->DCB.full.cb_tail >> buff->DCB.full.cb_tail_bit) & 0x1);
 	x = buff->DCB.full.src_id[buff->DCB.full.command_pos];
-	return (buff->src_type[x] & 0x1);
+	return (buff->srcs[x].type & 0x1);
     }
     return 0;
 }
@@ -179,67 +185,74 @@ DCB_get_next_gap(CommandBuffer *buff, unsigned long gap_req, DCLoc *dc)
     return 0;
 }
 
+
+/*
 void
 DCB_get_next_command(CommandBuffer *buff, DCommand *dc)
 {
     do {
 	internal_DCB_get_next_command(buff, dc);
-    } while (buff->src_flags[dc->src_id] & DCB_OVERLAY_SRC);
+    } while (buff->srcs[dc->src_id].flags & DCB_OVERLAY_SRC);
 }
-
+*/
 
 void
 internal_DCB_get_next_command(CommandBuffer *buff, DCommand *dc)
 {
     if(DCBUFFER_FULL_TYPE == buff->DCBtype) {
 	dc->type = current_command_type(buff);
-	dc->src_id = buff->DCB.full.src_id[buff->DCB.full.command_pos];
+//	dc->src_id = buff->DCB.full.src_id[buff->DCB.full.command_pos];
 	dc->data.src_pos = buff->DCB.full.lb_tail->offset;
 	dc->data.ver_pos = buff->reconstruct_pos;
 	dc->data.len = buff->DCB.full.lb_tail->len;
-	dc->cmd_pos = buff->DCB.full.command_pos;
+//	dc->cmd_pos = buff->DCB.full.command_pos;
+	dc->dcb_src = &buff->srcs[buff->DCB.full.src_id[buff->DCB.full.command_pos]];
 	DCBufferIncr(buff);
     } else if (DCBUFFER_MATCHES_TYPE == buff->DCBtype) {
-	dc->src_id = 0;
+//	dc->src_id = 0;
 	assert(buff->reconstruct_pos != buff->ver_size);
-	dc->cmd_pos = 0;
+//	dc->cmd_pos = 0;
 	if((buff->DCB.matches.cur - buff->DCB.matches.buff) == 
 	    buff->DCB.matches.buff_count) {
 	    dc->type = DC_ADD;
+	    dc->dcb_src = buff->default_add_src;
 	    dc->data.src_pos = dc->data.ver_pos = buff->reconstruct_pos;
 	    dc->data.len = buff->ver_size - buff->reconstruct_pos;
 	} else if(buff->reconstruct_pos == buff->DCB.matches.cur->ver_pos) {
 	    dc->type = DC_COPY;
+	    dc->dcb_src = buff->default_copy_src;
 	    dc->data.src_pos = buff->DCB.matches.cur->src_pos;
 	    dc->data.ver_pos = buff->DCB.matches.cur->ver_pos;
 	    dc->data.len = buff->DCB.matches.cur->len;
 	    DCBufferIncr(buff);
 	} else {
 	    dc->type = DC_ADD;
+	    dc->dcb_src = buff->default_add_src;
 	    dc->data.src_pos = dc->data.ver_pos = buff->reconstruct_pos;
 	    dc->data.len = buff->DCB.matches.cur->ver_pos - buff->reconstruct_pos;
 	}
     } else if(DCBUFFER_LLMATCHES_TYPE == buff->DCBtype) {
-	dc->src_id = 0;
+//	dc->src_id = 0;
 	assert(buff->flags & DCB_LLM_FINALIZED);
-	dc->cmd_pos = 0;
+//	dc->cmd_pos = 0;
 	if(buff->DCB.llm.main == NULL) {
 	    dc->type = DC_ADD;
-	    dc->data.src_pos = dc->data.ver_pos  = buff->reconstruct_pos;
+	    dc->dcb_src = buff->default_add_src;
 	    dc->data.len = buff->ver_size - buff->reconstruct_pos;
 	} else if(buff->reconstruct_pos == buff->DCB.llm.main->ver_pos) {
 	    dc->type = DC_COPY;
+	    dc->dcb_src = buff->default_copy_src;
 	    dc->data.src_pos = buff->DCB.llm.main->src_pos;
 	    dc->data.ver_pos = buff->reconstruct_pos;
 	    dc->data.len = buff->DCB.llm.main->len;
 	    DCBufferIncr(buff);
 	} else {
 	    dc->type = DC_ADD;
+	    dc->dcb_src = buff->default_add_src;
 	    dc->data.src_pos = dc->data.ver_pos = buff->reconstruct_pos;
 	    dc->data.len = buff->DCB.llm.main->ver_pos - buff->reconstruct_pos;
 	}
     }
-    dc->src_dcb = buff;
     buff->reconstruct_pos += dc->data.len;
 
 }
@@ -583,20 +596,22 @@ DCBufferFree(CommandBuffer *buffer)
 	buffer->DCB.llm.free = NULL;
     }
     for(x=0; x < buffer->src_count; x++) {
-	if(buffer->src_flags[x] & DCB_FREE_SRC_CFH) {
+	if(buffer->srcs[x].flags & DCB_FREE_SRC_CFH) {
 	    v2printf("cclosing src_cfh(%lu)\n", x);
-	    cclose(buffer->srcs[x].cfh);
+	    cclose(buffer->srcs[x].src_ptr.cfh);
 	    v2printf("freeing  src_cfh(%lu)\n", x);
-	    free(buffer->srcs[x].cfh);
+	    free(buffer->srcs[x].src_ptr.cfh);
+	}
+	if(buffer->srcs[x].ov) {
+	    if(buffer->srcs[x].ov->com_size) {
+		free(buffer->srcs[x].ov->commands);
+		free(buffer->srcs[x].ov->index);
+	    }
+	    free(buffer->srcs[x].ov);
 	}
     }
-    for(x=0; x < 256; x++)
-	buffer->src_flags[x] = 0;
-    for(x=0; x < 16; x++)
-	buffer->src_type[x] = 0;
-
-    free(buffer->src_read_func);
-    free(buffer->src_copy_func);
+//    free(buffer->src_read_func);
+//    free(buffer->src_copy_func);
     free(buffer->srcs);
     buffer->src_count = buffer->src_array_size = 0;
 }
@@ -610,22 +625,22 @@ DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
     buffer->ver_size = ver_size;
     buffer->reconstruct_pos = 0;
     buffer->DCBtype = type;
-    memset(buffer->src_flags, 0, 256);
-    memset(buffer->src_type, 0, 16);
 #ifdef DEBUG_DCBUFFER
     buffer->total_copy_len = 0;
 #endif
+
+    buffer->src_count = 0;
     buffer->src_array_size = 4;
-    if((buffer->srcs = (dcb_src *)malloc(sizeof(dcb_src) * buffer->src_array_size))==NULL) {
+    if((buffer->srcs = (DCB_registered_src *)malloc(sizeof(DCB_registered_src) * buffer->src_array_size))==NULL) {
 	return MEM_ERROR;
-    } else if((buffer->extra_offsets = (DCLoc **)malloc(sizeof(DCLoc *) * buffer->src_array_size))==NULL) {
+/*    } else if((buffer->ov_chains = (overlay_chain *)malloc(sizeof(overlay_chain) * buffer->src_array_size))==NULL) {
 	return MEM_ERROR;
     } else if ((buffer->src_read_func = (dcb_src_read_func *)malloc(sizeof(dcb_src_read_func) * buffer->src_array_size))==NULL) {
 	return MEM_ERROR;
     } else if ((buffer->src_copy_func = (dcb_src_copy_func *)malloc(sizeof(dcb_src_copy_func) * buffer->src_array_size))==NULL) {
 	return MEM_ERROR;
+*/
     }
-    buffer->src_count = 0;
     if(type == DCBUFFER_FULL_TYPE) {
 	buffer->DCB.full.buffer_count = 0;
 	buffer->DCB.full.buffer_size = buffer_size;

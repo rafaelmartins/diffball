@@ -75,24 +75,46 @@ struct LL_DCLmatch {
     unsigned long len;
     LL_DCLmatch *next;
 };
+
 typedef struct _CommandBuffer *DCB_ptr;
 
 typedef struct {
-    DCLoc_match		data;
-    DCB_ptr		src_dcb;
-    unsigned long	cmd_pos;
-    unsigned long	src_id;
-    unsigned char	type;
+    unsigned long 	*index;
+//    unsigned short 	*len;
+    DCLoc		*commands;
+    unsigned long	com_count;
+    unsigned long	com_size;
+} overlay_chain;
+
+typedef struct {
+//    DCB_ptr			src_dcb;
+//    unsigned long		src_id;
+    DCLoc_match			data;
+    struct _DCB_registered_src	*dcb_src;    
+    unsigned long		extra_pos;
+    unsigned char		type;
 } DCommand;
 
-typedef unsigned long (*dcb_src_read_func)(DCommand *, unsigned long, 
+typedef union {
+    cfile		*cfh;
+    DCB_ptr		dcb;
+} u_dcb_src;
+
+//typedef unsigned long (*dcb_src_read_func)(DCommand *, unsigned long, 
+//    unsigned char *, unsigned long);
+
+typedef unsigned long (*dcb_src_read_func)(u_dcb_src, unsigned long, 
     unsigned char *, unsigned long);
 typedef unsigned long (*dcb_src_copy_func)(DCommand *, cfile *);
 
-typedef union {
-    cfile	*cfh;
-    DCB_ptr	dcb;
-} dcb_src;
+typedef struct _DCB_registered_src {
+    u_dcb_src		src_ptr;
+    unsigned char	type;
+    overlay_chain	*ov;
+    dcb_src_read_func	read_func;
+    dcb_src_copy_func	copy_func;
+    unsigned char	flags;
+} DCB_registered_src;
 
 typedef struct _CommandBuffer {
     off_u64 src_size;
@@ -114,6 +136,7 @@ typedef struct _CommandBuffer {
 	    off_u64 ver_start;
 	    unsigned long buff_count, buff_size;
 	    DCLoc_match *buff, *cur;
+	    u_dcb_src		*gap_src;
 	} matches;
 	struct {
 	    off_u64 ver_start, gap_pos;
@@ -124,25 +147,37 @@ typedef struct _CommandBuffer {
 	    unsigned long free_size, free_count;
 	} llm;
     } DCB;
-    dcb_src *srcs;
-    DCLoc **extra_offsets;
-    dcb_src_read_func *src_read_func;
-    dcb_src_copy_func *src_copy_func;
-    unsigned int src_array_size, src_count;
-    unsigned char src_type[256];
-    unsigned char src_flags[256];
 
-    /* this is a hack, and not a particularly good one either.
-	things need to be expanded to eliminate the need for this- check the 
-	bsdiff format reconstructor if you're curious of it's reason for 
-	existing*/
+    DCB_registered_src	*srcs;
+    unsigned short	src_count;
+    unsigned short	src_array_size;
     unsigned long flags;
+    /* bloody hack */
+    DCB_registered_src	*default_add_src;
+    DCB_registered_src	*default_copy_src;
+
+
+/*
+    dcb_src *srcs;
+    overlay_chain	*ov_chains;	
+    unsigned int 	src_array_size;
+    unsigned int	src_count;
+    unsigned char 	src_type[256];
+    unsigned char 	src_flags[256];
+*/
+
 } CommandBuffer;
 
+/*
 #define copyDCB_add_src(dcb, dc, out_cfh)				\
     ((dc)->src_dcb->src_copy_func[(dc)->src_id]((dc), (out_cfh)))
 #define copyDCB_copy_src(dcb, dc, out_cfh)				\
     ((dc)->src_dcb->src_copy_func[(dc)->src_id]((dc), (out_cfh)))
+*/
+#define copyDCB_add_src(dcb, dc, out_cfh)				\
+    ((dc)->dcb_src->copy_func((dc), (out_cfh)))
+#define copyDCB_copy_src(dcb, dc, out_cfh)				\
+    ((dc)->dcb_src->copy_func((dc), (out_cfh)))
 
 
 /* not used anymore, chuck at some point */
@@ -186,10 +221,12 @@ unsigned int DCB_get_next_gap(CommandBuffer *buff, unsigned long gap_req,
     DCLoc *dc);
 unsigned int DCB_commands_remain(CommandBuffer *buffer);
 void internal_DCB_get_next_command(CommandBuffer *buffer, DCommand *dc);
-void DCB_get_next_command(CommandBuffer *buffer, DCommand *dc);
+//void DCB_get_next_command(CommandBuffer *buffer, DCommand *dc);
 #define DCB_get_next_actual_command(dcb, dc) \
 	internal_DCB_get_next_command((dcb), (dc))
-
+#define DCB_get_next_command(dcb,dc) \
+	internal_DCB_get_next_command((dcb), (dc))
+	
 void DCB_truncate(CommandBuffer *buffer, unsigned long len);
 
 void DCB_add_overlay(CommandBuffer *buffer, off_u32 src_pos, int diff_src_id,

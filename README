@@ -101,16 +101,6 @@ Any compilation issues that come up, please contact me with the make failure,
 OS (eg rh 7.3, OSX 10.2), and be willing to answer a few questions so I can fix 
 the problem. :)
 
-
-
------BUGS-------
-
-Command line hash_size is not always abided by, notable BUCKET/RBUCKET- will 
-be fixed in the next release (current being 0.4_pre4).
-
-Aside from that, if  you've found weird behavior, email a bug 
-report to me at bdharring@wisc.edu .
-
 ---COPYRIGHT----
 
 The diffball suite is releaed under the GPL v2
