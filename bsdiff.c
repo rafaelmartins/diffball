@@ -128,7 +128,7 @@ check_bsdiff_magic(cfile *patchf)
 
 /* note this currently only supports u32, no u64. yet */
 signed int 
-bsdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff)
+bsdiffReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcbuff)
 {
     cfile ctrl_cfh, *diff_cfh, *extra_cfh = NULL;
 //  following variables are related to allowing conversion of bsdiff formats, 
@@ -143,6 +143,7 @@ bsdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff)
     off_u32 diff_len, ctrl_len;
     off_u32 ver_size;
     off_u32 ver_pos, src_pos;
+
     if(cread(patchf, buff, 32)!=32) {
 	return EOF_ERROR;
     }
@@ -162,6 +163,7 @@ bsdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff)
     ctrl_len = readUBytesLE(buff + 8, 4);
     diff_len = readUBytesLE(buff + 16, 4);
     ver_size = readUBytesLE(buff + 24, 4);
+    dcbuff->ver_size = ver_size;
     v1printf("start=32, ctrl_len=%lu, diff_len=%lu, ver_size=%lu\n", 
 	ctrl_len, diff_len, ver_size);
     if(copen_child_cfh(&ctrl_cfh, patchf, 32, ctrl_len + 32,
@@ -177,7 +179,8 @@ bsdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff)
 	return MEM_ERROR;
     }
     
-    ref_id = DCB_REGISTER_COPY_SRC(dcbuff, ref_cfh, NULL, 0);
+//    ref_id = DCB_REGISTER_COPY_SRC(dcbuff, ref_cfh, NULL, 0);
+    ref_id = src_id;
     diff_id = DCB_register_overlay_src(dcbuff, diff_cfh, &bsdiff_overlay_read, 
     	&bsdiff_overlay_copy, NULL, (unsigned char)DCB_FREE_SRC_CFH);
     if(ver == 4) {

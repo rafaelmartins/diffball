@@ -142,7 +142,8 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *patchf)
 }
 
 signed int 
-bdeltaReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff)
+//bdeltaReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff)
+bdeltaReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcbuff)
 {
     unsigned int int_size;
     #define BUFF_SIZE 12
@@ -154,6 +155,8 @@ bdeltaReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff)
     unsigned long ver_pos = 0, add_pos;
     unsigned long processed_size = 0;
     unsigned long add_start;
+
+    dcbuff->ver_size = 0;
     assert(DCBUFFER_FULL_TYPE == dcbuff->DCBtype);
     if(3!=cseek(patchf, 3, CSEEK_FSTART))
 	goto truncated_patch;
@@ -186,7 +189,8 @@ bdeltaReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff)
     add_pos += (matches * (3 * int_size));
     add_start = add_pos;
     add_id = DCB_REGISTER_ADD_SRC(dcbuff, patchf, NULL, 0);
-    ref_id = DCB_REGISTER_ADD_SRC(dcbuff, ref_cfh, NULL, 0);
+//    ref_id = DCB_REGISTER_ADD_SRC(dcbuff, ref_cfh, NULL, 0);
+    ref_id = src_id;
     v2printf("add block starts at %lu\nprocessing commands\n", add_pos);
     unsigned long match_orig = matches;
     if(size1==0) {
@@ -231,6 +235,7 @@ bdeltaReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff)
 	v1printf("hmm, left the trailing nulls out; adding appropriate command\n");
 	DCB_add_add(dcbuff, add_pos, size2 - processed_size, 0);
     }
+    dcbuff->ver_size = dcbuff->reconstruct_pos;
     v2printf("finished reading.  ver_pos=%lu, add_pos=%lu\n",
 	ver_pos, add_pos);
     return 0;

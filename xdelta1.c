@@ -70,7 +70,7 @@ xdelta1EncodeDCBuffer(CommandBuffer *buffer, unsigned int version,
 }
 
 signed int 
-xdelta1ReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff, 
+xdelta1ReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcbuff, 
     unsigned int version)
 {
     cfile *add_cfh, *ctrl_cfh;
@@ -85,6 +85,7 @@ xdelta1ReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff,
     flags = readUBytesBE(buff, 4);
     cread(patchf, buff, 4);
 
+    dcbuff->ver_size = 0;
     // the header is 32 bytes, then 2 word's, each the length of the 
     // src/trg file name.
     add_start = 32 + readUBytesBE(buff, 2) + readUBytesBE(buff + 2, 2);
@@ -160,7 +161,8 @@ xdelta1ReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff,
 	add_pos = add_start;
 	add_id = DCB_REGISTER_ADD_SRC(dcbuff, patchf, NULL, 0);
     }
-    ref_id = DCB_REGISTER_COPY_SRC(dcbuff, ref_cfh, NULL, 0);
+//    ref_id = DCB_REGISTER_COPY_SRC(dcbuff, ref_cfh, NULL, 0);
+    ref_id = src_id;
     while(proc_count++ != count) {
 	x = readXDInt(ctrl_cfh, buff);
 	offset = readXDInt(ctrl_cfh, buff);
@@ -179,6 +181,7 @@ xdelta1ReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff,
     }
     v2printf("finishing position was %lu\n", ctell(ctrl_cfh, CSEEK_FSTART));
     v2printf("processed %lu of %lu commands\n", proc_count, count);
+    dcbuff->ver_size = dcbuff->reconstruct_pos;
     if(flags & XD_COMPRESSED_FLAG) {
 	cclose(ctrl_cfh);
 	free(ctrl_cfh);

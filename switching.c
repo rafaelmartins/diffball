@@ -235,12 +235,13 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
     return 0;
 }
 
-signed int switchingReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff) {
+//signed int switchingReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff) {
+signed int switchingReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcbuff) {
     const unsigned int buff_size = 4096;
     unsigned char buff[buff_size];
     unsigned char ref_id, add_id;
     unsigned long int len;
-    unsigned long ver_pos=0, dc_pos=0;
+    unsigned long dc_pos=0;
     unsigned long int u_off;
     signed long int s_off;
     unsigned int last_com;
@@ -249,6 +250,9 @@ signed int switchingReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuff
     unsigned int end_of_patch =0;
     unsigned const long *copy_off_array;
     unsigned int offset_type = ENCODING_OFFSET_DC_POS;
+
+    dcbuff->ver_size = 0;
+
     if(offset_type==ENCODING_OFFSET_DC_POS) {
     	v2printf("using ENCODING_OFFSET_DC_POS\n");
        	copy_off_array = copy_soff_start;
@@ -269,7 +273,8 @@ signed int switchingReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuff
     add_off = SWITCHING_MAGIC_LEN + SWITCHING_VERSION_LEN + 4;
     last_com=DC_COPY;
     add_id = DCB_REGISTER_ADD_SRC(dcbuff, patchf, NULL, 0);
-    ref_id = DCB_REGISTER_COPY_SRC(dcbuff, ref_cfh, NULL, 0);
+//    ref_id = DCB_REGISTER_COPY_SRC(dcbuff, ref_cfh, NULL, 0);
+    ref_id = src_id;
     v2printf("add data block size(%lu), starting commands at pos(%lu)\n", com_start,
 	ctell(patchf, CSEEK_ABS));
     while(cread(patchf, buff, 1)==1 && end_of_patch==0) {
@@ -330,9 +335,10 @@ signed int switchingReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuff
 	    	v2printf("copy off(%ld), len(%lu)\n", u_off, len);
 	    }
 	}
+    dcbuff->ver_size = dcbuff->reconstruct_pos;
     v2printf("closing command was (%u)\n", *buff);
     v2printf("cread fh_pos(%lu)\n", ctell(patchf, CSEEK_ABS)); 
-    v2printf("ver_pos(%lu)\n", ver_pos);
+    v2printf("ver_pos(%lu)\n", dcbuff->reconstruct_pos);
 
     return 0;    
 }

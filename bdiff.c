@@ -99,12 +99,15 @@ bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *out_cfh)
 }
 
 signed int 
-bdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff)
+//bdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff)
+bdiffReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcbuff)
 {
     unsigned char src_md5[16], ver_md5[16], buff[17];
     unsigned long len, offset, maxlength;
     unsigned long fh_pos;
     unsigned char ref_id, add_id;
+
+    dcbuff->ver_size = 0;
     memset(src_md5, 0, 16);
     memset(ver_md5, 0, 16);
     /* skippping magic bdiff, and version char 'a' */
@@ -114,7 +117,8 @@ bdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff)
     maxlength = readUBytesBE(buff, 4);
     fh_pos = 0;
     add_id = DCB_REGISTER_ADD_SRC(dcbuff, patchf, NULL, 0);
-    ref_id = DCB_REGISTER_COPY_SRC(dcbuff, ref_cfh, NULL, 0);
+//    ref_id = DCB_REGISTER_COPY_SRC(dcbuff, ref_cfh, NULL, 0);
+    ref_id = src_id;
     while(1 == cread(patchf, buff, 1)) {
 	v2printf("got command(%u): ", buff[0]);
 	if((buff[0] >> 6)==00) {
@@ -167,5 +171,6 @@ bdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff)
 	    }
 	}
     }
+    dcbuff->ver_size = dcbuff->reconstruct_pos;
     return 0;
 }

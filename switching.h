@@ -27,5 +27,5 @@
 unsigned int check_switching_magic(cfile *patchf);
 signed int switchingEncodeDCBuffer(CommandBuffer *buffer, 
     cfile *out_cfh);
-signed int switchingReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff);
+signed int switchingReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcbuff);
 #endif

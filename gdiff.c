@@ -68,6 +68,7 @@ gdiffEncodeDCBuffer(CommandBuffer *buffer,
     unsigned char out_buff[5];
     unsigned long count;
     DCommand dc;
+
     if(offset_type==ENCODING_OFFSET_DC_POS) {
 	off_is_sbytes=1;
     } else {
@@ -92,8 +93,8 @@ gdiffEncodeDCBuffer(CommandBuffer *buffer,
 	    continue;
 	}
 	if(dc.type == DC_ADD) {
-	    v2printf("add command, delta_pos(%lu), fh_pos(%lu), len(%lu)\n",
-		delta_pos, fh_pos, dc.data.len);
+	    v2printf("add command, delta_pos(%lu), src_off(%lu), ver_pos(%lu), len(%lu)\n",
+		delta_pos, dc.data.src_pos, dc.data.ver_pos, dc.data.len);
 	    u_off = dc.data.len;
 	    if(dc.data.len <= 246) {
 		out_buff[0] = dc.data.len;
@@ -169,9 +170,10 @@ gdiffEncodeDCBuffer(CommandBuffer *buffer,
 	    clen+= ob;
 	    writeUBytesBE(out_buff + clen, dc.data.len, lb);
 	    clen+=lb;
-	    v2printf("copy delta_pos(%lu), fh_pos(%lu), type(%u), offset(%ld), len(%lu)\n",
-		delta_pos, fh_pos, out_buff[0], (off_is_sbytes ? 
-		    dc_pos + s_off : u_off), dc.data.len);
+	    v2printf("copy delta_pos(%lu), type(%u), src_pos(%lu), ver_pos(%lu), len(%lu)\n",
+		delta_pos, out_buff[0], dc.data.src_pos, dc.data.ver_pos,
+		//(off_is_sbytes ?  dc_pos + s_off : u_off), 
+		dc.data.len);
 	    if(cwrite(out_cfh, out_buff, clen)!=clen) {
 		return IO_ERROR;
 	    }
@@ -187,7 +189,8 @@ gdiffEncodeDCBuffer(CommandBuffer *buffer,
 }
 
 signed int 
-gdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff, 
+//gdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff, 
+gdiffReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcbuff, 
 	unsigned int offset_type)
 {
     const unsigned int buff_size = 5;
@@ -198,6 +201,8 @@ gdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff,
     signed long int s_off=0;
     unsigned char add_id, ref_id;
     int off_is_sbytes, ob=0, lb=0;
+
+    dcbuff->ver_size = 0;
     if(offset_type==ENCODING_OFFSET_DC_POS)
 	off_is_sbytes=1;
     else
@@ -206,8 +211,8 @@ gdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff,
     cseek(patchf, 5, CSEEK_CUR);
 
     add_id = DCB_REGISTER_ADD_SRC(dcbuff, patchf, NULL, 0);
-    ref_id = DCB_REGISTER_COPY_SRC(dcbuff, ref_cfh, NULL, 0);
-
+//    ref_id = DCB_REGISTER_COPY_SRC(dcbuff, ref_cfh, NULL, 0);
+    ref_id = src_id;
     while(cread(patchf, buff, 1)==1 && *buff != 0) {
 	if(*buff > 0 && *buff <= 248) {
 	    //add command
@@ -268,8 +273,9 @@ gdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff,
 		ver_pos+=len;
 	    }
     }
+    dcbuff->ver_size = dcbuff->reconstruct_pos;
     v2printf("closing command was (%u)\n", *buff);
     v2printf("cread fh_pos(%lu)\n", ctell(patchf, CSEEK_ABS)); 
-    v2printf("ver_pos(%lu)\n", ver_pos);
+    v2printf("ver_pos(%lu)\n", dcbuff->ver_size);
     return 0;
 }

@@ -27,6 +27,14 @@
 extern unsigned int verbosity;
 
 unsigned long
+bail_if_called_func()
+{
+    v0printf("err, wtf\n");
+    abort();
+}
+        
+
+unsigned long
 process_ovchain(CommandBuffer *dcb, unsigned long ver_pos, 
     DCommand_abbrev **dptr, DCommand_abbrev **odptr, 
     unsigned char src_id);
@@ -141,8 +149,8 @@ process_ovchain(CommandBuffer *dcb, unsigned long ver_pos,
 
 int
 DCB_register_overlay_src(CommandBuffer *dcb, 
-    cfile *src, dcb_src_read_func rf1, dcb_src_copy_func rc1, dcb_src_read_func rm1,
-	char free1)
+    cfile *src, dcb_src_read_func rf1, dcb_src_copy_func rc1, 
+    dcb_src_read_func rm1, char free1)
 {
     int id;
     id = internal_DCB_register_cfh_src(dcb, src, 
@@ -335,12 +343,10 @@ internal_DCB_get_next_command(CommandBuffer *buff, DCommand *dc)
 {
     if(DCBUFFER_FULL_TYPE == buff->DCBtype) {
 	dc->type = current_command_type(buff);
-//	dc->src_id = buff->DCB.full.src_id[buff->DCB.full.command_pos];
 	dc->data.src_pos = buff->DCB.full.lb_tail->offset;
 	dc->data.ver_pos = buff->reconstruct_pos;
 	dc->data.len = buff->DCB.full.lb_tail->len;
-//	dc->cmd_pos = buff->DCB.full.command_pos;
-	dc->dcb_src = &buff->srcs[buff->DCB.full.src_id[buff->DCB.full.command_pos]];
+	dc->dcb_src = buff->srcs + buff->DCB.full.src_id[buff->DCB.full.command_pos];
 	if(dc->dcb_src->ov.index_count) {
 	    dc->ov_index = dc->dcb_src->ov.index_pos;
 	    dc->dcb_src->ov.index_pos++;
@@ -349,9 +355,7 @@ internal_DCB_get_next_command(CommandBuffer *buff, DCommand *dc)
 	}
 	DCBufferIncr(buff);
     } else if (DCBUFFER_MATCHES_TYPE == buff->DCBtype) {
-//	dc->src_id = 0;
 	assert(buff->reconstruct_pos != buff->ver_size);
-//	dc->cmd_pos = 0;
 	if((buff->DCB.matches.cur - buff->DCB.matches.buff) == 
 	    buff->DCB.matches.buff_count) {
 	    dc->type = DC_ADD;
@@ -373,12 +377,12 @@ internal_DCB_get_next_command(CommandBuffer *buff, DCommand *dc)
 	}
 	dc->ov_index = 0;
     } else if(DCBUFFER_LLMATCHES_TYPE == buff->DCBtype) {
-//	dc->src_id = 0;
 	assert(buff->flags & DCB_LLM_FINALIZED);
-//	dc->cmd_pos = 0;
 	if(buff->DCB.llm.main == NULL) {
 	    dc->type = DC_ADD;
 	    dc->dcb_src = buff->default_add_src;
+	    dc->data.src_pos = buff->reconstruct_pos;
+	    dc->data.ver_pos = buff->reconstruct_pos;
 	    dc->data.len = buff->ver_size - buff->reconstruct_pos;
 	} else if(buff->reconstruct_pos == buff->DCB.llm.main->ver_pos) {
 	    dc->type = DC_COPY;
@@ -390,11 +394,13 @@ internal_DCB_get_next_command(CommandBuffer *buff, DCommand *dc)
 	} else {
 	    dc->type = DC_ADD;
 	    dc->dcb_src = buff->default_add_src;
-	    dc->data.src_pos = dc->data.ver_pos = buff->reconstruct_pos;
+	    dc->data.src_pos = buff->reconstruct_pos;
+	    dc->data.ver_pos = buff->reconstruct_pos;
 	    dc->data.len = buff->DCB.llm.main->ver_pos - buff->reconstruct_pos;
 	}
 	dc->ov_index = 0;
     }
+    dc->src_id = dc->dcb_src - buff->srcs;
     buff->reconstruct_pos += dc->data.len;
 
 }
@@ -814,13 +820,6 @@ DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
     buffer->src_array_size = 4;
     if((buffer->srcs = (DCB_registered_src *)malloc(sizeof(DCB_registered_src) * buffer->src_array_size))==NULL) {
 	return MEM_ERROR;
-/*    } else if((buffer->ov_chains = (overlay_chain *)malloc(sizeof(overlay_chain) * buffer->src_array_size))==NULL) {
-	return MEM_ERROR;
-    } else if ((buffer->src_read_func = (dcb_src_read_func *)malloc(sizeof(dcb_src_read_func) * buffer->src_array_size))==NULL) {
-	return MEM_ERROR;
-    } else if ((buffer->src_copy_func = (dcb_src_copy_func *)malloc(sizeof(dcb_src_copy_func) * buffer->src_array_size))==NULL) {
-	return MEM_ERROR;
-*/
     }
     if(type == DCBUFFER_FULL_TYPE) {
 	buffer->DCB.full.buffer_count = 0;
@@ -834,16 +833,10 @@ DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
 	    return MEM_ERROR;
 	}
 
-/*	buffer->DCB.full.cb_head = buffer->DCB.full.cb_tail = 
-	    buffer->DCB.full.cb_start;
-	buffer->DCB.full.cb_end = buffer->DCB.full.cb_start + buffer_size - 1;
-	buffer->DCB.full.cb_head_bit = buffer->DCB.full.cb_tail_bit = 0;
-*/
         buffer->DCB.full.lb_head = buffer->DCB.full.lb_tail = 
 	    buffer->DCB.full.lb_start;
 	buffer->DCB.full.lb_end = buffer->DCB.full.lb_start + 
 	    buffer->DCB.full.buffer_size - 1;
-//	buffer->DCB.full.add_index=0;
 	buffer->DCB.full.command_pos = 0;
     } else if(DCBUFFER_MATCHES_TYPE == type) {
 	if((buffer->DCB.matches.buff = (DCLoc_match *)malloc(buffer_size * 

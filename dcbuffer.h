@@ -35,7 +35,6 @@ extern unsigned int global_use_md5;
 #define DCBUFFER_MATCHES_TYPE		0x2
 #define DCBUFFER_LLMATCHES_TYPE		0x4
 
-#define ADD_CFH_FREE_FLAG		0x1
 #define DCB_LLM_FINALIZED		0x2
 
 /* register_src flags */
@@ -91,13 +90,11 @@ typedef struct {
 } overlay_chain;
 
 typedef struct {
-//    DCB_ptr			src_dcb;
-//    unsigned long		src_id;
-
     DCLoc_match			data;
     struct _DCB_registered_src	*dcb_src;
     unsigned long		ov_index;
     unsigned char		type;
+    unsigned short		src_id;
 } DCommand;
 
 typedef struct {
@@ -109,9 +106,6 @@ typedef union {
     cfile		*cfh;
     DCB_ptr		dcb;
 } u_dcb_src;
-
-//typedef unsigned long (*dcb_src_read_func)(DCommand *, unsigned long, 
-//    unsigned char *, unsigned long);
 
 typedef unsigned long (*dcb_src_read_func)(u_dcb_src, unsigned long, 
     unsigned char *, unsigned long);
@@ -163,28 +157,10 @@ typedef struct _CommandBuffer {
     unsigned short	src_count;
     unsigned short	src_array_size;
     unsigned long flags;
-    /* bloody hack */
     DCB_registered_src	*default_add_src;
     DCB_registered_src	*default_copy_src;
-
-
-/*
-    dcb_src *srcs;
-    overlay_chain	*ov_chains;	
-    unsigned int 	src_array_size;
-    unsigned int	src_count;
-    unsigned char 	src_type[256];
-    unsigned char 	src_flags[256];
-*/
-
 } CommandBuffer;
 
-/*
-#define copyDCB_add_src(dcb, dc, out_cfh)				\
-    ((dc)->src_dcb->src_copy_func[(dc)->src_id]((dc), (out_cfh)))
-#define copyDCB_copy_src(dcb, dc, out_cfh)				\
-    ((dc)->src_dcb->src_copy_func[(dc)->src_id]((dc), (out_cfh)))
-*/
 #define copyDCB_add_src(dcb, dc, out_cfh)				\
     ((dc)->dcb_src->copy_func((dc), (out_cfh)))
 #define copyDCB_copy_src(dcb, dc, out_cfh)				\
@@ -232,7 +208,7 @@ unsigned int DCB_get_next_gap(CommandBuffer *buff, unsigned long gap_req,
     DCLoc *dc);
 unsigned int DCB_commands_remain(CommandBuffer *buffer);
 void internal_DCB_get_next_command(CommandBuffer *buffer, DCommand *dc);
-//void DCB_get_next_command(CommandBuffer *buffer, DCommand *dc);
+
 #define DCB_get_next_actual_command(dcb, dc) \
 	internal_DCB_get_next_command((dcb), (dc))
 #define DCB_get_next_command(dcb,dc) \
@@ -257,4 +233,5 @@ int internal_DCB_resize_matches(CommandBuffer *buffer);
 int internal_DCB_resize_llmatches(CommandBuffer *buffer);
 
 int internal_DCB_resize_srcs(CommandBuffer *buffer);
+unsigned long bail_if_called_func();
 #endif
