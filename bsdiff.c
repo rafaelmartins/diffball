@@ -169,11 +169,14 @@ bsdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 	    }
 	}
 	if(len1) {
+
+/* note, this code is still *useful*.  it's just bypassed since bsdiff requires the ref file for conversion
+   to another format, so it's not useful at the moment. */
+/*
 	    cfw = expose_page(diff_cfh);
 	    add_start = cfw->pos + cfw->offset;
 	    processing_add =0;
 
-	unsigned long int y=0;
 	    assert(diff_offset == cfw->offset + cfw->pos);
 	    while(len1 + diff_offset != cfw->offset + cfw->pos) {
 		if(cfw->pos == cfw->end) {
@@ -192,10 +195,9 @@ bsdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 		} else if(cfw->buff[cfw->pos]!=0 && processing_add==0){ 
 		    DCB_add_copy(dcbuff, add_start - diff_offset + src_pos, 0,//dcbuff->reconstruct_pos, 
 			cfw->offset + cfw->pos - add_start);
-		    y += cfw->pos + cfw->offset - add_start; 
 		    processing_add=1;
-		    src_offsets[src_offset_count++] = cfw->pos + cfw->offset - diff_offset + src_pos;
 		    add_start = cfw->pos + cfw->offset;
+		    src_offsets[src_offset_count++] = cfw->pos + cfw->offset - diff_offset + src_pos;
 		    if(src_offset_size == src_offset_count) {
 			src_offset_size += 1000;
 			if((src_offsets = (off_u32 *)realloc(src_offsets,
@@ -212,6 +214,17 @@ bsdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 		DCB_add_copy(dcbuff, add_start - diff_offset + src_pos, 0,//dcbuff->reconstruct_pos, 
 		    diff_offset + len1 - add_start);
 	    }
+	    */
+	    src_offsets[src_offset_count++] = src_pos;
+	    if(src_offset_size == src_offset_count) {
+		src_offset_size += 1000;
+		if((src_offsets = (off_u32 *)realloc(src_offsets,
+		    sizeof(off_u32) * src_offset_size))==NULL) {
+		    return MEM_ERROR;
+		}
+	    }
+	    DCB_add_add(dcbuff, diff_offset, len1, 0);
+
 	    diff_offset += len1;
 	    src_pos += len1;
 	    ver_pos += len1;
