@@ -12,24 +12,28 @@
 
 void DCBufferIncr(struct CommandBuffer *buffer)
 {
+    //printf("   incr: cb was offset(%lu)-bit(%u),", buffer->cb_tail - buffer->cb_start, buffer->cb_tail_bit);
     buffer->lb_tail = (buffer->lb_end==buffer->lb_tail) ? buffer->lb_start : buffer->lb_tail + 1;
-    if (buffer->cb_tail_bit == 7) {
+    if (buffer->cb_tail_bit >= 7) {
 	buffer->cb_tail_bit = 0;
 	buffer->cb_tail = (buffer->cb_tail == buffer->cb_end) ? buffer->cb_start : buffer->cb_tail + 1;
     } else {
 	buffer->cb_tail_bit++;
     }
+    //printf(" now is offset(%lu)-bit(%u)\n", buffer->cb_tail - buffer->cb_start, buffer->cb_tail_bit);
 }
 
 void DCBufferDecr(struct CommandBuffer *buffer)
 {
+    //printf("   decr: cb was offset(%lu)-bit(%u),", buffer->cb_tail - buffer->cb_start, buffer->cb_tail_bit);
     buffer->lb_tail--;
-    if (buffer->cb_tail_bit) {
+    if (buffer->cb_tail_bit != 0) {
 	buffer->cb_tail_bit--;
     } else {
 	buffer->cb_tail = (buffer->cb_tail == buffer->cb_start) ? buffer->cb_end : buffer->cb_tail - 1;
-	buffer->cb_tail_bit==0;
-    }    
+	buffer->cb_tail_bit=7;
+    }
+    //printf(" now is offset(%lu)-bit(%u)\n", buffer->cb_tail - buffer->cb_start, buffer->cb_tail_bit);
 }
 
 void DCBufferAddCmd(struct CommandBuffer *buffer, int type, unsigned long offset, unsigned long len)
@@ -40,6 +44,8 @@ void DCBufferAddCmd(struct CommandBuffer *buffer, int type, unsigned long offset
 	*buffer->cb_tail &= ~(1 << buffer->cb_tail_bit);
     else
 	*buffer->cb_tail |= (1 << buffer->cb_tail_bit);
+    printf("   addcmd desired value(%u), actual (%u)\n", type,
+	(*buffer->cb_tail & (1 << buffer->cb_tail_bit)) >> buffer->cb_tail_bit);
     buffer->count++;
     DCBufferIncr(buffer);
 }
@@ -48,13 +54,20 @@ void DCBufferTruncate(struct CommandBuffer *buffer, unsigned long len)
 {
     //get the tail to an actual node.
     DCBufferDecr(buffer);
+    //printf("truncation: \n");
     while(len) {
 	/* should that be less then or equal? */
 	if (buffer->lb_tail->len <= len) {
 	    len -= buffer->lb_tail->len;
+	    printf("    whole removal of type(%u), offset(%lu), len(%lu)\n",
+		(*buffer->cb_tail & (1 << buffer->cb_tail_bit)) >> buffer->cb_tail_bit, buffer->lb_tail->offset,
+		buffer->lb_tail->len);
 	    DCBufferDecr(buffer);
 	    buffer->count--;
 	} else {
+	    printf("    partial adjust of type(%u), offset(%lu), len(%lu) is now len(%lu)\n",
+		(*buffer->cb_tail & (1 << buffer->cb_tail_bit))>buffer->cb_tail_bit, buffer->lb_tail->offset,
+		buffer->lb_tail->len, buffer->lb_tail->len - len);
 	    buffer->lb_tail->len -= len;
 	    len=0;
 	}
@@ -313,7 +326,7 @@ char *OneHalfPassCorrecting(unsigned char *ref, unsigned long ref_len,
 		}
 	    }
 	    printf("vstart(%lu), rstart(%lu), len(%lu)\n", (unsigned char*)vc -x - (unsigned char*)ver,
-		hr[index] - x, len);
+		hr[index] - x, x + len);
 	    if (vs <= vc - x) {
 		if (vs < vc - x) {
 		    printf("vs < vm, ego adding(%lu)\n",x);
@@ -322,14 +335,15 @@ char *OneHalfPassCorrecting(unsigned char *ref, unsigned long ref_len,
 		    adds++;
 		    //DCBufferAddCmd(&buffer, DC_COPY, vc - ver, len);
 		}
-		printf("    copying(%lu)\n", len);
+		printf("    copying offset(%lu), len(%lu)\n", (vc -x) -ver, len);
 		DCBufferAddCmd(&buffer, DC_COPY, (vc-x) - ver, len);
 		copies++;
 		vs = vc + len;
 	    } else if (vc -x < vs) {
 		// vs - (vc -x)
-		printf("truncating(%lu), copying(%lu)\n", vs - (vc -x), x + len);
+		printf("truncating(%lu) bytes:\n", vs - (vc -x));
 		DCBufferTruncate(&buffer, vs - (vc - x));
+		printf("    replacement copy: offset(%lu), len(%lu)\n", (vc -x) - ver, x + len);
 		DCBufferAddCmd(&buffer, DC_COPY, (vc -x) - ver, x + len);
 		truncations++;
 		copies++;
