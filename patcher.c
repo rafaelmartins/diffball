@@ -85,6 +85,7 @@ int main(int argc, char **argv)
 	    //add command
 	    printf("add command fh_pos(%lu), len(%lu)\n", fh_pos, *cptr);
 	    clen = MIN(buff_filled - (cptr + 1 - commands), *cptr);
+	    //printf("len(%lu), clen(%lu)\n", *cptr, clen);
 	    if(write(out_fh, cptr + 1, clen)!= clen){
 		printf("eh?  Tried writing(%u) bytes, but failed\n", *cptr);
 		exit(1);
@@ -172,5 +173,6 @@ int main(int argc, char **argv)
 		len -= clen;
 	    }
 	}
-    }    
+    }
+    printf("end was found(%u)\n", *cptr==0 ? 1 : 0);
 }
