@@ -6,17 +6,17 @@ FORMATS = cfile.c bit-functions.c gdiff.c switching.c bdiff.c \
 DIFF_FILES = diff-algs.c adler32.c primes.c dcbuffer.c hash.c
 
 if BUILD_DEBUG_CFILE
-ctest_SOURCES = ctest.c cfile.c
-cfile_bins = ctest
+    ctest_SOURCES = ctest.c cfile.c
+    cfile_bins = ctest
 else
-cfile_bins = 
+    cfile_bins = 
 endif
 
 if BUILD_DEBUG_HASH
-hash_stats_SOURCES = hash_stats.c $(DIFF_FILES) options.c cfile.c
-hash_bins = hash_stats
+    hash_stats_SOURCES = hash_stats.c $(DIFF_FILES) options.c cfile.c
+    hash_bins = hash_stats
 else
-hash_bins =
+    hash_bins =
 endif
 
 bin_PROGRAMS = differ patcher diffball convert_delta ${cfile_bins} \
