@@ -2,7 +2,7 @@
 AM_CFLAGS = -Wall
 
 FORMATS = cfile.c bit-functions.c gdiff.c switching.c bdiff.c \
-    bdelta.c xdelta1.c udiff.c line-util.c formats.c
+    bdelta.c xdelta1.c udiff.c bsdiff.c line-util.c formats.c
 DIFF_FILES = diff-algs.c adler32.c primes.c dcbuffer.c hash.c
 
 bin_PROGRAMS = differ patcher diffball convert_delta #hash_stats ctest
