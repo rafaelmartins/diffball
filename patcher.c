@@ -10,7 +10,7 @@
 //#include "pdbuff.h"
 #include "cfile.h"
 #include "gdiff.h"
-//#include "delta.h"
+#include "dcbuffer.h"
 
 
 //offset = fh_pos + readSignedBytes(cpy_buff, ctmp);
@@ -63,6 +63,7 @@ int main(int argc, char **argv)
     printf("%*s\n", 5800, PDBuff.buffer);*/
     printf("patchf->fh_pos(%lu)\n", patchfile.fh_pos);
     gdiffReconstructFile(src_fh, out_fh, &patchfile, ENCODING_OFFSET_START, 4);
+	
 	cclose(&patchfile);
 	return 0;
 }

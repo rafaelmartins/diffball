@@ -8,6 +8,19 @@
 #define CFILE_RONLY 1
 #define CFILE_WONLY 2
 
+/*lseek type stuff
+SEEK_SET
+	The offset is set to offset bytes.
+SEEK_CUR
+	The offset is set to its current location plus off-
+	set bytes.
+SEEK_END
+	The offset is set to the size of the file plus off-
+	set bytes.*/
+#define CSEEK_SET 0
+#define CSEEK_CUR 1
+#define CSEEK_END 2
+
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
 struct cfile {
@@ -29,5 +42,6 @@ signed int copen(struct cfile *cfile, int fh, unsigned long fh_start,
 signed int cclose(struct cfile *cfile);
 unsigned long cread(struct cfile *cfile, unsigned char *out_buff, unsigned long len);
 unsigned long cwrite(struct cfile *cfile, unsigned char *in_buff, unsigned long len);
+inline void crefresh(struct cfile *cfile);
 
 #endif

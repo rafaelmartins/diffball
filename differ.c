@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "cfile.h"
-#include "delta.h"
+#include "diff-algs.h"
 
 int main(int argc, char **argv)
 {

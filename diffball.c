@@ -1,7 +1,8 @@
 #include <stdlib.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
-#include <search.h>
+//#include <search.h>
 #include <string.h>
 #include <fcntl.h>
 #include "tar.h"

@@ -14,6 +14,7 @@ signed int copen(struct cfile *cfile, int fh, unsigned long fh_start, unsigned i
     cfile->raw_buff_pos=0;
     lseek(cfile->fh, cfile->fh_pos, SEEK_SET);
     cfile->access_flags = access_flags;
+    //crefresh(cfile);
     return 0;
 }
 
@@ -39,15 +40,16 @@ unsigned long cread(struct cfile *cfile, unsigned char *out_buff, unsigned long 
     unsigned long bytes_read=0;
     while(len != bytes_read) {
 		if(cfile->raw_buff_pos == cfile->raw_buff_filled) {
+		crefresh(cfile);
 		    //printf("    filling cfile buffer, raw_buff_pos(%lu), filled(%lu)\n", cfile->raw_buff_pos,
 		    //	cfile->raw_buff_filled);
-		    cfile->raw_buff_filled=read(cfile->fh, cfile->raw_buff, cfile->raw_buff_size);
+		    //cfile->raw_buff_filled=read(cfile->fh, cfile->raw_buff, cfile->raw_buff_size);
 	    	/* note this check needs some work/better error returning.  surpris surprise... */
 	    	if(cfile->raw_buff_filled == 0) {
 				return bytes_read;
 	    	}
-	    	cfile->raw_buff_pos=0;
-	    	cfile->raw_buff_fh_pos += cfile->raw_buff_size;
+	    	//cfile->raw_buff_pos=0;
+	    	//cfile->raw_buff_fh_pos += cfile->raw_buff_size;
 	    	//cfile->fh_pos += cfile->raw_buff_size;
 		}
 		switch(cfile->compressor_type)
@@ -62,6 +64,17 @@ unsigned long cread(struct cfile *cfile, unsigned char *out_buff, unsigned long 
     }
     cfile->fh_pos += bytes_read;
     return bytes_read;
+}
+
+inline void crefresh(struct cfile *cfile)
+{
+	cfile->raw_buff_filled=read(cfile->fh, cfile->raw_buff, cfile->raw_buff_size);
+	/* note this check needs some work/better error returning.  surpris surprise... */
+	/*if(cfile->raw_buff_filled == 0) {
+		return bytes_read;
+	}*/
+	cfile->raw_buff_pos=0;
+	cfile->raw_buff_fh_pos += cfile->raw_buff_size;
 }
 
 unsigned long cwrite(struct cfile *cfile, unsigned char *in_buff, unsigned long len)
@@ -96,4 +109,25 @@ unsigned long cwrite(struct cfile *cfile, unsigned char *in_buff, unsigned long 
     }
     cfile->fh_pos += bytes_wrote;
     return bytes_wrote;
+}
+
+unsigned long cseek(struct cfile *cfile, signed long offset, int offset_type)
+{
+	unsigned long raw_offset;
+	unsigned long uncompr_offset;
+	switch(cfile->compressor_type)
+	{
+	case NO_COMPRESSOR:
+		if(offset_type==CSEEK_SET)
+			raw_offset = (unsigned long)offset;
+		else if (offset_type==CSEEK_CUR)
+			raw_offset = (unsigned long)((cfile->raw_buff_size -
+			cfile->raw_buff_fh_pos) + cfile->raw_buff_pos + offset);
+		else
+			/*not implemented yet*/
+			raw_offset=0;
+		cfile->raw_buff_fh_pos = uncompr_offset = lseek(cfile->fh, raw_offset, SEEK_SET);
+	}
+	crefresh(cfile);
+	return uncompr_offset;
 }

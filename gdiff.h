@@ -6,7 +6,7 @@
 #define GDIFF_VER5 5
 #define GDIFF_VER6 6
 #define GDIFF_VER_LEN 1
-#include "delta.h"
+#include "diff-algs.h"
 //#include "pdbuff.h"
 #include "cfile.h"
 /* gdiff format
