@@ -79,7 +79,6 @@ signed int OneHalfPassCorrecting(unsigned int encoding_type,
 	init_adler32_seed(&ads, seed_len, 1);
 	//s1=s2=0;
     rbuff_end=cread(ref_cfh, rbuff, rbuff_size);
-    assert(ctell(ref_cfh,CSEEK_ABS)==rbuff_start+rbuff_size);
     //printf("rbuff_end(%lu)\n", rbuff_end);
     rbuff_start = 0;
 /*    for(x=0; x < seed_len; x++) {
