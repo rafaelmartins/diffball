@@ -139,6 +139,7 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
     //unsigned long offset;
     signed long s_off;
     unsigned long u_off;
+    unsigned long delta_pos=0;
     unsigned long copies=0, adds_in_buff=0, adds_in_file=0;
     int lb, ob;
     unsigned char type, out_buff[256];
@@ -161,17 +162,20 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
 	{
 	case DC_ADD:
 	    //offset=0;
-	    printf("add command, fh_pos(%lu), len(%lu), broken into '%lu' commands\n",
-		fh_pos, buffer->lb_tail->len, buffer->lb_tail->len/248 + (buffer->lb_tail->len % 248 ? 1 : 0));
+	    printf("add command, delta_pos(%lu), fh_pos(%lu), len(%lu), broken into '%lu' commands\n",
+		delta_pos, fh_pos, buffer->lb_tail->len, buffer->lb_tail->len/248 + (buffer->lb_tail->len % 248 ? 1 : 0));
 	    adds_in_buff++;
+	    u_off= buffer->lb_tail->len/248 > 0 ? 1 : 0;
 	    while(buffer->lb_tail->len){
 		adds_in_file++;
 		clen=MIN(buffer->lb_tail->len, 248);
-		printf("    writing add command offset(%lu), len(%lu)\n", buffer->lb_tail->offset, clen);
+		if(u_off)
+		    printf("    writing add command offset(%lu), len(%lu)\n", buffer->lb_tail->offset, clen);
 		write(fh, &clen, 1);
 		write(fh, ver + buffer->lb_tail->offset, clen);
 		//offset+=clen;
 		fh_pos+=clen;
+		delta_pos += clen + 1;
 		buffer->lb_tail->len -=clen;
 		buffer->lb_tail->offset += clen;
 	    }
@@ -198,9 +202,10 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
 		clen=254;
 	    else
 		clen=255;
-	    printf("writing copy command fh_pos(%lu), type(%u), offset(%d), len(%lu)\n",
-		fh_pos, clen, s_off, buffer->lb_tail->len);
+	    printf("writing copy command delta_pos(%lu), fh_pos(%lu), type(%u), offset(%d), len(%lu)\n",
+		delta_pos, fh_pos, clen, s_off, buffer->lb_tail->len);
 	    write(fh, &clen, 1);
+	    delta_pos++;
 	    if(clen >= 249 && clen <= 251) {
 		out_buff[0] = (u_off & 0xff00) >> 8;
 		if(s_off < 0 ) {
@@ -210,6 +215,7 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
 		}
 		out_buff[1] = (u_off & 0x00ff);
 		write(fh, out_buff, 2);
+		delta_pos+=2;
 	    } else if(clen>=252 && clen <= 254){
 		out_buff[0] = (u_off & 0xff000000) >> 8*3;
 		if(s_off < 0)
@@ -218,6 +224,7 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
 		out_buff[2] = (u_off & 0x0000ff00) >> 8;
 		out_buff[3] = (u_off & 0x000000ff);
 		write(fh, out_buff, 4);
+		delta_pos+=4;
 	    } else {
 		out_buff[0] = (u_off & 0xff00000000000000) >> 8*7;
 		if(s_off < 0)
@@ -230,20 +237,24 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
 		out_buff[6] = (u_off & 0x000000000000ff00) >> 8;
 		out_buff[7] = (u_off & 0x00000000000000ff);
 		write(fh, out_buff, 8);
+		delta_pos+=8;
 	    }
 	    if(clen==249 || clen == 252){
 		out_buff[0] = (buffer->lb_tail->len & 0xff);
 		write(fh, out_buff, 1);
+		delta_pos++;
 	    } else if(clen == 250 || clen==253){
 		out_buff[0] = (buffer->lb_tail->len & 0xff00) >> 8;
 		out_buff[1] = (buffer->lb_tail->len & 0x00ff);
 		write(fh, out_buff, 2);
+		delta_pos+=2;
 	    } else {
 		out_buff[0] = (buffer->lb_tail->len & 0xff000000) >> 24;
 		out_buff[1] = (buffer->lb_tail->len & 0x00ff0000) >> 16;
 		out_buff[2] = (buffer->lb_tail->len & 0x0000ff00) >> 8;
 		out_buff[3] = (buffer->lb_tail->len & 0x000000ff);
 		write(fh, out_buff, 4);
+		delta_pos+=4;
 	    }
 	    fh_pos += buffer->lb_tail->len;
 	    /* note this doesn't handle anything larger in length the int.  needs a lot of work. */

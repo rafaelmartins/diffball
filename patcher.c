@@ -80,7 +80,7 @@ int main(int argc, char **argv)
     fh_pos=0;
     cptr=commands + 512;
     buff_filled=512;
-    while(*cptr != 0) {
+    while(*cptr != 0 || (cptr == commands + buff_filled && buff_filled>0)) {
 	if(cptr == commands + buff_filled) {
 	    printf("refreshing buffer: cptr(%u)==buff_filled(%u)\n", cptr - commands, buff_filled);
 	    if((buff_filled=read(delta_fh, commands, 512))==0){
@@ -88,11 +88,12 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	    }
 	    cptr=commands;
+	    continue;
 	} else if(*cptr > 0 && *cptr <= 248) {
 	    //add command
 	    ccom = *cptr;
 	    cptr++;
-	    printf("add command fh_pos(%lu), len(%lu)\n", fh_pos, ccom);
+	    printf("add  command delta_pos(%lu), fh_pos(%lu), len(%lu)\n", delta_pos, fh_pos, ccom);
 	    clen = MIN(buff_filled - (cptr - commands), ccom);
 	    //printf("len(%lu), clen(%lu)\n", *cptr, clen);
 	    if(write(out_fh, cptr, clen)!= clen){
@@ -114,7 +115,7 @@ int main(int argc, char **argv)
 	    } else {
 		cptr+=ccom;
 	    }
-	    delta_pos +=ccom + 1;
+	    delta_pos +=ccom + 1;	
 	} else if(*cptr >= 249 ) {
 	    //copy command
 	    ccom=*cptr;
@@ -160,11 +161,10 @@ int main(int argc, char **argv)
 		clen=2;
 	    else
 		clen=4;
-	    delta_pos += clen + ctmp + 1;
 	    len = readUnsignedBytes(cpy_buff+ctmp, clen);
-	    printf("copy command fh_pos(%lu), type(%u), offset(%d), ref_pos(%lu) len(%lu)\n",
-		fh_pos, ccom, offset, fh_pos + offset, len);
-	    printf("    source fh_pos(%lu)\n", fh_pos + offset);
+	    printf("copy command delta_pos(%lu), fh_pos(%lu), type(%u), offset(%d), ref_pos(%lu) len(%lu)\n",
+		delta_pos, fh_pos, ccom, offset, fh_pos + offset, len);
+	    delta_pos += clen + ctmp + 1;
 	    if(lseek(src_fh, fh_pos + offset, SEEK_SET)!= fh_pos + offset) {
 		printf("well that's weird, couldn't lseek.\n");
 		exit(EXIT_FAILURE);
@@ -184,7 +184,16 @@ int main(int argc, char **argv)
 		len -= clen;
 	    }
 	}
+	/*if(cptr == commands + buff_filled) {
+	    printf("refreshing buffer: cptr(%u)==buff_filled(%u)\n", cptr - commands, buff_filled);
+	    if((buff_filled=read(delta_fh, commands, 512))==0){
+		printf("ahem.  the delta file is empty?\n");
+		exit(EXIT_FAILURE);
+	    }
+	    cptr=commands;
+	}*/
     }
-    printf("end was found(%u)\n", *cptr==0 ? 1 : 0);
+    printf("end was found(%u) at delta_pos(%lu), cptr(%lu), buff(%lu)\n", *cptr==0 ? 1 : 0, delta_pos,
+	cptr - commands, buff_filled);
     printf("processed bytes(%lu) of bytes(%lu) available\n", delta_pos + (*cptr==0 ? 1: 0), delta_stat.st_size);
 }
