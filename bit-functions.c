@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include "bit-functions.h"
 
-inline int bitsNeeded(long y)
+inline int unsignedBitsNeeded(unsigned long int y)
 {
     unsigned int x=1;
     if (y == 0) {
@@ -12,22 +12,26 @@ inline int bitsNeeded(long y)
 	x++;
     return x;    
 }
+inline int signedBitsNeeded(signed long int y)
+{
+    return unsignedBitsNeeded(abs(y)) + 1;
+}
 
-inline int unsignedBytesNeeded(long y)
+inline int unsignedBytesNeeded(unsigned long int y)
 {
     unsigned int x;
     if (y == 0) {
 	//printf("no bytesneeded\n");
 	return 0;
     }
-    x=bitsNeeded(y);
+    x=unsignedBitsNeeded(y);
     x= (x/8) + (x % 8 ? 1 : 0);
     return x;
 }
-inline int signedBytesNeeded(signed long y)
+inline int signedBytesNeeded(signed long int y)
 {
     unsigned int x;
-    x=bitsNeeded(abs(y)) + 1;
+    x=signedBitsNeeded(abs(y));
     x= (x/8) + (x % 8 ? 1 : 0);
     return x;
 }
@@ -65,9 +69,9 @@ signed long readSignedBytes(const unsigned char *buff, unsigned char l)
 		out_buff[7] = (u_off & 0x00000000000000ff);
 		write(fh, out_buff, 8);*/
 
-int writeSignedBytes(unsigned char *out_buff, signed long value, unsigned char byte_count)
+int convertSBytesChar(unsigned char *out_buff, signed long value, unsigned char byte_count)
 {
-    writeUnsignedBytes(out_buff, abs(value), byte_count);
+    convertUBytesChar(out_buff, abs(value), byte_count);
     if(value < 0) {
 	if(out_buff[0] & 0x80)
 	    return -1; //num was too large.
@@ -78,10 +82,17 @@ int writeSignedBytes(unsigned char *out_buff, signed long value, unsigned char b
     return 0;    
 }
 
-int writeUnsignedBytes(unsigned char *out_buff, unsigned long value, unsigned char byte_count)
+int convertUBytesChar(unsigned char *out_buff, unsigned long value, unsigned char byte_count)
 {
     unsigned int x;
     for(x=0; x < byte_count; x++)
 	out_buff[x] = (value >> (byte_count -1 -x)*8) & 0xff;
     return 0;
+}
+
+int writeUBytes(int fh, unsigned long value, unsigned char byte_count)
+{
+   unsigned char out_buff[16];
+   convertUBytesChar(out_buff, value, byte_count);
+   return write(fh, out_buff, byte_count);
 }

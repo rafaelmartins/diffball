@@ -1,9 +1,15 @@
-#ifndef _DELTA_HEADER
-#define _DELTA_HEADER 1
+#ifndef _HEADER_DELTA
+#define _HEADER_DELTA 1
 #define DC_ADD 0
 #define DC_COPY 1
+#define ENCODING_OFFSET_START 0
+#define ENCODING_OFFSET_VERS_POS 1
+#define ENCODING_OFFSET_DC_POS 2
+#define USE_GDIFF_ENCODING 0
 
-char *OneHalfPassCorrecting(unsigned char *ref, unsigned long ref_len,
+char *OneHalfPassCorrecting(unsigned int encoding_type,
+    unsigned int offset_type,
+    unsigned char *ref, unsigned long ref_len,
     unsigned char *ver, unsigned long ver_len, unsigned int seed_len, 
     int out_fh);
 
@@ -48,9 +54,6 @@ void DCBufferDecr(struct CommandBuffer *buffer);
 void DCBufferAddCmd(struct CommandBuffer *buffer, int type, unsigned long offset, unsigned long len);
 void DCBufferTruncate(struct CommandBuffer *buffer, unsigned long len);
 void DCBufferInit(struct CommandBuffer *buffer, unsigned long max_commands);
-void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh);
-/*inline int bitsNeeded(long y);
-inline int unsignedBytesNeeded(long y);
-inline int signedBytesNeeded(signed long y);*/
+//void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh);
 
 #endif

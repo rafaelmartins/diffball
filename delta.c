@@ -6,6 +6,7 @@
 //#include "adler32.h"
 #include "delta.h"
 #include "bit-functions.h"
+#include "gdiff.h"
 
 /* this is largely based on the algorithms detailed in randal burn's various papers.
    Obviously credit for the alg's go to him, although I'm the one who gets the dubious
@@ -71,8 +72,9 @@ void DCBufferTruncate(struct CommandBuffer *buffer, unsigned long len)
 
 
 
-void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
+/*void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
 {
+    
     unsigned char *ptr, clen;
     unsigned long fh_pos=0;
     //unsigned long offset;
@@ -145,21 +147,21 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
 	    write(fh, &clen, 1);
 	    delta_pos++;
 	    if(clen >= 249 && clen <= 251) {		
-		if(writeSignedBytes(out_buff, s_off, 2)) {
+		if(convertSBytesChar(out_buff, s_off, 2)) {
 		    printf("shite, too large of signed value!\n");
 		    exit(1);
 		}
 		write(fh, out_buff, 2);
 		delta_pos+=2;
 	    } else if(clen>=252 && clen <= 254){
-		if(writeSignedBytes(out_buff, s_off, 4)) {
+		if(convertSBytesChar(out_buff, s_off, 4)) {
 		    printf("shite, too large of signed value!\n");
 		    exit(1);
 		}
 		write(fh, out_buff, 4);
 		delta_pos+=4;
 	    } else {
-		if(writeSignedBytes(out_buff, s_off, 8)) {
+		if(convertSBytesChar(out_buff, s_off, 8)) {
 		    printf("shite, too large of signed value!\n");
 		    exit(1);
 		}
@@ -167,21 +169,21 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
 		delta_pos+=8;
 	    }
 	    if(clen==249 || clen == 252){
-		if(writeUnsignedBytes(out_buff, buffer->lb_tail->len, 1)) {
+		if(convertUBytesChar(out_buff, buffer->lb_tail->len, 1)) {
 		    printf("shite, too large of signed value!\n");
 		    exit(1);
 		}
 		write(fh, out_buff, 1);
 		delta_pos++;
 	    } else if(clen == 250 || clen==253){
-		if(writeUnsignedBytes(out_buff, buffer->lb_tail->len, 2)) {
+		if(convertUBytesChar(out_buff, buffer->lb_tail->len, 2)) {
 		    printf("shite, too large of signed value!\n");
 		    exit(1);
 		}
 		write(fh, out_buff, 2);
 		delta_pos+=2;
 	    } else {
-		if(writeUnsignedBytes(out_buff, buffer->lb_tail->len, 4)) {
+		if(convertUBytesChar(out_buff, buffer->lb_tail->len, 4)) {
 		    printf("shite, too large of signed value!\n");
 		    exit(1);
 		}
@@ -201,7 +203,7 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
 	((float)adds_in_buff)/((float)copies + (float)adds_in_buff)*100);
     printf("adds in file(%lu), average # of commands per add(%f)\n", adds_in_file,
 	((float)adds_in_file)/((float)(adds_in_buff)));
-}
+}*/
 
 
 inline unsigned long hash_it(unsigned long chk, unsigned long tbl_size)
@@ -209,7 +211,9 @@ inline unsigned long hash_it(unsigned long chk, unsigned long tbl_size)
     return chk % tbl_size;
 }
 
-char *OneHalfPassCorrecting(unsigned char *ref, unsigned long ref_len,
+char *OneHalfPassCorrecting(unsigned int encoding_type,
+    unsigned int offset_type, 
+    unsigned char *ref, unsigned long ref_len,
     unsigned char *ver, unsigned long ver_len, unsigned int seed_len, int out_fh)
 {
     unsigned long *hr; //reference hash table.
@@ -343,7 +347,13 @@ char *OneHalfPassCorrecting(unsigned char *ref, unsigned long ref_len,
     printf("bad  collisions(%f%%)\n",(float)bad_collisions/(float)(good_collisions+bad_collisions)*100);
     printf("commands in buffer, copies(%lu), adds(%lu), truncations(%lu)\n", copies, adds, truncations);
     printf("\n\nflushing command buffer...\n\n\n");
-    DCBufferFlush(&buffer, ver, out_fh);
+    //DCBufferFlush(&buffer, ver, out_fh);
+    if(encoding_type==USE_GDIFF_ENCODING) {
+	printf("using gdiff encoding...\n");
+	if(gdiffEncodeDCBuffer(&buffer, offset_type, ver, out_fh)) {
+	    printf("wtf? error returned from encoding engine\n");
+	}
+    }
     return NULL;
 }
 

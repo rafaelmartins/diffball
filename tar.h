@@ -1,5 +1,5 @@
-#ifndef _TAR_HEADER
-#define _TAR_HEADER 1
+#ifndef _HEADER_TAR
+#define _HEADER_TAR 1
 /* the data structs were largely taken/modified/copied from gnutar's header file.
    I had to go there for the stupid gnu extension... */
 #define TAR_NAME_LOC		0
