@@ -23,7 +23,7 @@
 #include "bsdiff.h"
 
 unsigned long
-bsdiff_overlay_read(DCommand *dc, unsigned long pos, unsigned char *buff, unsigned long len, cfile *out_cfh)
+bsdiff_overlay_read(u_dcb_src uc, unsigned long pos, unsigned char *buff, unsigned long len)
 {
     return 0L;
 }
@@ -180,7 +180,7 @@ bsdiffReconstructDCBuff(unsigned char src_id, cfile *patchf, CommandBuffer *dcbu
     }
     
     ref_id = src_id;
-    diff_id = DCB_register_overlay_src(dcbuff, diff_cfh, &bsdiff_overlay_read, 
+    diff_id = DCB_register_overlay_src(dcbuff, diff_cfh,  &bsdiff_overlay_read, 
     	&bsdiff_overlay_copy, NULL, (unsigned char)DCB_FREE_SRC_CFH);
     if(ver == 4) {
 	extra_id = DCB_REGISTER_ADD_SRC(dcbuff, extra_cfh, NULL, 1);
