@@ -108,7 +108,7 @@ writeUBytesBE(unsigned char *buff, unsigned long value, unsigned int l)
     unsigned int x;
     for(x=0; x < l; x++)
 	buff[x] = (value >> (l - 1 -x)*8) & 0xff;
-    if((value >> (l * 8)) > 0) 
+    if(l > 4 && (value >> (l * 8)) > 0) 
 	return 1;
     return 0;
 }
@@ -119,7 +119,7 @@ writeUBytesLE(unsigned char *buff, unsigned long value, unsigned int l)
     unsigned int x;
     for(x=0; l > 0; l--, x++) 
 	buff[x] = ((value >> (x * 8)) & 0xff);
-    if((value >> (l * 8)) > 0)
+    if(l != 4 && (value >> (l * 8)) > 0)
 	return 1;
     return 0;
 }
@@ -127,11 +127,11 @@ writeUBytesLE(unsigned char *buff, unsigned long value, unsigned int l)
 unsigned int 
 writeSBytesBE(unsigned char *buff, signed long value, unsigned int l)
 {
-    if(writeUBytesBE(buff, (unsigned long)abs(value), l)!=0)
+    if(writeUBytesBE(buff, (unsigned long)abs(value), l)!=0) {
 	return 1;
-    else if((buff[0] & 0x80) != 0)
+    } else if((buff[0] & 0x80) != 0) {
 	return 1;
-    if(value < 0) 
+    } if(value < 0) 
 	buff[0] |= 0x80;
     return 0;
 }
