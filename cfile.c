@@ -59,7 +59,7 @@ unsigned int compressor_type, unsigned int access_flags)
 	}
         cmemopen(cfh, ptr, fh_start, fh_end, NO_COMPRESSOR);
 	cfh->state_flags |= CFILE_BUFFER_ALL;
-	printf("calling w/ buffer_all(%u)\n",
+	printf("calling w/ buffer_all(%lu)\n",
 	cfh->state_flags & CFILE_BUFFER_ALL);
 	return 0;
     }
@@ -247,7 +247,7 @@ cwrite(cfile *cfh, unsigned char *in_buff, unsigned long len)
 unsigned long 
 ctell(cfile *cfh, unsigned int tell_type)
 {
-	unsigned long pos;
+	unsigned long pos=0;
 	switch(cfh->compressor_type) {
 	case NO_COMPRESSOR:
 		/*this breaks for write cseeks.  fix. */
@@ -269,7 +269,7 @@ unsigned long
 cseek(cfile *cfh, signed long offset, int offset_type)
 {
 	unsigned long raw_offset;
-	unsigned long uncompr_offset;
+	unsigned long uncompr_offset=0;
 	switch(cfh->compressor_type)
 	{
 	case NO_COMPRESSOR:

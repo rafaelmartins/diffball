@@ -28,6 +28,7 @@
 #include "string-misc.h"
 #include "gdiff.h"
 #include "bdiff.h"
+#include "bdelta.h"
 
 unsigned long convertDec(unsigned char *buff, unsigned int len)
 {

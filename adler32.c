@@ -52,7 +52,7 @@ init_adler32_seed(ADLER32_SEED_CTX *ads, unsigned int seed_len,
 	ads->seed_len = seed_len;
 	ads->multi = multi;
 	ads->parity=0;
-	printf("init_adler32_seed\n");
+	//printf("init_adler32_seed\n");
 	if((ads->last_seed = (unsigned int *)malloc(seed_len*sizeof(int)))==NULL) {\
 		//printf("shite, error allocing needed memory\n");
 		abort();
@@ -77,8 +77,9 @@ init_adler32_seed(ADLER32_SEED_CTX *ads, unsigned int seed_len,
 void 
 update_adler32_seed(ADLER32_SEED_CTX *ads, unsigned char *buff, 
     unsigned int len) 
-{	unsigned int x;
-	signed long int parity;
+{	
+    unsigned int x;
+    signed long parity;
 	if(len==ads->seed_len) {
 		//printf("computing seed fully\n");
 		ads->s1 = ads->s2 = ads->tail =0;
@@ -116,23 +117,20 @@ unsigned long
 get_checksum(ADLER32_SEED_CTX *ads)
 {
 	unsigned long chksum;
-	unsigned int parity=0, x=0;
-/*	for(x=0; x < ads->seed_len; x++) {
-		parity = (ads->seed_chars[x] + parity) % 2;
-	}*/
 	chksum = (unsigned long)((ads->s2 << 16) | (ads->s1 & 0xffff));
-	return (unsigned long)(chksum + ads->parity);
-	//return (unsigned long)((ads->s2 << 16) | (ads->s1 & 0xffff));
+	return (unsigned long)(
+	    (unsigned long)((ads->s1 << 16) | (ads->s1 & 0xffff)) + ads->parity);
 }
 
-signed int 
+unsigned int 
 free_adler32_seed(ADLER32_SEED_CTX *ads)
 {
-	printf("free_adler32_seed\n");
-	free(ads->last_seed);
-	free(ads->seed_chars);
-	free(ads->last_parity_bits);
-	ads->s1 = ads->s2 = ads->parity = ads->tail = 0;
+    //printf("free_adler32_seed\n");
+    free(ads->last_seed);
+    free(ads->seed_chars);
+    free(ads->last_parity_bits);
+    ads->s1 = ads->s2 = ads->parity = ads->tail = 0;
+    return 0;
 }
 
 

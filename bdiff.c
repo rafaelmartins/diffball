@@ -29,12 +29,9 @@ bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh, cfile *out_cfh)
 #define BUFFER_SIZE 1024
     unsigned char src_md5[16], ver_md5[16];
     unsigned char buff[BUFFER_SIZE];
-    unsigned long count, len, delta_pos, fh_pos;
+    unsigned long count, fh_pos, delta_pos=0;
     unsigned int lb;
-    count = buffer->buffer_count;
-    buffer->lb_tail = buffer->lb_start;
-    buffer->cb_tail = buffer->cb_head;
-    buffer->cb_tail_bit = buffer->cb_head_bit;
+    count = DCBufferReset(buffer);
     memcpy(buff, BDIFF_MAGIC, BDIFF_LEN_MAGIC);
     buff[BDIFF_LEN_MAGIC] = BDIFF_VERSION;
     /* I haven't studied the author of bdiff's alg well enough too know what

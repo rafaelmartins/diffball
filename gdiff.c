@@ -28,11 +28,12 @@ signed int gdiffEncodeDCBuffer(CommandBuffer *buffer,
 {
     unsigned char /* *ptr,*/ clen;
     unsigned long fh_pos=0;
-    signed long s_off;
-    unsigned long u_off;
+    signed long s_off=0;
+    unsigned long u_off=0;
     unsigned long delta_pos=0, dc_pos=0;
-    int lb, ob, off_is_sbytes;
-    unsigned char type, out_buff[256];
+    unsigned int lb=0, ob=0;
+    unsigned char off_is_sbytes=0;
+    unsigned char out_buff[5];
     unsigned long count;
     if(offset_type==ENCODING_OFFSET_VERS_POS || offset_type==ENCODING_OFFSET_DC_POS)
 	off_is_sbytes=1;

@@ -50,25 +50,17 @@ const unsigned long copy_soff_start[] = {
 
 signed 
 int switchingEncodeDCBuffer(CommandBuffer *buffer, 
-    unsigned int offset_type, cfile *ver_cfh, cfile *out_fh)
+    unsigned int offset_type, cfile *ver_cfh, cfile *out_cfh)
 {
-    unsigned char clen;
     unsigned long fh_pos=0;
-    signed long s_off;
-    unsigned long u_off;
+    signed long s_off=0;
+    unsigned long u_off=0;
     unsigned long delta_pos=0, dc_pos=0;
-    unsigned long copies=0, adds_in_buff=0, adds_in_file=0;
     unsigned int lb, ob;
-    unsigned char type, out_buff[256];
-    unsigned int  add_buff_size=512;
-    unsigned char add_buff[add_buff_size];
-    unsigned int  bytes_read=0, temp=0;
-    unsigned long  bytes_wrote=0;
+    unsigned char out_buff[256];
     unsigned long count, temp_len;
-    unsigned long total_add_len=0, total_copy_len=0;
-    unsigned long max_add_len=0, max_copy_len=0;
-    unsigned long min_add_len=0xffffffff, min_copy_len=0xffffffff;
-    unsigned int last_com;
+    unsigned long total_add_len=0;
+    unsigned int last_com, temp;
     unsigned int is_neg = 0;
     unsigned const long *copy_off_array;
 
@@ -77,207 +69,154 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
     } else {
 	copy_off_array = copy_off_start;
     }
-    count = buffer->buffer_count;
-    buffer->lb_tail = buffer->lb_start;
-    buffer->cb_tail = buffer->cb_head;
-    buffer->cb_tail_bit = buffer->cb_head_bit;
+    count = DCBufferReset(buffer);
     total_add_len=0;
     while(count--) {
-    	if ((*buffer->cb_tail & (1 << buffer->cb_tail_bit))==DC_ADD){
+	if(DC_ADD==current_command_type(buffer))
     		total_add_len += buffer->lb_tail->len;
-    	}
     	DCBufferIncr(buffer);
     }
     writeUBytesBE(out_buff, total_add_len, 4);
-//    convertUBytesChar(out_buff, total_add_len, 4);
-    cwrite(out_fh, out_buff, 4);
+    cwrite(out_cfh, out_buff, 4);
     delta_pos += 4;
-    count = buffer->buffer_count;
-    buffer->lb_tail = buffer->lb_start;
-    buffer->cb_tail = buffer->cb_head;
-    buffer->cb_tail_bit = buffer->cb_head_bit;
+    count = DCBufferReset(buffer);
     while(count--) {
-    	if ((*buffer->cb_tail & (1 << buffer->cb_tail_bit))==DC_ADD){
-    		cseek(ver_cfh, buffer->lb_tail->offset, CSEEK_ABS);
-		    bytes_wrote=0;
-		    while(buffer->lb_tail->len - bytes_wrote > 0) {
-		    	//printf("len(%lu), bytes_wrote(%lu), left(%lu)\n", 
-		    	//buffer->lb_tail->len, bytes_wrote, buffer->lb_tail->len - bytes_wrote);
-		    	temp = MIN(buffer->lb_tail->len - bytes_wrote, add_buff_size);
-			    if((bytes_read=cread(ver_cfh, add_buff, temp))!=temp) {
-			    	printf("add failure, offset(%lu), len(%lu)\n", 
-			    	buffer->lb_tail->offset, buffer->lb_tail->len);
-			    	printf("requested (%u) bytes, got (%u) bytes\n", temp, bytes_read);
-			    	printf("shite, problem reading from versionned file.\n");
-			    	exit(1);
-			    }
-			    cwrite(out_fh, add_buff, bytes_read);
-			    bytes_wrote += bytes_read;
-			}
-		    delta_pos += buffer->lb_tail->len;
+	if(current_command_type(buffer)==DC_ADD) {
+	    if(buffer->lb_tail->len != copy_cfile_block(out_cfh, ver_cfh, 
+		buffer->lb_tail->offset, buffer->lb_tail->len))
+		abort();
+	    delta_pos += buffer->lb_tail->len;
     	}
     	DCBufferIncr(buffer);
     }
     printf("output add block, len(%lu)\n", delta_pos);
-    //convertUBytesChar(out_buff, 0, 1);
-    //cwrite(out_fh, out_buff, 1);
-    //delta_pos++;
-    buffer->lb_tail = buffer->lb_start;
-    buffer->cb_tail = buffer->cb_head;
-    buffer->cb_tail_bit = buffer->cb_head_bit;
+    count = DCBufferReset(buffer);
     last_com = DC_COPY;
     dc_pos=0;
-    count = buffer->buffer_count;
     while(count--){
-		if(buffer->lb_tail->len==0) {
-		    DCBufferIncr(buffer);
-		    continue;
-		}
-		if((*buffer->cb_tail & (1 << buffer->cb_tail_bit))>0) {
-	    	type=DC_COPY;
-		} else if ((*buffer->cb_tail & (1 << buffer->cb_tail_bit))==0){
-		    type=DC_ADD;
-		}
-		switch(type)
-		{
-		case DC_ADD:
-		    adds_in_buff++;
-		    total_add_len += buffer->lb_tail->len;
-		    min_add_len = MIN(min_add_len, buffer->lb_tail->len);
-		    max_add_len = MAX(max_add_len, buffer->lb_tail->len);
-		    temp_len = buffer->lb_tail->len;
-		    if(temp_len >= add_len_start[3]) {
-		    	temp=3;
-		    	lb=30;
-		    } else if (temp_len >= add_len_start[2]) {
-		    	temp=2;
-		    	lb=22;
-		    } else if (temp_len >= add_len_start[1]) {
-		    	temp=1;
-		    	lb=14;
-		    } else {
-		    	temp=0;
-		    	lb=6;
-		    }
-		    temp_len -= add_len_start[temp];
-		    //printf("ubits prior(%u): ", out_buff[0]);
-		    writeUBitsBE(out_buff, temp_len, lb);
-		    //printf("after(%u): ", out_buff[0]);
-		    out_buff[0] |= (temp << 6); 
-		    cwrite(out_fh, out_buff, temp + 1);
-		    printf("writing add, pos(%lu), len(%lu)\n", delta_pos, buffer->lb_tail->len);
-		    delta_pos += temp + 1;
-		    fh_pos += buffer->lb_tail->len;
-		    last_com = DC_ADD;
-		    break;
-		case DC_COPY:
-			if(last_com == DC_COPY) {
-				printf("last command was a copy, outputing blank add\n", 
-					last_com, DC_COPY);
-				out_buff[0]=0;
-				cwrite(out_fh, out_buff, 1);
-				delta_pos++;
-			}
-		    copies++;//clean this up.
-		    total_copy_len += buffer->lb_tail->len;
-		    min_copy_len = MIN(min_copy_len, buffer->lb_tail->len);
-		    max_copy_len = MAX(max_copy_len, buffer->lb_tail->len);
-		    //yes this is a hack.  but it works.
-		    if(offset_type == ENCODING_OFFSET_DC_POS) {
-				s_off = buffer->lb_tail->offset - dc_pos;
-				//u_off = 2 * (abs(s_off));
-		    	u_off = abs(s_off);
-		    	printf("off(%lu), dc_pos(%lu), u_off(%lu), s_off(%ld): ", 
-				buffer->lb_tail->offset, dc_pos, u_off, s_off);
-		    } else {
-				u_off = buffer->lb_tail->offset;
-		    }
-		    temp_len = buffer->lb_tail->len;
-		    if(temp_len >= copy_len_start[3]) {
-		    	temp=3;
-		    	lb=28;
-		    } else if (temp_len >= copy_len_start[2]) {
-		    	temp=2;
-		    	lb=20;
-		    } else if (temp_len >= copy_len_start[1]) {
-		    	temp=1;
-		    	lb=12;
-		    } else {
-		    	temp=0;
-		    	lb=4;
-		    }
-		    //printf("len(%lu) falls into cat(%u) for copy_len\n", temp_len, temp);
-		    temp_len -= copy_len_start[temp];
-		    writeUBitsBE(out_buff, temp_len, lb);
-		    //out_buff[0] = (temp_len >> (temp * 8)) & 0x0f;
-		    //printf("encoding as %u,%u,%u,%u\n", out_buff[0], out_buff[1], out_buff[2], out_buff[3]);
-		    //printf("out[0] was(%u): ", out_buff[0]);
-		    out_buff[0] |= (temp << 6);
-		    //printf("now(%u)\n", out_buff[0]);
-		    lb = temp +1;
+	if(buffer->lb_tail->len==0) {
+	    DCBufferIncr(buffer);
+	    continue;
+	}
+	if(current_command_type(buffer)==DC_ADD) {
+	    temp_len = buffer->lb_tail->len;
+	    if(temp_len >= add_len_start[3]) {
+	    	temp=3;
+	    	lb=30;
+	    } else if (temp_len >= add_len_start[2]) {
+	    	temp=2;
+	    	lb=22;
+	    } else if (temp_len >= add_len_start[1]) {
+	    	temp=1;
+	    	lb=14;
+	    } else {
+	    	temp=0;
+	    	lb=6;
+	    }
+	    temp_len -= add_len_start[temp];
+	    //printf("ubits prior(%u): ", out_buff[0]);
+	    writeUBitsBE(out_buff, temp_len, lb);
+	    //printf("after(%u): ", out_buff[0]);
+	    out_buff[0] |= (temp << 6); 
+	    cwrite(out_cfh, out_buff, temp + 1);
+	    printf("writing add, pos(%lu), len(%lu)\n", delta_pos, buffer->lb_tail->len);
+	    delta_pos += temp + 1;
+	    fh_pos += buffer->lb_tail->len;
+	    last_com = DC_ADD;
+	} else {
+	    if(last_com == DC_COPY) {
+		printf("last command was a copy, outputing blank add\n");
+		out_buff[0]=0;
+		cwrite(out_cfh, out_buff, 1);
+		delta_pos++;
+	    }
+	    //yes this is a hack.  but it works.
+	    if(offset_type == ENCODING_OFFSET_DC_POS) {
+		s_off = buffer->lb_tail->offset - dc_pos;
+		//u_off = 2 * (abs(s_off));
+	    	u_off = abs(s_off);
+	    	printf("off(%lu), dc_pos(%lu), u_off(%lu), s_off(%ld): ", 
+		    buffer->lb_tail->offset, dc_pos, u_off, s_off);
+	    } else {
+		u_off = buffer->lb_tail->offset;
+	    }
+	    temp_len = buffer->lb_tail->len;
+	    if(temp_len >= copy_len_start[3]) {
+	    	temp=3;
+	    	lb=28;
+	    } else if (temp_len >= copy_len_start[2]) {
+	    	temp=2;
+	    	lb=20;
+	    } else if (temp_len >= copy_len_start[1]) {
+	    	temp=1;
+	    	lb=12;
+	    } else {
+	    	temp=0;
+	    	lb=4;
+	    }
+	    //printf("len(%lu) falls into cat(%u) for copy_len\n", temp_len, temp);
+	    temp_len -= copy_len_start[temp];
+	    writeUBitsBE(out_buff, temp_len, lb);
+	    //out_buff[0] = (temp_len >> (temp * 8)) & 0x0f;
+	    //printf("encoding as %u,%u,%u,%u\n", out_buff[0], out_buff[1], out_buff[2], out_buff[3]);
+	    //printf("out[0] was(%u): ", out_buff[0]);
+	    out_buff[0] |= (temp << 6);
+	    //printf("now(%u)\n", out_buff[0]);
+	    lb = temp +1;
 		    
-		    if(u_off >= copy_off_array[3]) {
-		    	temp=3;
-		    	ob=32;
-		    } else if(u_off >= copy_off_array[2]) {
-		    	temp=2;
-		    	ob=24;
-		    } else if (u_off >= copy_off_array[1]) {
-		    	temp=1;
-		    	ob=16;
-		    } else {
-		    	temp=0;
-		    	ob=8;
+	    if(u_off >= copy_off_array[3]) {
+	    	temp=3;
+	    	ob=32;
+	    } else if(u_off >= copy_off_array[2]) {
+	    	temp=2;
+	    	ob=24;
+	    } else if (u_off >= copy_off_array[1]) {
+	    	temp=1;
+	    	ob=16;
+	    } else {
+	    	temp=0;
+	    	ob=8;
+	    }
+	    out_buff[0] |= (temp << 4);
+	    if(offset_type==ENCODING_OFFSET_DC_POS) {
+	    	dc_pos += s_off;
+		if(temp) {
+		    if(s_off > 0) { 
+			s_off -= copy_off_array[temp];
+			is_neg=0;
+		    } else { 
+			printf("s_off(%ld): ", s_off);
+			s_off += copy_off_array[temp];
+			printf("s_off(%ld): ", s_off);
+			is_neg = 1;
 		    }
-		    out_buff[0] |= (temp << 4);
-		    if(offset_type==ENCODING_OFFSET_DC_POS) {
-		    	dc_pos += s_off;
-				if(temp) {
-					if(s_off > 0) { 
-						s_off -= copy_off_array[temp];
-						is_neg=0;
-					} else { 
-						printf("s_off(%ld): ", s_off);
-						s_off += copy_off_array[temp];
-						printf("s_off(%ld): ", s_off);
-						is_neg = 1;
-					}
-				}
-				writeSBytesBE(out_buff + lb, s_off, temp + 1);
-				if(is_neg) 
-					out_buff[lb] |= 0x80;
-		    	is_neg=0;
-		    } else {
-				u_off -= copy_off_array[temp];
-				writeUBytesBE(out_buff + lb, u_off, temp + 1);
-			} 
-			cwrite(out_fh, out_buff, lb + temp + 1);
-		    printf("writing copy delta_pos(%lu), fh_pos(%lu), offset(%ld), len(%lu)\n",
-		    	delta_pos, fh_pos, 
-		    	(offset_type==ENCODING_OFFSET_DC_POS ? s_off : u_off), 
-		    	buffer->lb_tail->len);
-		    //printf("    copy: ob(%u), lb(%u)\n", ob, lb);
-		    fh_pos+=buffer->lb_tail->len;
-		    delta_pos += lb + temp + 1;
-		    last_com=DC_COPY;
- 		}
-		DCBufferIncr(buffer);
+		}
+		writeSBytesBE(out_buff + lb, s_off, temp + 1);
+		if(is_neg) 
+		    out_buff[lb] |= 0x80;
+		is_neg=0;
+	    } else {
+		u_off -= copy_off_array[temp];
+		writeUBytesBE(out_buff + lb, u_off, temp + 1);
+	    } 
+	    cwrite(out_cfh, out_buff, lb + temp + 1);
+	    printf("writing copy delta_pos(%lu), fh_pos(%lu), offset(%ld), len(%lu)\n",
+	    	delta_pos, fh_pos, (offset_type==ENCODING_OFFSET_DC_POS 
+		? s_off : u_off), buffer->lb_tail->len);
+	    //printf("    copy: ob(%u), lb(%u)\n", ob, lb);
+	    fh_pos+=buffer->lb_tail->len;
+	    delta_pos += lb + temp + 1;
+	    last_com=DC_COPY;
+ 	}
+	DCBufferIncr(buffer);
     }
     writeUBytesBE(out_buff, 0, 2);
     if(last_com==DC_COPY) {
-    	cwrite(out_fh, out_buff,1);
+    	cwrite(out_cfh, out_buff,1);
     	delta_pos++;
     }
-    cwrite(out_fh, out_buff, 2);
+    cwrite(out_cfh, out_buff, 2);
     delta_pos+=2;
-    printf("Buffer statistics: copies(%lu), adds(%lu)\n    copy ratio=(%f%%), add ratio(%f%%)\n",
-	copies, adds_in_buff, ((float)copies)/((float)(copies + adds_in_buff))*100,
-	((float)adds_in_buff)/((float)copies + (float)adds_in_buff)*100);
-    printf("Buffer statistics: average copy_len(%f), average add_len(%f)\n",
-    ((float)total_copy_len)/((float)copies), 
-    ((float)total_add_len)/((float)adds_in_buff));
-    printf("Buffer statistics: max_copy(%lu), min_copy(%lu), max_add(%lu), min_add(%lu)\n",
-	max_copy_len, min_copy_len, max_add_len, min_add_len);
     return 0;
 }
 
@@ -292,7 +231,7 @@ signed int switchingReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
     signed long int s_off;
     unsigned int last_com;
     unsigned long add_off, com_start;
-    unsigned int off_is_sbytes, ob, lb;
+    unsigned int ob, lb;
     unsigned int end_of_patch =0;
     unsigned const long *copy_off_array;
     if(offset_type==ENCODING_OFFSET_DC_POS) {

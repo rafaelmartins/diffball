@@ -22,6 +22,7 @@
 #include <errno.h>
 #include <openssl/evp.h>
 #include "tar.h"
+#include "string-misc.h"
 
 int check_str_chksum(const char *block)
 {
