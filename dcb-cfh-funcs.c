@@ -20,7 +20,7 @@
 
 unsigned long
 default_dcb_src_cfh_read_func(u_dcb_src usrc, unsigned long src_pos, 
-    unsigned char *buf, unsigned len)
+    unsigned char *buf, unsigned long len)
 {
     if(src_pos != cseek(usrc.cfh, src_pos, CSEEK_FSTART)) {
 	return 0;
@@ -31,8 +31,6 @@ default_dcb_src_cfh_read_func(u_dcb_src usrc, unsigned long src_pos,
 unsigned long 
 default_dcb_src_cfh_copy_func(DCommand *dc, cfile *out_cfh)
 {
-//    return copy_cfile_block(out_cfh, dc->src_dcb->srcs[dc->src_id].cfh, 
-//	(unsigned long)dc->data.src_pos, dc->data.len);
     return copy_cfile_block(out_cfh, dc->dcb_src->src_ptr.cfh, 
 	(unsigned long)dc->data.src_pos, dc->data.len);
 }
