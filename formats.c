@@ -70,3 +70,20 @@ identify_format(cfile *patchf)
     }
     return ((format << 16) | val);
 }
+/*
+unsigned long
+detect_compressor(cfile *cfh)
+{
+    unsigned char buff[12];
+    if(cread(cfh, buff, 2)!=2) {
+	return UNDETECTED_COMPRESSOR;
+    }
+    if(memcmp(buff, "BZ", 2)==0) {
+	return BZIP2_COMPRESSOR;
+    } else if(0x31==buff[0] && 0x139==buff[1]) {
+	return GZIP_COMPRESSOR;
+    }
+    return UNDETECTED_COMPRESSOR;
+}
+*/
+

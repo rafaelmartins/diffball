@@ -33,12 +33,14 @@
 #define SWITCHING_FORMAT 	0x7
 #define BDELTA_FORMAT		0x8
 #define GNUDIFF_FORMAT		0x9
-
 #define DEFAULT_PATCH_ID	SWITCHING_FORMAT
+
+#define UNDETECTED_COMPRESSOR	NO_COMPRESSOR
+
 
 
 unsigned long int check_for_format(char *format_name, unsigned int len);
 unsigned long int identify_format(cfile *patchf);
-
+//unsigned long int detect_compressor(cfile *cfh);
 #endif
 
