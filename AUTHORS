@@ -1,10 +1,8 @@
-The (sole) author is Brian Harring, <bdharring@wisc.edu>.
+The author is Brian Harring, bdharring@wisc.edu.
 
-Currently I only have a 1.5 pass correcting alg in place, although more are 
-coming.
-For the differencing alg, Randal Burns and Andrew Tridgell- I pulled the 
-concept's/algorithm out of their papers (Tridgell for background, Burns for 
-alg description).
+For information on the differencing algs in use, Randal Burns and Andrew 
+Tridgell would be a good place to start- I pulled the concept's/algorithm 
+out of their papers (Tridgell for background, Burns for alg description).
 
 Burn's 'Delta Compression on Unstructured Data' would be a good place to start 
 for anyone curious about delta compression.  I've made modifications here and 
