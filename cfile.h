@@ -1,9 +1,12 @@
 #ifndef _HEADER_CFILE
 #define _HEADER_CFILE
-#define CFILE_RAW_BUFF_SIZE 8 * 4096
+#define CFILE_RAW_BUFF_SIZE 32768 
+ //8 * 4096
 #define NO_COMPRESSOR      0
 #define GZIP_COMRPESSOR    1
 #define BZIP2_COMPRESSOR   2
+#define CFILE_RONLY 1
+#define CFILE_WONLY 2
 
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
@@ -18,10 +21,12 @@ struct cfile {
     unsigned int raw_buff_filled;
     unsigned int raw_buff_pos;
     unsigned long raw_buff_fh_pos;
+    unsigned int access_flags;
 };
 
-void initcfile(struct cfile *cfile, int fh, unsigned long fh_start,
-    unsigned int compressor_type);
+signed int copen(struct cfile *cfile, int fh, unsigned long fh_start,
+    unsigned int compressor_type, unsigned int access_flags);
+signed int cclose(struct cfile *cfile);
 unsigned long cread(struct cfile *cfile, unsigned char *out_buff, unsigned long len);
 unsigned long cwrite(struct cfile *cfile, unsigned char *in_buff, unsigned long len);
 

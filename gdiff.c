@@ -7,7 +7,7 @@
 #include "bit-functions.h"
 
 signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer, 
-    unsigned int offset_type, unsigned char *ver, int fh)
+    unsigned int offset_type, unsigned char *ver, /*int fh*/  struct cfile *out_fh)
 {
     unsigned char *ptr, clen;
     unsigned long fh_pos=0;
@@ -26,122 +26,144 @@ signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer,
     buffer->lb_tail = buffer->lb_start;
     buffer->cb_tail = buffer->cb_head;
     buffer->cb_tail_bit = buffer->cb_head_bit;
-    writeUBytes(fh, GDIFF_MAGIC, GDIFF_MAGIC_LEN);
+    convertUBytesChar(out_buff, GDIFF_MAGIC, GDIFF_MAGIC_LEN);
+    cwrite(out_fh, out_buff, GDIFF_MAGIC_LEN);
+    //writeUBytes(fh, GDIFF_MAGIC, GDIFF_MAGIC_LEN);
     if(offset_type==ENCODING_OFFSET_START)
-		writeUBytes(fh, GDIFF_VER4, GDIFF_VER_LEN);
+    	convertUBytesChar(out_buff, GDIFF_VER4, GDIFF_VER_LEN);
+		//writeUBytes(fh, GDIFF_VER4, GDIFF_VER_LEN);
     else if(offset_type==ENCODING_OFFSET_VERS_POS)
-		writeUBytes(fh, GDIFF_VER5, GDIFF_VER_LEN);
+		convertUBytesChar(out_buff, GDIFF_VER5, GDIFF_VER_LEN);
+		//writeUBytes(fh, GDIFF_VER5, GDIFF_VER_LEN);
     else if(offset_type==ENCODING_OFFSET_DC_POS)
-		writeUBytes(fh, GDIFF_VER6, GDIFF_VER_LEN);
+		convertUBytesChar(out_buff, GDIFF_VER6, GDIFF_VER_LEN);
+		//writeUBytes(fh, GDIFF_VER6, GDIFF_VER_LEN);
     else {
 		printf("wtf, gdiff doesn't know offset_type(%u). bug.\n",offset_type);
 		exit(1);
     }
+    cwrite(out_fh, out_buff, GDIFF_VER_LEN);
     while(buffer->count--){
-	if((*buffer->cb_tail & (1 << buffer->cb_tail_bit))>0) {
-	    ptr=ver + buffer->lb_tail->offset;
-	    type=DC_COPY;
-	} else if ((*buffer->cb_tail & (1 << buffer->cb_tail_bit))==0){
-	    type=DC_ADD;
-	} else {
-	    printf("wtf...\n");
-	}
-	switch(type)
-	{
-	case DC_ADD:
-	    printf("add command, delta_pos(%lu), fh_pos(%lu), len(%lu), broken into '%lu' commands\n",
-		delta_pos, fh_pos, buffer->lb_tail->len, buffer->lb_tail->len/248 + (buffer->lb_tail->len % 248 ? 1 : 0));
-	    adds_in_buff++;
-	    u_off=buffer->lb_tail->len;
-	    adds_in_file++;
-	    if(buffer->lb_tail->len <= 246) {
-		writeUBytes(fh, buffer->lb_tail->len, 1);
-		delta_pos++;
-	    } else if (buffer->lb_tail->len <= 0xffff) {
-		writeUBytes(fh, 247, 1);
-		writeUBytes(fh, buffer->lb_tail->len, 2);
-		delta_pos+=2;
-	    } else if (buffer->lb_tail->len <= 0xffffffff) {
-		writeUBytes(fh, 248, 1);
-		writeUBytes(fh, buffer->lb_tail->len, 4);
-		delta_pos+=4;
-	    } else {
-		printf("wtf, encountered an offset larger then int size.  croaking.\n");
-		exit(1);
-	    }
-	    write(fh, ver + buffer->lb_tail->offset, buffer->lb_tail->len);
-	    delta_pos += buffer->lb_tail->len;
-	    fh_pos += buffer->lb_tail->len;
-	    break;
-	case DC_COPY:
-	    copies++;//clean this up.
-	    if(off_is_sbytes) {
-		if(offset_type==ENCODING_OFFSET_VERS_POS)
-		    s_off = (signed long)buffer->lb_tail->offset - (signed long)fh_pos;
-		else if(offset_type==ENCODING_OFFSET_DC_POS)
-		    s_off = (signed long)buffer->lb_tail->offset - (signed long)dc_pos;		
-		u_off = abs(s_off);
-		ob=signedBytesNeeded(s_off);
-	    } else {
-		u_off = buffer->lb_tail->offset;
-		ob=unsignedBytesNeeded(u_off);
-	    }
-	    lb=unsignedBytesNeeded(buffer->lb_tail->len);
-	    if(lb> INT_BYTE_COUNT) {
-		printf("wtf, too large of len in gdiff encoding. dieing.\n");
-		exit(1);
-	    }
-	    if(ob > LONG_BYTE_COUNT) {
-		printf("wtf, too large of offset in gdiff encoding. dieing.\n");
-		exit(1);
-	    }
-	    clen=1;
-	    if(lb <= BYTE_BYTE_COUNT)
-		lb=BYTE_BYTE_COUNT;
-	    else if(lb <= SHORT_BYTE_COUNT)
-		lb=SHORT_BYTE_COUNT;
-	    else
-		lb=INT_BYTE_COUNT;
-	    if(ob<=SHORT_BYTE_COUNT) {
-		ob=SHORT_BYTE_COUNT;
-		if(lb == BYTE_BYTE_COUNT)
-		    out_buff[0]=249;
-		else if(lb == SHORT_BYTE_COUNT)
-		    out_buff[0]=250;
-		else
-		    out_buff[0]=251;
-	    } else if (ob<=INT_BYTE_COUNT) {
-		ob=INT_BYTE_COUNT;
-		if(lb == BYTE_BYTE_COUNT)
-		    out_buff[0]=252;
-		else if(lb == SHORT_BYTE_COUNT)
-		    out_buff[0]=253;
-		else
-		    out_buff[0]=254;
-	    } else {
-		ob=LONG_BYTE_COUNT;
-		out_buff[0]=255;
-	    }
-	    if(off_is_sbytes)
-		convertSBytesChar(out_buff + 1, s_off, ob);
-	    else 
-		convertUBytesChar(out_buff + 1, u_off, ob);
-	    clen = 1 + ob;
-	    convertUBytesChar(out_buff + clen, buffer->lb_tail->len, lb);
-	    clen+=lb;		
-	    printf("writing copy command delta_pos(%lu), fh_pos(%lu), type(%u), offset(%ld), len(%lu)\n",
-		delta_pos, fh_pos, out_buff[0], (off_is_sbytes ? s_off: u_off), buffer->lb_tail->len);
-	    if(clen!=write(fh, out_buff, clen)) {
-		printf("shite, couldn't write copy command. eh?\n");
-		exit(1);
-	    }
-	    fh_pos+=buffer->lb_tail->len;
-	    delta_pos+=clen;
-	    dc_pos += s_off;
-	}
-	DCBufferIncr(buffer);
+		if((*buffer->cb_tail & (1 << buffer->cb_tail_bit))>0) {
+	    	ptr=ver + buffer->lb_tail->offset;
+	    	type=DC_COPY;
+		} else if ((*buffer->cb_tail & (1 << buffer->cb_tail_bit))==0){
+		    type=DC_ADD;
+		} else {
+		    printf("wtf...\n");
+		}
+		switch(type)
+		{
+		case DC_ADD:
+		    printf("add command, delta_pos(%lu), fh_pos(%lu), len(%lu), ",
+				delta_pos, fh_pos, buffer->lb_tail->len);
+		    adds_in_buff++;
+		    u_off=buffer->lb_tail->len;
+		    adds_in_file++;
+		    if(buffer->lb_tail->len <= 246) {
+				convertUBytesChar(out_buff, buffer->lb_tail->len, 1);
+				cwrite(out_fh, out_buff, 1);
+				//writeUBytes(fh, buffer->lb_tail->len, 1);
+				delta_pos+=1;
+				printf("type(%lu)\n", buffer->lb_tail->len);
+		    } else if (buffer->lb_tail->len <= 0xffff) {
+				//writeUBytes(fh, 247, 1);
+				//writeUBytes(fh, buffer->lb_tail->len, 2);
+				convertUBytesChar(out_buff, 247, 1);
+				convertUBytesChar(out_buff + 1, buffer->lb_tail->len, 2);
+				cwrite(out_fh, out_buff, 3);
+				delta_pos+=3;
+				printf("type(%u)\n", 247);
+				printf("verifying, %u %u %u\n", out_buff[0], out_buff[1], out_buff[2]);
+		    } else if (buffer->lb_tail->len <= 0xffffffff) {
+				//writeUBytes(fh, 248, 1);
+				//writeUBytes(fh, buffer->lb_tail->len, 4);
+				convertUBytesChar(out_buff, 248, 1);
+				convertUBytesChar(out_buff + 1, buffer->lb_tail->len, 4);
+				cwrite(out_fh, out_buff, 5);
+				delta_pos+=5;
+				printf("type(%u)\n", 248);
+				printf("verifying, %5.5s\n", out_buff);
+		    } else {
+				printf("wtf, encountered an offset larger then int size.  croaking.\n");
+				exit(1);
+		    }
+		    //write(fh, ver + buffer->lb_tail->offset, buffer->lb_tail->len);
+		    cwrite(out_fh, ver + buffer->lb_tail->offset, buffer->lb_tail->len);
+		    delta_pos += buffer->lb_tail->len;
+		    fh_pos += buffer->lb_tail->len;
+		    break;
+		case DC_COPY:
+		    copies++;//clean this up.
+		    if(off_is_sbytes) {
+				if(offset_type==ENCODING_OFFSET_VERS_POS)
+				    s_off = (signed long)buffer->lb_tail->offset - (signed long)fh_pos;
+				else if(offset_type==ENCODING_OFFSET_DC_POS)
+				    s_off = (signed long)buffer->lb_tail->offset - (signed long)dc_pos;		
+				u_off = abs(s_off);
+				ob=signedBytesNeeded(s_off);
+		    } else {
+				u_off = buffer->lb_tail->offset;
+				ob=unsignedBytesNeeded(u_off);
+		    }
+		    lb=unsignedBytesNeeded(buffer->lb_tail->len);
+		    if(lb> INT_BYTE_COUNT) {
+				printf("wtf, too large of len in gdiff encoding. dieing.\n");
+				exit(1);
+		    }
+		    if(ob > LONG_BYTE_COUNT) {
+				printf("wtf, too large of offset in gdiff encoding. dieing.\n");
+				exit(1);
+		    }
+		    clen=1;
+		    if(lb <= BYTE_BYTE_COUNT)
+				lb=BYTE_BYTE_COUNT;
+		    else if(lb <= SHORT_BYTE_COUNT)
+				lb=SHORT_BYTE_COUNT;
+		    else
+				lb=INT_BYTE_COUNT;
+		    if(ob<=SHORT_BYTE_COUNT) {
+				ob=SHORT_BYTE_COUNT;
+				if(lb == BYTE_BYTE_COUNT)
+				    out_buff[0]=249;
+				else if(lb == SHORT_BYTE_COUNT)
+				    out_buff[0]=250;
+				else
+				    out_buff[0]=251;
+		    } else if (ob<=INT_BYTE_COUNT) {
+				ob=INT_BYTE_COUNT;
+				if(lb == BYTE_BYTE_COUNT)
+			    	out_buff[0]=252;
+				else if(lb == SHORT_BYTE_COUNT)
+				    out_buff[0]=253;
+				else
+				    out_buff[0]=254;
+		    } else {
+				ob=LONG_BYTE_COUNT;
+				out_buff[0]=255;
+		    }
+		    if(off_is_sbytes)
+				convertSBytesChar(out_buff + clen, s_off, ob);
+		    else 
+				convertUBytesChar(out_buff + clen, u_off, ob);
+		    clen+= ob;
+		    convertUBytesChar(out_buff + clen, buffer->lb_tail->len, lb);
+		    clen+=lb;
+		    printf("writing copy command delta_pos(%lu), fh_pos(%lu), type(%u), offset(%ld), len(%lu)\n",
+			delta_pos, fh_pos, out_buff[0], (off_is_sbytes ? s_off: u_off), buffer->lb_tail->len);
+		    if(cwrite(out_fh, out_buff, clen)!=clen) {
+				printf("shite, couldn't write copy command. eh?\n");
+				exit(1);
+		    }
+		    fh_pos+=buffer->lb_tail->len;
+		    delta_pos+=1 + ob + lb;
+		    dc_pos += s_off;
+		}
+		DCBufferIncr(buffer);
     }
-    writeUBytes(fh, 0,1);
+    convertUBytesChar(out_buff, 0, 1);
+    cwrite(out_fh, out_buff, 1);
+    //writeUBytes(fh, 0,1);
     printf("Buffer statistics- copies(%lu), adds(%lu)\n    copy ratio=(%f%%), add ratio(%f%%)\n",
 	copies, adds_in_buff, ((float)copies)/((float)(copies + adds_in_buff))*100,
 	((float)adds_in_buff)/((float)copies + (float)adds_in_buff)*100);
@@ -177,7 +199,7 @@ signed int gdiffReconstructFile(int src_fh, int out_fh,
 	//	cread(patchf, &ccom, 1);
 	printf("patchf->fh_pos(%lu)\n", patchf->fh_pos);
     while(cread(patchf, buff, 1)==1 && *buff != 0) {
-	    printf("ver_pos(%lu), fh_pos(%lu), command(%u)\n", ver_pos, patchf->fh_pos, *buff);
+	    //printf("ver_pos(%lu), fh_pos(%lu), command(%u)\n", ver_pos, patchf->fh_pos, *buff);
 	    if(*buff > 0 && *buff <= 248) {
 	        //add command
 	        printf("add command\n");
@@ -275,7 +297,7 @@ signed int gdiffReconstructFile(int src_fh, int out_fh,
 		    ver_pos+=len;
 		    while(len) {
 				x = MIN(buff_size, len);
-				printf("copying (%lu) bytes of len(%lu)\n", x ,len);
+				//printf("copying (%lu) bytes of len(%lu)\n", x ,len);
 				if(read(src_fh, buff, x) != x) {
 				    printf("hmm, error reading src_fh.\n");
 				    //printf("clen(%u), len(%lu)\n", clen, len);

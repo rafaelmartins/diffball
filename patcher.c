@@ -56,7 +56,7 @@ int main(int argc, char **argv)
     struct PatchDeltaBuffer *PDBuff, unsigned int offset_type,
     unsigned int gdiff_version);*/
     //initPDBuffer(&PDBuff, delta_fh, 5, 4096);
-    initcfile(&patchfile, delta_fh, 5, NO_COMPRESSOR);
+    copen(&patchfile, delta_fh, 5, NO_COMPRESSOR, CFILE_RONLY);
     printf("here goes...\n");
     /*printf("dumping initial buffer\n");
     printf("initial value(%u)\n", PDBuff.buffer[0]);
@@ -64,5 +64,6 @@ int main(int argc, char **argv)
     printf("%*s\n", 5800, PDBuff.buffer);*/
     printf("patchf->fh_pos(%lu)\n", patchfile.fh_pos);
     gdiffReconstructFile(src_fh, out_fh, &patchfile, ENCODING_OFFSET_START, 4);
+	cclose(&patchfile);
 }
 

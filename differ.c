@@ -5,12 +5,14 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "cfile.h"
 #include "delta.h"
 
 int main(int argc, char **argv)
 {
     unsigned long int x;
     struct stat src_stat, trg_stat;
+    struct cfile out_cfile;
     int src_fh, trg_fh, out_fh;
     char *src, *trg;
     if(argc <3){
@@ -45,6 +47,7 @@ int main(int argc, char **argv)
     } else {
 		fprintf(stderr,"storing generated delta in '%s'\n", argv[3]);
     }
+    copen(&out_cfile, out_fh, 0, NO_COMPRESSOR, CFILE_WONLY);
     src=(char*)malloc(src_stat.st_size);
     trg=(char*)malloc(trg_stat.st_size);
     read(src_fh, src, src_stat.st_size);
@@ -53,6 +56,7 @@ int main(int argc, char **argv)
 	trg, trg_stat.st_size, 16, out_fh);*/
     OneHalfPassCorrecting(USE_GDIFF_ENCODING, ENCODING_OFFSET_START, src, 
     	(unsigned long)src_stat.st_size,
-	trg, trg_stat.st_size, 16, out_fh);
+	trg, trg_stat.st_size, 16, &out_cfile);
+	cclose(&out_cfile);
     return 0;
 }

@@ -13,7 +13,7 @@ for($x=0; sysread($fh, $char, 1) && ($x < $limitcount || $nolimit); $x++) {
 		$count=0;
 		print "\n";
 	}
-	printf(" %02x=%03.3s ", ord($char), ord($char)); 
+	printf(" %03.3s=%02x ", ord($char), ord($char)); 
 	$count++;
 }
 print "\n";
