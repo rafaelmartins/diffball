@@ -18,6 +18,7 @@
 #ifndef _HEADER_DCBUFFER
 #define _HEADER_DCBUFFER 1
 
+#include "command_list.h"
 #include "cfile.h"
 #include "defs.h"
 #include "config.h"
@@ -58,17 +59,6 @@ extern unsigned int global_use_md5;
 // internal dcbuffer macros.
 #define LLM_VEND(l)  ((l)->ver_pos + (l)->len)
 
-typedef struct {
-    off_u64 offset;
-    unsigned long len;
-} DCLoc;
-
-typedef struct {
-    off_u64 src_pos;
-    off_u64 ver_pos;
-    unsigned long len;
-} DCLoc_match;
-
 typedef struct LL_DCLmatch LL_DCLmatch;
 
 struct LL_DCLmatch {
@@ -78,14 +68,6 @@ struct LL_DCLmatch {
 };
 
 typedef struct _CommandBuffer *DCB_ptr;
-
-typedef struct {
-    // isn't it fun managing arrays, 'ey kiddies? :)
-    unsigned char		*src_id;
-    DCLoc			*command;
-    unsigned long		com_count;
-    unsigned long		com_size;
-} command_list;
 
 typedef command_list overlay_chain;
 
@@ -148,12 +130,7 @@ typedef struct _CommandBuffer {
 	struct {
 	    command_list 	cl;
 	    unsigned long 	command_pos;
-/*	    unsigned long buffer_count;
-	    unsigned long buffer_size;
-	    unsigned long command_pos;
-	    unsigned char *src_id;
-	    DCLoc *lb_start, *lb_end, *lb_head, *lb_tail;
-*/	} full;
+	} full;
 	struct {
 	    off_u64 ver_start;
 	    unsigned long buff_count, buff_size;
@@ -207,6 +184,7 @@ int internal_DCB_register_cfh_src(CommandBuffer *dcb, cfile *cfh,
 
 unsigned long inline current_command_type(CommandBuffer *buff);
 
+void DCB_free_commands(CommandBuffer *dcb);
 DCBSearch * create_DCBSearch_index(CommandBuffer *dcb);
 void free_DCBSearch_index(DCBSearch *s);
 void tfree(void *p);
@@ -242,13 +220,11 @@ int DCB_rec_copy_from_DCB_src(CommandBuffer *tdcb, command_list *tcl,
     unsigned long com_offset, off_u64 seek, off_u64 len);
 
 off_u64
-process_ovchain(CommandBuffer *dcb, off_u64 ver_pos, 
-    DCommand_abbrev **dptr, DCommand_abbrev **odptr, overlay_chain *ov,
-    unsigned long offset, unsigned long len);
+process_ovchain(CommandBuffer *dcb, off_u64 ver_pos, command_list *cl,
+    overlay_chain *ov, unsigned long com_pos, unsigned long len);
 
-int 
-DCB_collapse_commands(CommandBuffer *dcb, DCommand_abbrev **dptr_p,
-    unsigned long *len1, DCommand_abbrev **odptr_p, unsigned long *len2);
+command_list *
+DCB_collapse_commands(CommandBuffer *dcb);
 
 int DCB_insert(CommandBuffer *buff);
 int DCB_llm_init_buff(CommandBuffer *buff, unsigned long buff_size);

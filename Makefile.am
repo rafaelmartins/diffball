@@ -7,7 +7,7 @@ AM_CFLAGS = -Wall -D__USE_GNU $(EXTRA_CFLAGS)
 
 FORMATS = cfile.c bit-functions.c gdiff.c switching.c bdiff.c \
     bdelta.c xdelta1.c udiff.c bsdiff.c fdtu.c line-util.c formats.c
-DCB_FILES  = dcbuffer.c dcb-cfh-funcs.c
+DCB_FILES  = dcbuffer.c dcb-cfh-funcs.c command_list.c
 DIFF_FILES = diff-algs.c adler32.c primes.c hash.c $(DCB_FILES)
 
 ctest_SOURCES = ctest.c cfile.c
@@ -57,6 +57,6 @@ noinst_HEADERS = cfile.h dcbuffer.h diff-algs.h bit-functions.h gdiff.h \
 	apply-patch.h adler32.h switching.h primes.h string-misc.h \
 	tar.h bdiff.h xdelta1.h cfile.h bdelta.h line-util.h \
 	udiff.h fdtu.h bsdiff.h defs.h options.h formats.h hash.h errors.h \
-	dcb-cfh-funcs.h
+	dcb-cfh-funcs.h command_list.h
 
 

@@ -20,6 +20,5 @@
 
 int reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh, 
     int reorder_for_seq_access);
-int read_seq_write_rand(CommandBuffer *dcb, DCommand_abbrev *dc_array,
-    unsigned long array_size, cfile *out_cfh);
+int read_seq_write_rand(command_list *cl, DCB_registered_src *u_src, unsigned char is_overlay, cfile *out_cfh);
 #endif 
