@@ -6,10 +6,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <string.h>
-#include "bit-functions.h"
+#include "delta.h"
+#include "pdbuff.h"
+#include "gdiff.h"
 //#include "delta.h"
-#define MAX(x,y) ((x) > (y) ? (x) : (y))
-#define MIN(x,y) ((x) < (y) ? (x) : (y))
 
 
 //offset = fh_pos + readSignedBytes(cpy_buff, ctmp);
@@ -21,13 +21,7 @@ int main(int argc, char **argv)
     unsigned long int x;
     struct stat src_stat, delta_stat;
     int src_fh, delta_fh, out_fh;
-    signed long offset;
-    unsigned long len;
-    unsigned long fh_pos, delta_pos=0, dc_pos=0;
-    unsigned int buff_filled;
-    unsigned int clen, ctmp;
-    unsigned char buffer[1024], cpy_buff[12];
-    unsigned char commands[512], *cptr, ccom;
+    struct PatchDeltaBuffer PDBuff;
     if(argc <4){
 	printf("pardon, but...\nI need at least 3 args- (reference file), patch-file, target file\n");
 	exit(EXIT_FAILURE);
@@ -54,133 +48,15 @@ int main(int argc, char **argv)
 	printf("Couldn't create\truncate output file.\n");
 	exit(EXIT_FAILURE);
     }
-    if((buff_filled=read(delta_fh, commands, 512))==0){
-	printf("ahem.  the delta file is empty?\n");
-	exit(EXIT_FAILURE);
-    }
-    if(*commands == 1) {
-	printf("using relative to dc_pos offsets\n");
-    }
-    fh_pos=0;
-    delta_pos=1;
-    cptr=commands + 1;
-    //buff_filled=512;
-    while(*cptr != 0) {
-	if(*cptr > 0 && *cptr <= 248) {
-	    //add command
-	    ccom = *cptr;
-	    cptr++;
-	    printf("add  command delta_pos(%lu), fh_pos(%lu), len(%u)\n", delta_pos, fh_pos, ccom);
-	    clen = MIN(buff_filled - (cptr - commands), ccom);
-	    //printf("len(%lu), clen(%lu)\n", *cptr, clen);
-	    if(write(out_fh, cptr, clen)!= clen){
-		printf("eh?  Tried writing(%u) bytes, but failed\n", ccom);
-		exit(1);
-	    }
-	    fh_pos += ccom;
-	    if(ccom != clen){
-		clen=ccom - clen;
-		if((buff_filled=read(delta_fh, commands, 512))==0){
-		    printf("ahem.  eof encountered earlier then expected...\n");
-		    exit(EXIT_FAILURE);
-		}
-		if(write(out_fh, commands, clen)!= clen){
-		    printf("eh?  Tried writing(%u) bytes, but failed\n", *cptr);
-		    exit(1);
-		}
-		cptr= commands + clen;
-	    } else {
-		cptr+=ccom;
-	    }
-	    delta_pos +=ccom + 1;	
-	} else if(*cptr >= 249 ) {
-	    //copy command
-	    ccom=*cptr;
-	    if( ccom  ==  249)
-		clen=3;
-	    else if(ccom==250)
-		clen=4;
-	    else if(ccom==251)
-		clen=6;
-	    else if(ccom==252)
-		clen=5;
-	    else if(ccom==253)
-		clen=6;
-	    else if(ccom==254)
-		clen=8;
-	    else
-		clen=12;
-	    ctmp=MIN(buff_filled - (cptr + 1 -commands), clen);
-	    memcpy(cpy_buff, cptr+1, ctmp);
-	    //printf("buffer stat, ccom(%u), ctmp(%lu), clen(%u), cptr(%lu)\n", ccom, ctmp, clen, commands);
-	    if(ctmp!=clen){
-		if((buff_filled=read(delta_fh, commands, 512))==0){
-		    printf("ahem.  eof encountered earlier then expected...\n");
-		    exit(EXIT_FAILURE);
-		}
-		memcpy(cpy_buff + ctmp, commands, clen - ctmp);
-		cptr = commands + clen - ctmp;
-	    } else {
-		cptr += clen + 1;
-	    }
-	    // hokay, buffer shite is done w/.  now do actual copy command handling. 
-	    if(ccom >=249 && ccom <=251)
-		ctmp=2;
-	    else if(ccom >=252 && ccom <=254)
-		ctmp=4;
-	    else 
-		ctmp=8;
-	    offset = readSignedBytes(cpy_buff, ctmp);
-	    
-	    if(ccom==249 || ccom==252)
-		clen=1;
-	    else if(ccom==250 || ccom==253)
-		clen=2;
-	    else
-		clen=4;
-	    len = readUnsignedBytes(cpy_buff+ctmp, clen);
-	    printf("copy command delta_pos(%lu), fh_pos(%lu), type(%u), offset(%ld), ref_pos(%lu) len(%lu)\n",
-		delta_pos, fh_pos, ccom, offset, fh_pos + offset, len);
-	    delta_pos += clen + ctmp + 1;
-	    if(lseek(src_fh, dc_pos + offset, SEEK_SET)!= dc_pos + offset) {
-		printf("well that's weird, couldn't lseek.\n");
-		exit(EXIT_FAILURE);
-	    }
-	    fh_pos +=len;
-	    while(len) {
-		clen=(read(src_fh, buffer, MIN(1024, len)));
-		if(clen != 1024 && clen != len) {
-		    printf("hmm, error reading src_fh.\n");
-		    printf("clen(%u), len(%lu)\n", clen, len);
-		    exit(EXIT_FAILURE);
-		}
-		if(write(out_fh, buffer, clen) != clen){
-		    printf("hmm, error writing the versionned file.\n");
-		    exit(EXIT_FAILURE);
-		}
-		len -= clen;
-	    }
-	    dc_pos += offset;
-	}
-	if(cptr == commands + buff_filled) {
-	    printf("refreshing buffer: cptr(%u)==buff_filled(%u)\n", cptr - commands, buff_filled);
-	    if((buff_filled=read(delta_fh, commands, 512))==0){
-		printf("ahem.  the delta file is empty?\n");
-		exit(EXIT_FAILURE);
-	    }
-	    cptr=commands;
-	    //continue;
-	}
-	/*if(cptr == commands + buff_filled) {
-	    printf("refreshing buffer: cptr(%u)==buff_filled(%u)\n", cptr - commands, buff_filled);
-	    if((buff_filled=read(delta_fh, commands, 512))==0){
-		printf("ahem.  the delta file is empty?\n");
-		exit(EXIT_FAILURE);
-	    }
-	    cptr=commands;
-	}*/
-    }
-    printf("end was found(%u) at delta_pos(%lu), cptr(%u), buff(%u)\n", *cptr==0 ? 1 : 0, delta_pos,
-	cptr - commands, buff_filled);
-    printf("processed bytes(%lu) of bytes(%lu) available\n", delta_pos + (*cptr==0 ? 1: 0), delta_stat.st_size);
+    /*signed int gdiffReconstructFiles(int src_fh, int out_fh,
+    struct PatchDeltaBuffer *PDBuff, unsigned int offset_type,
+    unsigned int gdiff_version);*/
+    initPDBuffer(&PDBuff, delta_fh, 5, 4096);
+    printf("here goes...\n");
+    printf("dumping initial buffer\n");
+    printf("initial value(%u)\n", PDBuff.buffer[0]);
+    printf("filled_len(%u), buff(%u)\n", PDBuff.filled_len, PDBuff.buff_size);
+    //printf("%*s\n", 5800, PDBuff.buffer);
+    gdiffReconstructFile(src_fh, out_fh, &PDBuff, ENCODING_OFFSET_START, 4);
 }
+

@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
-#include "delta.h"
 #include "gdiff.h"
 #include "bit-functions.h"
 
@@ -34,7 +33,7 @@ signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer,
     else if(offset_type==ENCODING_OFFSET_DC_POS)
 	writeUBytes(fh, GDIFF_VER6, GDIFF_VER_LEN);
     else {
-	printf("wtf, gdiff doesn't know offset_type(%u). bug.\n");
+	printf("wtf, gdiff doesn't know offset_type(%u). bug.\n",offset_type);
 	exit(1);
     }
     while(buffer->count--){
@@ -130,7 +129,7 @@ signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer,
 	    convertUBytesChar(out_buff + clen, buffer->lb_tail->len, lb);
 	    clen+=lb;		
 	    printf("writing copy command delta_pos(%lu), fh_pos(%lu), type(%u), offset(%ld), len(%lu)\n",
-		delta_pos, fh_pos, clen, s_off, buffer->lb_tail->len);
+		delta_pos, fh_pos, out_buff[0], (off_is_sbytes ? s_off: u_off), buffer->lb_tail->len);
 	    if(clen!=write(fh, out_buff, clen)) {
 		printf("shite, couldn't write copy command. eh?\n");
 		exit(1);
@@ -147,8 +146,158 @@ signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer,
 	((float)adds_in_buff)/((float)copies + (float)adds_in_buff)*100);
     printf("adds in file(%lu), average # of commands per add(%f)\n", adds_in_file,
 	((float)adds_in_file)/((float)(adds_in_buff)));
+    //ahem.  better error handling/returning needed. in time, in time...
     return 0;
-
 }
 
-
+signed int gdiffReconstructFile(int src_fh, int out_fh,
+	struct PatchDeltaBuffer *PDBuff, unsigned int offset_type,
+	unsigned int gdiff_version)
+{
+    unsigned char *cptr;
+    unsigned long int len, x;
+    unsigned long ver_pos=0, dc_pos=0;
+    unsigned long int u_off;
+    signed long int s_off;
+    int off_is_sbytes, ob, lb;
+    unsigned char cpy_buff[PATCHER_COPY_BUFFER_SIZE];
+    if(offset_type==ENCODING_OFFSET_VERS_POS || offset_type==ENCODING_OFFSET_DC_POS)
+	off_is_sbytes=1;
+    else if(offset_type==ENCODING_OFFSET_START)
+	off_is_sbytes=0;
+    else {
+	printf("wtf, unknown offset_type for reconstruction(%u)\n",offset_type);
+	exit(1);
+    }
+    cptr= PDBuff->buffer;
+    while(*cptr != 0) {
+	printf("fh_pos(%lu), command(%u), cptr(%u)\n", ver_pos, *cptr, cptr - PDBuff->buffer);
+	if(*cptr > 0 && *cptr <= 248) {
+	    //add command
+	    printf("add command\n");
+	    if(*cptr >=247 && *cptr <= 248){
+		if (*cptr==247)
+		    lb=2;
+		else if (*cptr==248)
+		    lb=4;
+		if(PDBuff->filled_len - (cptr - PDBuff->buffer) < lb + 1) {
+		    printf("refreshing buffer for add command\n");
+		    refreshPDBuffer(PDBuff, PDBuff->filled_len - (cptr - PDBuff->buffer));
+		    cptr = PDBuff->buffer;
+		    printf("after refreshing, cptr(%u)\n", *cptr);
+		}
+		len= readUnsignedBytes(cptr + 1, lb);
+		cptr+=lb;
+	    } else
+		len=*cptr;
+	    cptr++;
+	    printf("first byte of add command(%u) is (%u)\n", *(cptr -1), *cptr);
+	    //printf("add  command delta_pos(%lu), fh_pos(%lu), len(%u)\n", PDBuff->delta_pos, fh_pos, ccom);
+	    //clen = MIN(buff_filled - (cptr - commands), ccom);
+	    //printf("len(%lu), clen(%lu)\n", *cptr, clen);
+	    ver_pos += len;
+	    while(len) {
+		x=MIN(len, PDBuff->filled_len - (cptr - PDBuff->buffer));
+		printf("   adding, len(%lu), x(%lu)\n", len, x);
+		if((write(out_fh, cptr, x))!=x) {
+		    printf("Weird... error writing to out_fh\n");
+		    exit(1);
+		}
+		len-=x;
+		if(len) {
+		    printf("refreshing buffer w/in add\n");
+		    refreshPDBuffer(PDBuff, 0);
+		    cptr=PDBuff->buffer;
+		} else 
+		    cptr+=x;
+	    }
+	    printf("left with cptr(%u)\n", *cptr);
+	} else if(*cptr >= 249 ) {
+	    //copy command
+	    printf("copy command cptr(%u), pos(%u)\n", *cptr, cptr - PDBuff->buffer );
+	    if(*cptr >=249 && *cptr <= 251) {
+		ob=2;
+		if(*cptr==249)
+		    lb=1;
+		else if(*cptr==250)
+		    lb=2;
+		else if(*cptr==251)
+		    lb=4;
+	    } else if (*cptr >=252 && *cptr <=254) {
+		ob=4;
+		if(*cptr==252)
+		    lb=1;
+		if(*cptr==253)
+		    lb=2;
+		if(*cptr==254)
+		    lb=4;
+	    } else {
+		ob=8;
+		lb=4;
+	    }
+	    if(PDBuff->filled_len - (cptr - PDBuff->buffer) < 1 + ob + lb) {
+		printf("refreshing buffer in copy, cptr(%u), filled_len(%u), (%u)\n",
+		       PDBuff->filled_len, cptr - PDBuff->buffer,
+		       PDBuff->filled_len - (cptr - PDBuff->buffer));
+		refreshPDBuffer(PDBuff, PDBuff->filled_len - (cptr - PDBuff->buffer));
+		cptr = PDBuff->buffer;
+		printf("cptr(%u)\n", *cptr);
+	    }
+	    cptr++;
+	    if(off_is_sbytes) {
+		s_off=readSignedBytes(cptr, ob);
+		//convertSBytesChar(out_buff + 1, s_off, ob);
+	    } else {
+		//convertUBytesChar(out_buff + 1, u_off, ob);
+		u_off=readUnsignedBytes(cptr, ob);
+	    }
+	    cptr+=ob;
+	    len = readUnsignedBytes(cptr, lb);
+	    printf("copy len(%lu)\n", len);
+	    cptr+=lb;
+	    if(offset_type!=ENCODING_OFFSET_START) {
+		if(offset_type==ENCODING_OFFSET_VERS_POS)
+		    u_off = ver_pos + s_off;
+		else //ENCODING_DC_POS
+		    dc_pos = u_off = dc_pos + s_off;
+	    }
+	    /*printf("copy command delta_pos(%lu), fh_pos(%lu), type(%u), offset(%ld), ref_pos(%lu) len(%lu)\n",
+		delta_pos, fh_pos, ccom, offset, fh_pos + offset, len);*/
+	    if(lseek(src_fh, u_off, SEEK_SET)!= u_off) {
+		printf("well that's weird, couldn't lseek.\n");
+		exit(EXIT_FAILURE);
+	    }
+	    ver_pos+=len;
+	    while(len) {
+		x = MIN(PATCHER_COPY_BUFFER_SIZE, len);
+		printf("copying (%u) bytes of len(%u)\n", x ,len);
+		if(read(src_fh, cpy_buff, MIN(PATCHER_COPY_BUFFER_SIZE, len)) != x) {
+		    printf("hmm, error reading src_fh.\n");
+		    //printf("clen(%u), len(%lu)\n", clen, len);
+		    exit(EXIT_FAILURE);
+		}
+		if(write(out_fh, cpy_buff, x) != x){
+		    printf("hmm, error writing the versionned file.\n");
+		    exit(EXIT_FAILURE);
+		}
+		len -= x;
+	    }
+	}
+	if(cptr - PDBuff->buffer == PDBuff->filled_len) {
+	    printf("refreshing buffer\n");
+	    //printf("refreshing buffer: cptr(%u)==buff_filled(%u)\n", cptr - commands, buff_filled);
+	    refreshPDBuffer(PDBuff, 0);
+	    cptr = PDBuff->buffer;
+	    //continue;
+	}
+	/*if(cptr == commands + buff_filled) {
+	    printf("refreshing buffer: cptr(%u)==buff_filled(%u)\n", cptr - commands, buff_filled);
+	    if((buff_filled=read(delta_fh, commands, 512))==0){
+		printf("ahem.  the delta file is empty?\n");
+		exit(EXIT_FAILURE);
+	    }
+	    cptr=commands;
+	}*/
+    }
+    return 0;
+}
