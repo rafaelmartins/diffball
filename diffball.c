@@ -19,8 +19,9 @@ int main(int argc, char **argv)
     unsigned long x;
     char src_common[256], trg_common[256];  /* common dir's... */
     unsigned int src_common_len=0, trg_common_len=0;
-    char *text = "debianutils-1.16.7/which.1";
-
+    /*probably should convert these arrays to something more compact, use bit masking. */
+    unsigned char *source_matches, *target_matches;
+    
 /*    printf("sizeof struct tar_entry=%u, sizeof *tar_entry=%u, size of **tar_entry=%u\n",
         sizeof(struct tar_entry), sizeof(struct tar_entry *), sizeof(struct tar_entry**));
     printf("sizeof *char[6]=%u\n", sizeof(char *[6]));*/
@@ -94,24 +95,44 @@ int main(int argc, char **argv)
     for (x=0; x < source_count; x++)
         source[x]->fullname_ptr= (char *)source[x]->fullname + src_common_len;
     for (x=0; x < target_count; x++) 
-        target[x]->fullname_ptr = (char *)target[x]->fullname + trg_common_len;
-    //printf("testing something='%s'\n", (char *)source[2]->fullname_ptr);
-    
+        target[x]->fullname_ptr = (char *)target[x]->fullname + trg_common_len;    
     /* this next one is moreso for bsearch's, but it's prob useful for the common-prefix alg too */
     qsort((struct tar_entry **)target, target_count, sizeof(struct tar_entry *), cmp_tar_entries);
     printf("qsort done\n");
+
+    /* the following is for identifying changed files. */
+    if((source_matches = (char*)malloc(source_count))==NULL) {
+	perror("couldn't alloc needed memory, dieing.\n");
+	exit(EXIT_FAILURE);
+    }
+    if((target_matches = (char*)malloc(target_count))==NULL) {
+	perror("couldn't alloc needed memory, dieing.\n");
+	exit(EXIT_FAILURE);
+    }
+    for(x=0; x < target_count; x++)
+	target_matches[x] = '0';
+    
+    printf("looking for matching filenames in the archives...\n");
     for(x=0; x< source_count; x++) {
         //entry=source[x];
+	//printf("checking '%s'\n", source[x]->fullname);
         vptr = bsearch((const void **)&source[x], (const void **)target, target_count,
             sizeof(struct tar_entry **), cmp_tar_entries);
         if(vptr == NULL) {
-            printf("'%s' not found!\n", source[x]->fullname_ptr);
+	    source_matches[x] = '0';
+            //printf("'%s' not found!\n", source[x]->fullname_ptr);
         } else {
+	    /*printf("matched  '%s'\n", target[(struct tar_entry **)vptr - target]->fullname);
+	    printf("correct  '%s'\n\n", ((*(struct tar_entry **)vptr)->fullname));*/
+	    source_matches[x] = '1';
+	    /* note this works since the type cast makes ptr arithmetic already deal w/ ptr size. */
+	    target_matches[(struct tar_entry **)vptr - target] = '1';
+	    //target_matches[(vptr - target)/(sizeof(struct tar_entry **))] = '1';
+	    //target_matches[((struct tar_entry *)
             //printf("'%s' found!\n", source[x]->fullname_ptr);
         }
     }
-
-
+    
         
     /* cleanup */
     printf("freeing source: elements, ");
