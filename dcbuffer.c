@@ -29,7 +29,7 @@ int
 DCB_register_src(CommandBuffer *dcb, cfile *cfh, dcb_src_read_func read_func, 
     unsigned char free, unsigned char type)
 {
-    v0printf("in DCB_REGISTER_SRC\n")
+    v3printf("registering cfh_id(%u), as buffer id(%u)\n", cfh->cfh_id, dcb->src_count);
     if(dcb->src_count == dcb->src_array_size) {
 	if((dcb->src_cfh = (cfile **)realloc(dcb->src_cfh, sizeof(cfile *) 
 	    * dcb->src_array_size * 2))==NULL) {
@@ -529,6 +529,7 @@ DCBufferFree(CommandBuffer *buffer)
 	buffer->src_free[x] = 0;
 	buffer->src_type[x] = 0;
     }
+    free(buffer->src_read_func);
     free(buffer->src_cfh);
     buffer->src_count = buffer->src_array_size = 0;
     if(buffer->extra_patch_data)

@@ -18,6 +18,7 @@
 #ifndef _HEADER_APPLY_PATCH
 #define _HEADER_APPLY_PATCH 1
 
-int reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh);
+int reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh, 
+    int reorder_for_seq_access);
 
 #endif 

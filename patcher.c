@@ -171,7 +171,7 @@ main(int argc, char **argv)
 //	DCBUFFER_REGISTER_COPY_SRC(&dcbuff, &src_cfh, NULL, 0);
 	if(copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY)) {
 	    v0printf("error opening output file, exitting\n");
-	} else if(reconstructFile(&dcbuff, &out_cfh)) {
+	} else if(reconstructFile(&dcbuff, &out_cfh,1)) {
 	    v0printf("error detected while reconstructing file, quitting\n");
 	    //remove the file here.
 	}

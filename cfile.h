@@ -69,8 +69,6 @@ SEEK_END
 #define CSEEK_FSTART	3
 
 typedef struct {
-/* don't really need start I guess.. */
-//    unsigned long start;
     unsigned long offset;
     unsigned long pos;
     unsigned long end;
@@ -132,12 +130,6 @@ typedef struct _cfile {
 
 #define ENSURE_LSEEK_POSITION(cfh)					\
     (LAST_LSEEKER(cfh) == (cfh)->cfh_id ? 0 : raw_cseek(cfh))
-
-/*#define NEEDS_RAW_CSEEK(cfh)						\
-    (( ((cfh)->state_flags & CFILE_CHILD_CFH) ?				\
-	(*(cfh)->lseek_info.last_ptr)  :				\
-	(cfh)->lseek_info.parent.last) != (cfh)->cfh_id)
-*/
 
 int internal_copen(cfile *cfh, int fh, 
     unsigned long raw_fh_start, unsigned long raw_fh_end,
