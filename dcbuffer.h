@@ -77,6 +77,11 @@ typedef unsigned long (*dcb_src_read_func)(DCommand *, unsigned long,
     unsigned char *, unsigned long);
 typedef unsigned long (*dcb_src_copy_func)(DCommand *, cfile *);
 
+typedef union {
+    cfile	*cfh;
+    DCB_ptr	dcb;
+} dcb_src;
+
 typedef struct _CommandBuffer {
     off_u64 src_size;
     off_u64 ver_size;
@@ -107,11 +112,7 @@ typedef struct _CommandBuffer {
 	    unsigned long free_size, free_count;
 	} llm;
     } DCB;
-
-    union {
-	cfile	**cfh;
-	DCB_ptr *dcb;
-    } srcs;
+    dcb_src *srcs;
     dcb_src_read_func *src_read_func;
     dcb_src_copy_func *src_copy_func;
     unsigned int src_array_size, src_count;
