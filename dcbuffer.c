@@ -25,158 +25,208 @@
 
 extern unsigned int verbosity;
 
-unsigned long inline current_command_type(CommandBuffer *buff) {
-        return ((*buff->cb_tail >> buff->cb_tail_bit) & 0x01);
+unsigned long 
+inline current_command_type(CommandBuffer *buff)
+{
+    if(DCBUFFER_FULL_TYPE == buff->DCBtype) {
+        return ((*buff->DCB.full.cb_tail >> buff->DCB.full.cb_tail_bit) & 0x1);
+    }
+    return 0;
 }
 
-void DCBufferTruncate(CommandBuffer *buffer, unsigned long len)
+DCLoc *
+current_DCLoc(CommandBuffer *buff)
+{
+    assert(buff->DCBtype == DCBUFFER_FULL_TYPE);
+    return buff->DCB.full.lb_tail;
+}
+
+void 
+DCBufferTruncate(CommandBuffer *buffer, unsigned long len)
 {
     //get the tail to an actual node.
     DCBufferDecr(buffer);
     //v2printf("truncation: \n");
     while(len) {
-		/* should that be less then or equal? */
-		if (buffer->lb_tail->len <= len) {
-		    len -= buffer->lb_tail->len;
+	/* should that be less then or equal? */
+	if (buffer->DCB.full.lb_tail->len <= len) {
+	    len -= buffer->DCB.full.lb_tail->len;
 //		    v2printf("    whole removal of type(%u), offset(%lu), len(%lu)\n",
 //			(*buffer->cb_tail & (1 << buffer->cb_tail_bit)) >> buffer->cb_tail_bit, buffer->lb_tail->offset,
 //			buffer->lb_tail->len);
-		    DCBufferDecr(buffer);
-		    buffer->buffer_count--;
-		} else {
+	    DCBufferDecr(buffer);
+	    buffer->DCB.full.buffer_count--;
+	} else {
 //		    v2printf("    partial adjust of type(%u), offset(%lu), len(%lu) is now len(%lu)\n",
 //			(*buffer->cb_tail & (1 << buffer->cb_tail_bit))>buffer->cb_tail_bit, buffer->lb_tail->offset,
 //			buffer->lb_tail->len, buffer->lb_tail->len - len);
-		    buffer->lb_tail->len -= len;
-		    len=0;
-		}
-    }
-    DCBufferIncr(buffer);
-}
-
-
-void DCBufferIncr(CommandBuffer *buffer)
-{
-    buffer->lb_tail = (buffer->lb_end==buffer->lb_tail) ?
-	 buffer->lb_start : buffer->lb_tail + 1;
-    if (buffer->cb_tail_bit >= 7) {
-	buffer->cb_tail_bit = 0;
-	buffer->cb_tail = (buffer->cb_tail == buffer->cb_end) ? buffer->cb_start : buffer->cb_tail + 1;
-    } else {
-	buffer->cb_tail_bit++;
-    }
-}
-
-void DCBufferDecr(CommandBuffer *buffer)
-{
-    buffer->lb_tail--;
-    if (buffer->cb_tail_bit != 0) {
-	buffer->cb_tail_bit--;
-    } else {
-	buffer->cb_tail = (buffer->cb_tail == buffer->cb_start) ? buffer->cb_end : buffer->cb_tail - 1;
-	buffer->cb_tail_bit=7;
-    }
-}
-
-void DCBufferAddCmd(CommandBuffer *buffer, int type, unsigned long offset, unsigned long len)
-{
-    if(buffer->lb_tail == buffer->lb_end) {
-	v1printf("resizing command buffer from %lu to %lu\n", 
-	    buffer->buffer_size, buffer->buffer_size * 2);
-	if((buffer->cb_start = (char *)realloc(buffer->cb_start,
-	    buffer->buffer_size /4 ))==NULL) {
-	    v0printf("resizing command buffer failed, exiting\n");
-	    exit(EXIT_FAILURE);
-	} else if((buffer->lb_start = (DCLoc *)realloc(buffer->lb_start, 
-	    buffer->buffer_size * 2 * sizeof(DCLoc)) )==NULL) {
-	    v0printf("resizing command buffer failed, exiting\n");
-	    exit(EXIT_FAILURE);
+	    buffer->DCB.full.lb_tail->len -= len;
+	    len=0;
 	}
-	buffer->buffer_size *= 2;
-	buffer->cb_head = buffer->cb_start;
-	buffer->lb_head = buffer->lb_start;
-	buffer->lb_tail = buffer->lb_start + buffer->buffer_count;
-	buffer->cb_tail = buffer->cb_start + (buffer->buffer_count/8);
-	buffer->lb_end = buffer->lb_start + buffer->buffer_size -1;
-	buffer->cb_end = buffer->cb_start + (buffer->buffer_size/8) -1;
     }
-    buffer->lb_tail->offset = offset;
-    buffer->lb_tail->len = len;
-    if (type==DC_ADD)
-		*buffer->cb_tail &= ~(1 << buffer->cb_tail_bit);
-    else
-		*buffer->cb_tail |= (1 << buffer->cb_tail_bit);
-    buffer->buffer_count++;
     DCBufferIncr(buffer);
 }
 
-void DCBufferCollapseAdds(CommandBuffer *buffer)
+
+void 
+DCBufferIncr(CommandBuffer *buffer)
 {
-	unsigned long count, *plen;
-	unsigned int continued_add;
-	count = buffer->buffer_count;
-	buffer->lb_tail = buffer->lb_start;
-	buffer->cb_tail = buffer->cb_head;
-	buffer->cb_tail_bit = buffer->cb_head_bit;
-	continued_add=0;
-	plen = NULL;
+    assert(DCBUFFER_FULL_TYPE==buffer->DCBtype);
+    buffer->DCB.full.lb_tail = (buffer->DCB.full.lb_end == 
+	buffer->DCB.full.lb_tail) ?
+    buffer->DCB.full.lb_start : buffer->DCB.full.lb_tail + 1;
+    if (buffer->DCB.full.cb_tail_bit >= 7) {
+	buffer->DCB.full.cb_tail_bit = 0;
+	buffer->DCB.full.cb_tail = (buffer->DCB.full.cb_tail == 
+	    buffer->DCB.full.cb_end) ? buffer->DCB.full.cb_start : 
+	    buffer->DCB.full.cb_tail + 1;
+    } else {
+	buffer->DCB.full.cb_tail_bit++;
+    }
+}
+
+void 
+DCBufferDecr(CommandBuffer *buffer)
+{
+    assert(DCBUFFER_FULL_TYPE == buffer->DCBtype);
+    buffer->DCB.full.lb_tail--;
+    if (buffer->DCB.full.cb_tail_bit != 0) {
+	buffer->DCB.full.cb_tail_bit--;
+    } else {
+	buffer->DCB.full.cb_tail = (buffer->DCB.full.cb_tail == 
+	    buffer->DCB.full.cb_start) ? buffer->DCB.full.cb_end : 
+	    buffer->DCB.full.cb_tail - 1;
+	buffer->DCB.full.cb_tail_bit=7;
+    }
+}
+
+void 
+DCBufferAddCmd(CommandBuffer *buffer, int type, unsigned long offset, 
+    unsigned long len)
+{
+    if(buffer->DCBtype==DCBUFFER_FULL_TYPE) {
+	if(buffer->DCB.full.lb_tail == buffer->DCB.full.lb_end) {
+	    v1printf("resizing command buffer from %lu to %lu\n", 
+		buffer->DCB.full.buffer_size, buffer->DCB.full.buffer_size * 2);
+	    if((buffer->DCB.full.cb_start = (char *)realloc(
+		buffer->DCB.full.cb_start, buffer->DCB.full.buffer_size /4 ))
+		==NULL) {
+
+		v0printf("resizing command buffer failed, exiting\n");
+		exit(EXIT_FAILURE);
+	    } else if((buffer->DCB.full.lb_start = 
+		(DCLoc *)realloc(buffer->DCB.full.lb_start, 
+		buffer->DCB.full.buffer_size * 2 * sizeof(DCLoc)) )==NULL) {
+		v0printf("resizing command buffer failed, exiting\n");
+		exit(EXIT_FAILURE);
+	    }
+	    buffer->DCB.full.buffer_size *= 2;
+	    buffer->DCB.full.cb_head = buffer->DCB.full.cb_start;
+	    buffer->DCB.full.lb_head = buffer->DCB.full.lb_start;
+	    buffer->DCB.full.lb_tail = buffer->DCB.full.lb_start + 
+		buffer->DCB.full.buffer_count;
+	    buffer->DCB.full.cb_tail = buffer->DCB.full.cb_start + 
+		(buffer->DCB.full.buffer_count/8);
+	    buffer->DCB.full.lb_end = buffer->DCB.full.lb_start + 
+		buffer->DCB.full.buffer_size -1;
+	    buffer->DCB.full.cb_end = buffer->DCB.full.cb_start + 
+		(buffer->DCB.full.buffer_size/8) -1;
+	}
+	buffer->DCB.full.lb_tail->offset = offset;
+	buffer->DCB.full.lb_tail->len = len;
+	if (type==DC_ADD)
+	    *buffer->DCB.full.cb_tail &= ~(1 << buffer->DCB.full.cb_tail_bit);
+	else
+	    *buffer->DCB.full.cb_tail |= (1 << buffer->DCB.full.cb_tail_bit);
+	buffer->DCB.full.buffer_count++;
+	DCBufferIncr(buffer);
+    }
+}
+
+void 
+DCBufferCollapseAdds(CommandBuffer *buffer)
+{
+    unsigned long count, *plen;
+    unsigned int continued_add;
+    count = buffer->DCB.full.buffer_count;
+    buffer->DCB.full.lb_tail = buffer->DCB.full.lb_start;
+    buffer->DCB.full.cb_tail = buffer->DCB.full.cb_head;
+    buffer->DCB.full.cb_tail_bit = buffer->DCB.full.cb_head_bit;
+    continued_add=0;
+    plen = NULL;
+    if(buffer->DCBtype==DCBUFFER_FULL_TYPE){
 	while(count--) {
-	    if((*buffer->cb_tail & (1 << buffer->cb_tail_bit))==DC_ADD) {
+	    if((*buffer->DCB.full.cb_tail & (1 << 
+		buffer->DCB.full.cb_tail_bit))==DC_ADD) {
 		if(continued_add) {
-		    *plen += buffer->lb_tail->len;
-		    buffer->lb_tail->len = 0;
+		    *plen += buffer->DCB.full.lb_tail->len;
+		    buffer->DCB.full.lb_tail->len = 0;
 		} else {
 		    continued_add = 1;
-		    plen = &buffer->lb_tail->len;
+		    plen = &buffer->DCB.full.lb_tail->len;
 		}
 	    } else {
 		continued_add=0;
 	    }
 	    DCBufferIncr(buffer);
 	}
+    }
 }
 
 unsigned long 
 DCBufferReset(CommandBuffer *buffer)
 {
-    buffer->lb_tail = buffer->lb_start;
-    buffer->cb_tail = buffer->cb_head;
-    buffer->cb_tail_bit = buffer->cb_head_bit;
-    return buffer->buffer_count;
+    if(DCBUFFER_FULL_TYPE == buffer->DCBtype) {
+	buffer->DCB.full.lb_tail = buffer->DCB.full.lb_start;
+	buffer->DCB.full.cb_tail = buffer->DCB.full.cb_head;
+	buffer->DCB.full.cb_tail_bit = buffer->DCB.full.cb_head_bit;
+	return buffer->DCB.full.buffer_count;
+    }
+    return 0;
 }
 
 void DCBufferFree(CommandBuffer *buffer)
 {
     if(buffer->flags & ADD_CFH_FREE_FLAG)
 	free(buffer->add_cfh);
-    free(buffer->cb_start);
-    free(buffer->lb_start);
+    if(DCBUFFER_FULL_TYPE == buffer->DCBtype) {
+	free(buffer->DCB.full.cb_start);
+	free(buffer->DCB.full.lb_start);
+    }
 }
 
 void DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size, 
-    unsigned long src_size, unsigned long ver_size)
+    unsigned long src_size, unsigned long ver_size, unsigned char type)
 {
-    buffer->buffer_count=0;
+//    buffer->buffer_count=0;
     buffer->flags =0;
     buffer->src_size = src_size;
     buffer->ver_size = ver_size;
-    buffer_size = (buffer_size > 0 ? (buffer_size/8) : 0) + 1;
-    buffer->buffer_size = buffer_size * 8;
-    /* non-intuitive, but note I'm using *buffer_size* rather then 
-	buffer->buffer_size.  it makes one hell of a difference. */
-    if((buffer->cb_start = (unsigned char *)malloc(buffer_size))==NULL){
-	perror("shite, malloc failed\n");
-	exit(EXIT_FAILURE);
+    buffer->DCBtype = type;
+    if(type == DCBUFFER_FULL_TYPE) {
+	buffer->DCB.full.buffer_count = 0;
+	buffer_size = (buffer_size > 0 ? (buffer_size/8) : 0) + 1;
+	buffer->DCB.full.buffer_size = buffer_size * 8;
+	/* non-intuitive, but note I'm using *buffer_size* rather then 
+	  buffer->DCB.full.buffer_size.  it makes one hell of a difference. */
+	if((buffer->DCB.full.cb_start =
+	    (unsigned char *)malloc(buffer_size))==NULL){
+	    perror("shite, malloc failed\n");
+	    exit(EXIT_FAILURE);
+	}
+	buffer->DCB.full.cb_head = buffer->DCB.full.cb_tail = 
+	    buffer->DCB.full.cb_start;
+	buffer->DCB.full.cb_end = buffer->DCB.full.cb_start + buffer_size - 1;
+	buffer->DCB.full.cb_head_bit = buffer->DCB.full.cb_tail_bit = 0;
+	if((buffer->DCB.full.lb_start = (DCLoc *)malloc(sizeof(DCLoc) * 
+	    buffer->DCB.full.buffer_size))==NULL){
+	    perror("shite, malloc failed\n");
+	    exit(EXIT_FAILURE);
+	}
+        buffer->DCB.full.lb_head = buffer->DCB.full.lb_tail = 
+	    buffer->DCB.full.lb_start;
+	buffer->DCB.full.lb_end = buffer->DCB.full.lb_start + 
+	    buffer->DCB.full.buffer_size - 1;
     }
-    buffer->cb_head = buffer->cb_tail = buffer->cb_start;
-    buffer->cb_end = buffer->cb_start + buffer_size - 1;
-    buffer->cb_head_bit = buffer->cb_tail_bit = 0;
-    if((buffer->lb_start = (DCLoc *)malloc(sizeof(DCLoc) * 
-	buffer->buffer_size))==NULL){
-	perror("shite, malloc failed\n");
-	exit(EXIT_FAILURE);
-    }
-    buffer->lb_head = buffer->lb_tail = buffer->lb_start;
-    buffer->lb_end = buffer->lb_start + buffer->buffer_size - 1;
 }
 

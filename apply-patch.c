@@ -25,24 +25,25 @@
 void 
 reconstructFile(CommandBuffer *dcbuff, cfile *src_cfh, cfile *out_cfh)
 {
+    assert(DCBUFFER_FULL_TYPE == dcbuff->DCBtype);
     unsigned long count;
     count = DCBufferReset(dcbuff);
     while(count--) {
 	if(current_command_type(dcbuff)==DC_COPY) {
 	    v2printf("copy command, offset(%lu), len(%lu)\n",
-		dcbuff->lb_tail->offset, dcbuff->lb_tail->len);
-		//cseek(src_cfh, dcbuff->lb_tail->offset, CSEEK_FSTART);
-	    if(dcbuff->lb_tail->len != 
-		copy_cfile_block(out_cfh, src_cfh, dcbuff->lb_tail->offset,
-		dcbuff->lb_tail->len))
+		DCBF_cur_off(dcbuff), DCBF_cur_len(dcbuff));
+		//cseek(src_cfh, DCBF_cur_off(dcbuff), CSEEK_FSTART);
+	    if(DCBF_cur_len(dcbuff) != 
+		copy_cfile_block(out_cfh, src_cfh, DCBF_cur_off(dcbuff),
+		DCBF_cur_len(dcbuff)))
 		abort();
 	} else {
 	    v2printf("add command, offset(%lu), len(%lu)\n", 
-		dcbuff->lb_tail->offset, dcbuff->lb_tail->len);
-	    if(dcbuff->lb_tail->len !=
+		DCBF_cur_off(dcbuff), DCBF_cur_len(dcbuff));
+	    if(DCBF_cur_len(dcbuff) !=
 		copy_cfile_block(out_cfh, dcbuff->add_cfh, 
-		    dcbuff->lb_tail->offset, 
-		dcbuff->lb_tail->len))
+		    DCBF_cur_off(dcbuff), 
+		DCBF_cur_len(dcbuff)))
 		abort();
 	}
 	DCBufferIncr(dcbuff);

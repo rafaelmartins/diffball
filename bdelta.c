@@ -86,7 +86,7 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *ver_cfh,
 	add_len=0;
 	if(DC_ADD==current_command_type(dcbuff)) {
 	    do {
-		add_len += dcbuff->lb_tail->len;
+		add_len += DCBF_cur_len(dcbuff);
 	    	count--;
 		DCBufferIncr(dcbuff);
 	    } while(count!=0 && current_command_type(dcbuff)==DC_ADD);
@@ -94,19 +94,19 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *ver_cfh,
 	}
 	/* basically a fall through to copy, if count!=0 */
 	if(count != 0) {
-	    copy_len = dcbuff->lb_tail->len;
-	    if(dc_pos > dcbuff->lb_tail->offset) {
+	    copy_len = DCBF_cur_len(dcbuff);
+	    if(dc_pos > DCBF_cur_off(dcbuff)) {
 		v2printf("negative offset, dc_pos(%lu), offset(%lu)\n",
-		    dc_pos, dcbuff->lb_tail->offset);
-		copy_offset = dcbuff->lb_tail->offset + (~dc_pos + 1);
+		    dc_pos, DCBF_cur_off(dcbuff));
+		copy_offset = DCBF_cur_off(dcbuff) + (~dc_pos + 1);
 	    } else {
 		v2printf("positive offset, dc_pos(%lu), offset(%lu)\n",
-		    dc_pos, dcbuff->lb_tail->offset);
-		copy_offset = dcbuff->lb_tail->offset - dc_pos;
+		    dc_pos, DCBF_cur_off(dcbuff));
+		copy_offset = DCBF_cur_off(dcbuff) - dc_pos;
 	    }
-	    dc_pos = dcbuff->lb_tail->offset + dcbuff->lb_tail->len;
+	    dc_pos = DCBF_cur_off(dcbuff) + DCBF_cur_len(dcbuff);
 	    v2printf("writing copy_len=%lu, offset=%lu, dc_pos=%lu\n",
-		copy_len, dcbuff->lb_tail->offset, dc_pos);
+		copy_len, DCBF_cur_off(dcbuff), dc_pos);
 	} else {
 	    copy_len = 0;
 	    copy_offset = 0;
@@ -123,9 +123,9 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *ver_cfh,
     v2printf("writing add_block at %lu\n", ctell(patchf, CSEEK_FSTART));
     while(count--) {
 	if(current_command_type(dcbuff)==DC_ADD) {
-	    if(dcbuff->lb_tail->len != 
-		copy_cfile_block(patchf, ver_cfh, dcbuff->lb_tail->offset,
-		dcbuff->lb_tail->len) )
+	    if(DCBF_cur_len(dcbuff) != 
+		copy_cfile_block(patchf, ver_cfh, DCBF_cur_off(dcbuff),
+		DCBF_cur_len(dcbuff)) )
 		abort();
 	}
 	DCBufferIncr(dcbuff);

@@ -59,39 +59,39 @@ bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh, cfile *out_cfh)
     while(count--) {
 	if(DC_COPY==current_command_type(buffer)) {
 	    v2printf("copy command, out_cfh(%lu), fh_pos(%lu), offset(%lu), len(%lu)\n",
-		delta_pos, fh_pos, buffer->lb_tail->offset, 
-		buffer->lb_tail->len);
-	    fh_pos += buffer->lb_tail->len;
+		delta_pos, fh_pos, DCBF_cur_off(buffer), 
+		DCBF_cur_len(buffer));
+	    fh_pos += DCBF_cur_len(buffer);
 	    lb = 5;
 	    buff[0] = 0;
-	    writeUBytesBE(buff + 1, buffer->lb_tail->offset, 4);
-	    if(buffer->lb_tail->len > 5 && 
-		buffer->lb_tail->len <= 5 + 0x3f) {
-		buff[0] = buffer->lb_tail->len -5;
+	    writeUBytesBE(buff + 1, DCBF_cur_off(buffer), 4);
+	    if(DCBF_cur_len(buffer) > 5 && 
+		DCBF_cur_len(buffer) <= 5 + 0x3f) {
+		buff[0] = DCBF_cur_len(buffer) -5;
 	    } else {
-		writeUBytesBE(buff + 5, buffer->lb_tail->len, 4);
+		writeUBytesBE(buff + 5, DCBF_cur_len(buffer), 4);
 		lb += 4;
 	    }
 	    delta_pos += lb;
 	    cwrite(out_cfh, buff, lb);
 	} else {
 	    v2printf("add  command, out_cfh(%lu), fh_pos(%lu), len(%lu)\n", 
-		delta_pos, fh_pos, buffer->lb_tail->len);
-	    fh_pos += buffer->lb_tail->len;
+		delta_pos, fh_pos, DCBF_cur_len(buffer));
+	    fh_pos += DCBF_cur_len(buffer);
 	    buff[0] = 0x80;
 	    lb = 1;
-	    if(buffer->lb_tail->len > 5 && 
-		buffer->lb_tail->len <= 5 + 0x3f) {
-		buff[0] |= buffer->lb_tail->len - 5;
+	    if(DCBF_cur_len(buffer) > 5 && 
+		DCBF_cur_len(buffer) <= 5 + 0x3f) {
+		buff[0] |= DCBF_cur_len(buffer) - 5;
 	    } else {
-		writeUBytesBE(buff + 1, buffer->lb_tail->len, 4);
+		writeUBytesBE(buff + 1, DCBF_cur_len(buffer), 4);
 		lb += 4;
 	    }
-	    delta_pos += lb + buffer->lb_tail->len;
+	    delta_pos += lb + DCBF_cur_len(buffer);
 	    cwrite(out_cfh, buff, lb);
-	    if(buffer->lb_tail->len != 
-		copy_cfile_block(out_cfh, ver_cfh, buffer->lb_tail->offset, 
-		buffer->lb_tail->len))
+	    if(DCBF_cur_len(buffer) != 
+		copy_cfile_block(out_cfh, ver_cfh, DCBF_cur_off(buffer), 
+		DCBF_cur_len(buffer)))
 		abort();
 	}
 	DCBufferIncr(buffer);

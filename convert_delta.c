@@ -132,7 +132,7 @@ main(int argc, char **argv)
 	}
     }
     poptFreeContext(p_opt);
-    DCBufferInit(&dcbuff, 4096,0,0);
+    DCBufferInit(&dcbuff, 4096,0,0, DCBUFFER_FULL_TYPE);
     if(SWITCHING_FORMAT == src_format_id) {
         recon_val = switchingReconstructDCBuff(&in_cfh, &dcbuff);
     } else if(GDIFF4_FORMAT == src_format_id) {
@@ -151,7 +151,7 @@ main(int argc, char **argv)
     v1printf("reconstruction return=%ld\n", recon_val);
     copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
     v1printf("outputing patch...\n");
-    v1printf("there were %lu commands\n", dcbuff.buffer_count);
+    v1printf("there were %lu commands\n", dcbuff.DCB.full.buffer_count);
     if(GDIFF4_FORMAT == trg_format_id) {
         encode_result = gdiff4EncodeDCBuffer(&dcbuff, &in_cfh, &out_cfh);
     } else if(GDIFF5_FORMAT == trg_format_id) {

@@ -33,11 +33,13 @@ extern unsigned int global_verbosity;
 #define v1printf(expr...)  fprintf(stderr,expr);
 #define v2printf(expr...)  if(global_verbosity>0){fprintf(stderr,expr);}
 #define v3printf(expr...)  if(global_verbosity>1){fprintf(stderr,expr);}
+#define v4printf(expr...)  if(global_verbosity>2){fprintf(stderr,expr);}
 #else
 #define assert(expr) ((void)0)
 #define v1printf(expr...)  if(global_verbosity>0){fprintf(stderr,expr);}
 #define v2printf(expr...)  if(global_verbosity>1){fprintf(stderr,expr);}
 #define v3printf(expr...)  if(global_verbosity>2){fprintf(stderr,expr);}
+#define v4printf(expr...)  if(global_verbosity>3){fprintf(stderr,expr);}
 #endif
 
 #ifdef DEBUG_CFILE
@@ -46,7 +48,7 @@ extern unsigned int global_verbosity;
     fprintf(stderr, "%s: ",__FILE__);   \
     fprintf(stderr, fmt);
 #else
-#define dcprintf(expr...) v3printf(expr)
+#define dcprintf(expr...) v4printf(expr)
 #endif
 
 #endif

@@ -241,7 +241,7 @@ int main(int argc, char **argv)
     copen(&ref_full, src_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY |
 	CFILE_OPEN_FH);
     DCBufferInit(&dcbuff, 4096, (unsigned long)ref_stat.st_size, 
-	(unsigned long)ver_stat.st_size);
+	(unsigned long)ver_stat.st_size, DCBUFFER_FULL_TYPE);
     v1printf("initing fallback full reference hash\n");
     init_RefHash(&rhash_full, &ref_full, seed_len, sample_rate, 
 	hash_size);
@@ -336,7 +336,7 @@ int main(int argc, char **argv)
     free(source);
     copen(&ver_full, trg_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     v1printf("outputing patch...\n");
-    v1printf("there were %lu commands\n", dcbuff.buffer_count);
+    v1printf("there were %lu commands\n", dcbuff.DCB.full.buffer_count);
     if(GDIFF4_FORMAT == patch_format_id) { 
         encode_result = gdiff4EncodeDCBuffer(&dcbuff, &ver_full, &out_cfh);
     } else if(GDIFF5_FORMAT == patch_format_id) {

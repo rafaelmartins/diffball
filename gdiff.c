@@ -88,52 +88,56 @@ gdiffEncodeDCBuffer(CommandBuffer *buffer,
     cwrite(out_cfh, out_buff, GDIFF_VER_LEN);
     count = DCBufferReset(buffer);
     while(count--){
-	if(buffer->lb_tail->len==0) {
+//	if(DCBF_cur_len(buffer)==0) {
+	if(DCBF_cur_len(buffer)==0) {
 	    DCBufferIncr(buffer);
 	    continue;
 	}
 	if(current_command_type(buffer)==DC_ADD) {
 	    v2printf("add command, delta_pos(%lu), fh_pos(%lu), len(%lu)\n",
-		delta_pos, fh_pos, buffer->lb_tail->len);
-	    u_off=buffer->lb_tail->len;
-	    if(buffer->lb_tail->len <= 246) {
-		out_buff[0] = buffer->lb_tail->len;
+		delta_pos, fh_pos, DCBF_cur_len(buffer));
+//	    u_off=DCBF_cur_len(buffer);
+	    u_off=DCBF_cur_len(buffer);
+	    if(DCBF_cur_len(buffer) <= 246) {
+		out_buff[0] = DCBF_cur_len(buffer);
 		cwrite(out_cfh, out_buff, 1);
 		delta_pos+=1;
-	    } else if (buffer->lb_tail->len <= 0xffff) {
+	    } else if (DCBF_cur_len(buffer) <= 0xffff) {
 		out_buff[0] = 247;
-		writeUBytesBE(out_buff + 1, buffer->lb_tail->len, 2);
+		writeUBytesBE(out_buff + 1, DCBF_cur_len(buffer), 2);
 		cwrite(out_cfh, out_buff, 3);
 		delta_pos+=3;
-	    } else if (buffer->lb_tail->len <= 0xffffffff) {
+	    } else if (DCBF_cur_len(buffer) <= 0xffffffff) {
 		out_buff[0] = 248;
-		writeUBytesBE(out_buff + 1, buffer->lb_tail->len, 4);
+		writeUBytesBE(out_buff + 1, DCBF_cur_len(buffer), 4);
 		cwrite(out_cfh, out_buff, 5);
 		delta_pos+=5;
 	    } else {
 		v2printf("wtf, encountered an offset larger then int size.  croaking.\n");
 		exit(1);
 	    }
-	    if(buffer->lb_tail->len != 
-		copy_cfile_block(out_cfh, ver_cfh, buffer->lb_tail->offset,
-		buffer->lb_tail->len)) 
+	    if(DCBF_cur_len(buffer) != 
+		copy_cfile_block(out_cfh, ver_cfh, DCBF_cur_off(buffer),
+		DCBF_cur_len(buffer))) 
 		abort();
 
-	    delta_pos += buffer->lb_tail->len;
-	    fh_pos += buffer->lb_tail->len;
+	    delta_pos += DCBF_cur_len(buffer);
+	    fh_pos += DCBF_cur_len(buffer);
 	} else {
 	    if(off_is_sbytes) {
 		if(offset_type==ENCODING_OFFSET_VERS_POS)
-		    s_off = (signed long)buffer->lb_tail->offset - (signed long)fh_pos;
+		    s_off = (signed long)DCBF_cur_off(buffer) - 
+		    (signed long)fh_pos;
 		else if(offset_type==ENCODING_OFFSET_DC_POS)
-		    s_off = (signed long)buffer->lb_tail->offset - (signed long)dc_pos;		
+		    s_off = (signed long)DCBF_cur_off(buffer) - 
+		    (signed long)dc_pos;		
 		u_off = abs(s_off);
 		ob=signedBytesNeeded(s_off);
 	    } else {
-		u_off = buffer->lb_tail->offset;
+		u_off = DCBF_cur_off(buffer);
 		ob=unsignedBytesNeeded(u_off);
 	    }
-	    lb=unsignedBytesNeeded(buffer->lb_tail->len);
+	    lb=unsignedBytesNeeded(DCBF_cur_len(buffer));
 	    if(lb> INT_BYTE_COUNT) {
 		v2printf("wtf, too large of len in gdiff encoding. dieing.\n");
 		exit(1);
@@ -174,15 +178,16 @@ gdiffEncodeDCBuffer(CommandBuffer *buffer,
 	    else 
 		writeUBytesBE(out_buff + clen, u_off, ob);
 	    clen+= ob;
-	    writeUBytesBE(out_buff + clen, buffer->lb_tail->len, lb);
+	    writeUBytesBE(out_buff + clen, DCBF_cur_len(buffer), lb);
 	    clen+=lb;
 	    v2printf("copy delta_pos(%lu), fh_pos(%lu), type(%u), offset(%ld), len(%lu)\n",
-		delta_pos, fh_pos, out_buff[0], (off_is_sbytes ? s_off: u_off), buffer->lb_tail->len);
+		delta_pos, fh_pos, out_buff[0], (off_is_sbytes ? s_off: 
+		u_off), DCBF_cur_len(buffer));
 	    if(cwrite(out_cfh, out_buff, clen)!=clen) {
 		v2printf("shite, couldn't write copy command. eh?\n");
 		exit(1);
 	    }
-	    fh_pos+=buffer->lb_tail->len;
+	    fh_pos += DCBF_cur_len(buffer);
 	    delta_pos+=1 + ob + lb;
 	    dc_pos += s_off;
 	}
