@@ -55,9 +55,16 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
     while(cfile_len(patchf)!= ctell(patchf, CSEEK_FSTART)) {
 //	printf("pos=%lu\n", patchf->data.pos);
 	cread(patchf, buff, 4);
+	if('\\'==buff[0]) {
+	    printf("got me a (hopefully) 'No newline...'\n");
+	    assert(22==cread(patchf, buff + 4, 22));
+	    assert(memcmp(buff,"\\ No newline at end of file", 26)==0);
+	    skip_lines_forward(patchf,1);
+	    continue;
+	}
 	assert(0==memcmp(buff, "@@ -",4));
 	s_line = getUDec(patchf);
-	printf("for segment, s_line(%lu), s_lastline(%lu)\n", s_line, 
+	printf("for segment, s_line(%lu), s_lastline(%lu):", s_line, 
 	    s_lastline);
 	skip_lines_forward(src_cfh, s_line - s_lastline);
 	s_lastline = s_line;
@@ -83,7 +90,8 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 	while(line_count < v_len) {
 //	    printf("line_count=%lu, v_len=%lu\n", line_count + 1, v_len);
 	    cread(patchf, buff, 1);
-	    assert(' '==buff[0] || '+'==buff[0] || '-'==buff[0]);
+	    assert(' '==buff[0] || '+'==buff[0] || '-'==buff[0] || 
+		'\\'==buff[0]);
 	    if(' '==buff[0]) {
 		printf("got a common  line( ): ");
 		/* common line */
@@ -99,12 +107,11 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 		printf("got a version tweak(+): ");
 		if(add_copy) {
 		    offset = ctell(src_cfh, CSEEK_FSTART);
-		    printf("adding copy for add_copy, offset(%lu), len(%lu)\n",
-			s_lastoff, offset - s_lastoff);
+		    printf("adding copy for add_copy: ");
 		    DCBufferAddCmd(dcbuff, DC_COPY, s_lastoff, 
 			offset - s_lastoff);
 		    s_lastoff = offset;
-		    s_lastline++; 
+		    //s_lastline++; 
 		    add_copy=0;
 		}
 		offset = ctell(patchf, CSEEK_FSTART);
@@ -117,8 +124,7 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 		printf("got a source  tweak(-): ");
 		if(add_copy) {
 		    offset = ctell(src_cfh, CSEEK_FSTART);
-		    printf("adding copy for add_copy, offset(%lu), len(%lu)\n",
-			s_lastoff, offset - s_lastoff);
+		    printf("adding copy for add_copy: ");
 		    DCBufferAddCmd(dcbuff, DC_COPY, s_lastoff, 
 			offset - s_lastoff);
 		    add_copy=0;
@@ -128,8 +134,14 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 		s_lastline++;
 		skip_lines_forward(src_cfh, 1);
 		s_lastoff = ctell(src_cfh, CSEEK_FSTART);
+	    } else if('\\'==buff[0]) {
+		printf("got me a (hopefully) 'No newline...'\n");
+		assert(26==cread(patchf, buff + 1, 26));
+		assert(memcmp(buff,"\\ No newline at end of file", 26)==0);
+		skip_lines_forward(patchf,1);
 	    }
 	} 
+	printf("so ends that segment\n");
     }
     if(ctell(src_cfh, CSEEK_FSTART)!=cfile_len(src_cfh))
 	DCBufferAddCmd(dcbuff, DC_COPY, s_lastoff, cfile_len(src_cfh) - s_lastoff);
