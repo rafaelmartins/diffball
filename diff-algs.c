@@ -295,7 +295,7 @@ signed int OneHalfPassCorrecting(struct CommandBuffer *buffer,
 		vc++;
     }
     if (vs != ver_len) {
-    	DCBufferAddCmd(buffer, DC_ADD, vs, ver_len - vs);
+    	DCBufferAddCmd(buffer, DC_ADD, ver_cfh->raw_fh_start + vs, ver_len - vs);
     }
     return 0;
 }

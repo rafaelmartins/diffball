@@ -393,7 +393,8 @@ int main(int argc, char **argv)
         			NO_COMPRESSOR, CFILE_RONLY);
         	init_RefHash(&rhash_win, &ref_window, 16, ref_window.byte_len);
         	OneHalfPassCorrecting(&dcbuff, &rhash_win, &ver_window);
-        	cclose(&ref_window);
+        	free_RefHash(&rhash_win);
+		cclose(&ref_window);
 	    	/*printf("matched  '%s'\n", target[(struct tar_entry **)vptr - target]->fullname);
 		    printf("correct  '%s'\n\n", ((*(struct tar_entry **)vptr)->fullname));*/
 		    //source_matches[x] = '1';
@@ -405,6 +406,7 @@ int main(int argc, char **argv)
         }
         cclose(&ver_window);
     }
+    free_RefHash(&rhash_full);
     cclose(&ref_full);
     x= (target[target_count -1]->file_loc * 512) + 512 + 
     	(target[target_count -1]->size==0 ? 0 : target[target_count -1]->size + 

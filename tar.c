@@ -106,6 +106,7 @@ struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, 
     	    /* LongLink.  hence the need for previous. as I said, it's a hack at best.*/
 			/* this also needs testing/verification. */
 			/* first run, seems fine.  haven't checked w/ prefix.  further, check offset code */
+		    printf("got us a long link at count(%lu)\n", count);
 		    char *rep;
 		    char data[512];
 		    unsigned int name_len=octal_str2long(&block[TAR_SIZE_LOC], TAR_SIZE_LEN);
