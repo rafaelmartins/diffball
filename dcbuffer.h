@@ -164,7 +164,7 @@ void DCBufferIncr(CommandBuffer *buffer);
 void DCBufferDecr(CommandBuffer *buffer);
 void DCBufferCollapseAdds(CommandBuffer *buffer);
 void DCBufferFree(CommandBuffer *buffer);
-void DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
+int DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
     unsigned long src_size, unsigned long ver_size, unsigned char type);
 void DCBufferReset(CommandBuffer *buffer);
 
@@ -179,12 +179,12 @@ void DCB_add_add(CommandBuffer *buffer, off_u64 ver_pos, unsigned long len,
 void DCB_add_copy(CommandBuffer *buffer, off_u64 src_pos, off_u64 ver_pos,
     unsigned long len);
 
-void DCB_insert(CommandBuffer *buff);
-void DCB_llm_init_buff(CommandBuffer *buff, unsigned long buff_size);
+int DCB_insert(CommandBuffer *buff);
+int DCB_llm_init_buff(CommandBuffer *buff, unsigned long buff_size);
 unsigned int DCB_test_llm_main(CommandBuffer *buff);
 void DCB_test_total_copy_len(CommandBuffer *buff);
 
-void DCB_resize_full(CommandBuffer *buffer);
-void DCB_resize_matches(CommandBuffer *buffer);
-void DCB_resize_llmatches(CommandBuffer *buffer);
+int DCB_resize_full(CommandBuffer *buffer);
+int DCB_resize_matches(CommandBuffer *buffer);
+int DCB_resize_llmatches(CommandBuffer *buffer);
 #endif

@@ -383,7 +383,7 @@ DCB_add_copy(CommandBuffer *buffer, unsigned long src_pos,
     DCBufferIncr(buffer);
 }
 
-void
+int
 DCB_resize_llm_free(CommandBuffer *buff)
 {
     if((buff->DCB.llm.free = (void **)realloc(buff->DCB.llm.free, 
@@ -391,9 +391,10 @@ DCB_resize_llm_free(CommandBuffer *buff)
 	return MEM_ERROR;
     }
     buff->DCB.llm.free_size *= 2;
+    return 0;
 }
 
-void
+int
 DCB_resize_llmatches(CommandBuffer *buff)
 {
     assert(DCBUFFER_LLMATCHES_TYPE == buff->DCBtype);
@@ -406,6 +407,7 @@ DCB_resize_llmatches(CommandBuffer *buff)
 	return MEM_ERROR;
     }
     buff->DCB.llm.cur = buff->DCB.llm.buff + buff->DCB.llm.buff_count;
+    return 0;
 }
 
 void 
@@ -483,7 +485,8 @@ DCB_commands_remain(CommandBuffer *buffer)
 }
 	
 
-void DCBufferFree(CommandBuffer *buffer)
+void 
+DCBufferFree(CommandBuffer *buffer)
 {
     unsigned long x;
 //    if(buffer->flags & ADD_CFH_FREE_FLAG)
@@ -500,7 +503,7 @@ void DCBufferFree(CommandBuffer *buffer)
     }
 }
 
-void 
+int 
 DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size, 
     unsigned long src_size, unsigned long ver_size, unsigned char type)
 {
@@ -561,9 +564,10 @@ DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
 	buffer->DCB.llm.ver_start = 0;
 	buffer->flags |= DCB_LLM_FINALIZED;
     }
+    return 0;
 }
 
-void
+int
 DCB_resize_matches(CommandBuffer *buffer)
 {
     assert(DCBUFFER_MATCHES_TYPE == buffer->DCBtype);
@@ -577,9 +581,10 @@ DCB_resize_matches(CommandBuffer *buffer)
     }
     buffer->DCB.matches.cur = buffer->DCB.matches.buff + 
 	buffer->DCB.matches.buff_count;
+    return 0;
 }
 
-void
+int
 DCB_resize_full(CommandBuffer *buffer)
 {
     assert(DCBUFFER_FULL_TYPE == buffer->DCBtype);
@@ -609,7 +614,7 @@ DCB_resize_full(CommandBuffer *buffer)
 	buffer->DCB.full.buffer_size -1;
     buffer->DCB.full.cb_end = buffer->DCB.full.cb_start + 
 	(buffer->DCB.full.buffer_size/8) -1;
-
+    return 0;
 }
 
 unsigned int
@@ -652,12 +657,12 @@ cmp_llmatch(void *dl1, void *dl2)
     return 1;
 }
 
-void
+int
 DCB_insert(CommandBuffer *buff)
 {
     unsigned long x;
     if(!(buff->DCBtype & DCBUFFER_LLMATCHES_TYPE)) {
-	return;
+	return 0;
     }
     if(buff->DCB.llm.buff_count > 0 ) {
 	buff->DCB.llm.cur--;
@@ -705,9 +710,10 @@ DCB_insert(CommandBuffer *buff)
     buff->DCB.llm.buff = buff->DCB.llm.cur = NULL;
     buff->DCB.llm.buff_count = buff->DCB.llm.buff_size = 0;
     buff->flags |= DCB_LLM_FINALIZED;
+    return 0;
 }
 
-void
+int
 DCB_llm_init_buff(CommandBuffer *buff, unsigned long buff_size)
 {
     assert(DCBUFFER_LLMATCHES_TYPE == buff->DCBtype);
@@ -719,6 +725,7 @@ DCB_llm_init_buff(CommandBuffer *buff, unsigned long buff_size)
     buff->DCB.llm.buff_size = buff_size;
     buff->DCB.llm.buff_count = 0;
     buff->flags &= ~DCB_LLM_FINALIZED;
+    return 0;
 }
 
 

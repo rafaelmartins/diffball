@@ -31,7 +31,7 @@ typedef struct _ADLER32_SEED_CTX {
 	unsigned long s2;
 } ADLER32_SEED_CTX;
 
-void init_adler32_seed(ADLER32_SEED_CTX *ads, unsigned int seed_len, 
+int init_adler32_seed(ADLER32_SEED_CTX *ads, unsigned int seed_len, 
     unsigned int multi);
 void update_adler32_seed(ADLER32_SEED_CTX *ads, unsigned char *buff, 
     unsigned int len); 
