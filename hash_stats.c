@@ -91,7 +91,7 @@ int main(int argc, char **argv)
     }
     poptFreeContext(p_opt);
     if ((ref_fh = open(src_file, O_RDONLY,0)) == -1) {
-	fprintf(stderr, "error opening src_file\n");
+	v0printf( "error opening src_file\n");
 	exit(EXIT_FAILURE);
     }
     copen(&ref_cfh, ref_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY |

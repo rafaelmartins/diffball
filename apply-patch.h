@@ -18,6 +18,6 @@
 #ifndef _HEADER_APPLY_PATCH
 #define _HEADER_APPLY_PATCH 1
 
-void reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh);
+int reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh);
 
 #endif 

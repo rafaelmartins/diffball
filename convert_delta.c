@@ -87,7 +87,7 @@ main(int argc, char **argv)
 	if((trg_file = (char *)poptGetArg(p_opt))==NULL)
 	    usage(p_opt, 1, "Must specify a name for the new patch.", NULL);
         if((out_fh = open(trg_file, O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1){
-	    fprintf(stderr, "error creating output file '%s'\n", trg_file);
+	    v0printf( "error creating output file '%s'\n", trg_file);
 	    exit(1);
 	}
     }
@@ -96,30 +96,30 @@ main(int argc, char **argv)
 	    "unknown option");
     }
     if((in_fh = open(src_file, O_RDONLY, 0))==-1) {
-	fprintf(stderr, "error opening patch '%s'\n", src_file);
+	v0printf( "error opening patch '%s'\n", src_file);
 	exit(EXIT_FAILURE);
     }
     copen(&in_cfh, in_fh, 0, in_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     if(src_format == NULL) {
 	src_format_id = identify_format(&in_cfh);
 	if(src_format_id==0) {
-	    fprintf(stderr, "Couldn't identify the patch format, aborting\n");
+	    v0printf( "Couldn't identify the patch format, aborting\n");
 	    exit(EXIT_FAILURE);
 	} else if((src_format_id >> 16)==1) {
-	    fprintf(stderr, "Unsupported format version\n");
+	    v0printf( "Unsupported format version\n");
 	    exit(EXIT_FAILURE);
 	}
 	src_format_id >>= 16;
     } else {
 	src_format_id = check_for_format(src_format, strlen(src_format));
 	if(src_format_id==0) {
-	    fprintf(stderr, "Unknown format '%s'\n", src_format);
+	    v0printf( "Unknown format '%s'\n", src_format);
 	    exit(1);
 	}
     }
     if(src_format_id==BDELTA_FORMAT) {
-	fprintf(stderr, "this version does not support conversion of bdelta format.\n");
-	fprintf(stderr, "the stable 0.40 release will however.  Sorry.\n");
+	v0printf( "this version does not support conversion of bdelta format.\n");
+	v0printf( "the stable 0.40 release will however.  Sorry.\n");
 	exit(1);
     }
     if(trg_format==NULL) {
@@ -127,7 +127,7 @@ main(int argc, char **argv)
     } else {
 	trg_format_id = check_for_format(trg_format, strlen(trg_format));
 	if(trg_format_id==0) {
-	    fprintf(stderr, "Unknown format '%s'\n", trg_format);
+	    v0printf( "Unknown format '%s'\n", trg_format);
 	    exit(1);
 	}
     }

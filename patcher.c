@@ -96,7 +96,7 @@ main(int argc, char **argv)
 	if((out_name = (char *)poptGetArg(p_opt))==NULL)
 	    usage(p_opt, 1, "Must specify a name for the out file.", 0);
 	if((out_fh = open(out_name, O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1) {
-	    fprintf(stderr, "error creating out file (open failed)\n");
+	    v0printf( "error creating out file (open failed)\n");
 	    exit(1);
 	}
     }
@@ -107,41 +107,42 @@ main(int argc, char **argv)
     poptFreeContext(p_opt);
     v1printf("verbosity level(%u)\n", global_verbosity);
     if ((src_fh = open(src_name, O_RDONLY,0)) == -1) {
-	fprintf(stderr,"error opening source file '%s'\n", src_name);
+	v0printf("error opening source file '%s'\n", src_name);
 	exit(EXIT_FAILURE);
     }
     if((patch_fh = open(patch_name, O_RDONLY,0))==-1) {
-	fprintf(stderr, "error opening patch file '%s'\n", patch_name);
+	v0printf( "error opening patch file '%s'\n", patch_name);
 	exit(EXIT_FAILURE);
     }
     v1printf("src_fh size=%lu\n", (unsigned long)src_stat.st_size);
     v1printf("patch_fh size=%lu\n", (unsigned long)patch_stat.st_size);
     copen(&src_cfh, src_fh, 0, src_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     copen(&patch_cfh, patch_fh, 0, patch_stat.st_size, 
-//	NO_COMPRESSOR, CFILE_RONLY);
 	AUTODETECT_COMPRESSOR, CFILE_RONLY);
     if(patch_format==NULL) {
 	patch_id = identify_format(&patch_cfh);
 	if(patch_id==0) {
-	    fprintf(stderr, "Couldn't identify the patch format, aborting\n");
+	    v0printf( "Couldn't identify the patch format, aborting\n");
 	    exit(EXIT_FAILURE);
 	} else if((patch_id & 0xffff)==1) {
-	    fprintf(stderr, "Unsupported format version\n");
+	    v0printf( "Unsupported format version\n");
 	    exit(EXIT_FAILURE);
 	}
 	patch_id >>=16;
     } else {
 	patch_id = check_for_format(patch_format, strlen(patch_format));
 	if(patch_id==0) {
-	    fprintf(stderr, "Unknown format '%s'\n", patch_format);
+	    v0printf( "Unknown format '%s'\n", patch_format);
 	    exit(1);
 	}
     }
     v1printf("patch_type=%lu\n", patch_id);
     cseek(&patch_cfh, 0, CSEEK_FSTART);
-    copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
-    DCBufferInit(&dcbuff, 4096, src_stat.st_size, 0, 
-	DCBUFFER_FULL_TYPE);
+    if(DCBufferInit(&dcbuff, 4096, src_stat.st_size, 0, 
+	DCBUFFER_FULL_TYPE)) {
+	v0printf("unable to alloc needed mem, exiting\n");
+	abort();
+    }
     if(SWITCHING_FORMAT == patch_id) {
 	recon_val = switchingReconstructDCBuff(&patch_cfh, &dcbuff);
     } else if(GDIFF4_FORMAT == patch_id) {
@@ -163,23 +164,35 @@ main(int argc, char **argv)
     }
     v1printf("reconstruction return=%ld\n", recon_val);
     v1printf("reconstructing target file based off of dcbuff commands...\n");
-    DCBUFFER_REGISTER_COPY_SRC(&dcbuff, &src_cfh, NULL, 0);
-    reconstructFile(&dcbuff, &out_cfh);
-    if(BDELTA_FORMAT==patch_id) {
-	if(ctell(&out_cfh, CSEEK_ABS) < dcbuff.ver_size) {
-	    unsigned char buff[512];
-	    unsigned long to_write;
-	    to_write = dcbuff.ver_size - ctell(&out_cfh, CSEEK_ABS);
-	    memset(buff, 0, 512);
-	    while(to_write > 0) {
-		cwrite(&out_cfh, buff, MIN(to_write, 512));
-		to_write -= MIN(to_write, 512);
+    if(recon_val) {
+	v0printf("error detected while reading patch- quitting\n");
+    } else {
+	DCBUFFER_REGISTER_COPY_SRC(&dcbuff, &src_cfh, NULL, 0);
+	if(copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY)) {
+	    v0printf("error opening output file, exitting\n");
+	} else if(reconstructFile(&dcbuff, &out_cfh)) {
+	    v0printf("error detected while reconstructing file, quitting\n");
+	    //remove the file here.
+	} else {
+
+	/* hack, move this to the format itself */
+	    if(BDELTA_FORMAT==patch_id) {
+		if(ctell(&out_cfh, CSEEK_ABS) < dcbuff.ver_size) {
+		    unsigned char buff[512];
+		    unsigned long to_write;
+		    to_write = dcbuff.ver_size - ctell(&out_cfh, CSEEK_ABS);
+		    memset(buff, 0, 512);
+		    while(to_write > 0) {
+			cwrite(&out_cfh, buff, MIN(to_write, 512));
+			to_write -= MIN(to_write, 512);
+		    }
+		}
 	    }	    
 	}
+	cclose(&out_cfh);
+	v1printf("reconstruction completed successfully\n");
     }
-    v1printf("reconstruction done.\n");
     DCBufferFree(&dcbuff);
-    cclose(&out_cfh);
     cclose(&src_cfh);
     cclose(&patch_cfh);
     return 0;

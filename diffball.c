@@ -114,7 +114,7 @@ main(int argc, char **argv)
     } else {
 	patch_format_id = check_for_format(patch_format, strlen(patch_format));
 	if(patch_format_id==0) {
-	    fprintf(stderr, "Unknown format '%s'\n", patch_format);
+	    v0printf( "Unknown format '%s'\n", patch_format);
 	    exit(1);
 	}
     }
@@ -124,7 +124,7 @@ main(int argc, char **argv)
 	if((patch_name = (char *)poptGetArg(p_opt))==NULL)
 	    usage(p_opt, 1, "Must specify a name for the patch file.", NULL);
 	if((out_fh = open(patch_name, O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1) {
-	    fprintf(stderr, "error creating patch file (open failed)\n");
+	    v0printf( "error creating patch file (open failed)\n");
 	    exit(1);
 	}
     }
@@ -137,43 +137,51 @@ main(int argc, char **argv)
 	hash_size = MIN(DEFAULT_MAX_HASH_COUNT, ref_stat.st_size);
     }
     if((src_fh = open(src_file, O_RDONLY,0)) == -1) {
-	fprintf(stderr, "error opening source file '%s'\n", src_file);
+	v0printf( "error opening source file '%s'\n", src_file);
 	exit(1);
     }
     if((trg_fh = open(trg_file, O_RDONLY,0)) == -1) {
-	fprintf(stderr, "error opening target file '%s'\n", trg_file);
+	v0printf( "error opening target file '%s'\n", trg_file);
 	exit(1);
     }
-    copen(&ref_full, src_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY |
-	CFILE_OPEN_FH);
-    copen(&ver_full, trg_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
+
+    if(copen(&ref_full, src_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY |
+	CFILE_OPEN_FH) ||
+        copen(&ver_full, trg_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY)) {
+	v0printf("error opening file; exiting\n");
+	exit(1);
+    }
+
     if(sample_rate==0) {
 	sample_rate = COMPUTE_SAMPLE_RATE(hash_size, cfile_len(&ref_full));
     }
     if(seed_len==0) {
 	seed_len = DEFAULT_SEED_LEN;
     }
+
     v1printf("using patch format %lu\n", patch_format_id);
     v1printf("using seed_len(%lu), sample_rate(%lu), hash_size(%lu)\n", 
 	seed_len, sample_rate, hash_size);
     v1printf("verbosity level(%u)\n", global_verbosity);
 
-    copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY | CFILE_OPEN_FH);
     v1printf("reading tar entries from src\n");
     if(read_fh_to_tar_entry(&ref_full, &source, &source_count))
 	exit(EXIT_FAILURE);
-    v1printf("reading tar entries from trg\n");
+
+    v2printf("reading tar entries from trg\n");
     if(read_fh_to_tar_entry(&ver_full, &target, &target_count))
 	exit(EXIT_FAILURE);
-    v1printf("source tarball's entry count=%lu\n", source_count);
-    v1printf("target tarball's entry count=%lu\n", target_count);
 
-    v1printf("qsorting\n");
+    v2printf("source tarball's entry count=%lu\n", source_count);
+    v2printf("target tarball's entry count=%lu\n", target_count);
+
+    v3printf("qsorting\n");
     qsort((tar_entry **)source, source_count , sizeof(tar_entry *), cmp_tar_entries);
-    v1printf("qsort done\n");
+    v3printf("qsort done\n");
     
 /* alg to basically figure out the common dir prefix... eg, if everything 
    is in dir debianutils-1.16.3; note, we want the slash, hence +1 */
+
     p = rindex(source[0]->fullname, '/');
     if(p!=NULL) {
 	src_common_len = ((char *)p - (char *)source[0]->fullname) + 1;
@@ -188,13 +196,17 @@ main(int argc, char **argv)
     for (x=0; x < source_count; x++) {
         if (strncmp((const char *)src_common, (const char *)source[x]->fullname, src_common_len) !=0) {
             char *p;
+
             /* null the / at src_common_len-1, and attempt rindex again. */
-            src_common[src_common_len -1]='\0';
+
+            src_common[src_common_len -1]= '\0';
             if((p = rindex(src_common, '/'))==NULL){
+		/*no common dir prefix. damn. */
                 src_common_len=0;
-                src_common[0]='\0'; /*no common dir prefix. damn. */
+                src_common[0]='\0'; 
             } else {
-                src_common_len= src_common - p + 1; /*include the / again... */
+		/*include the / in the path again... */
+                src_common_len= src_common - p + 1; 
                 src_common[src_common_len +1]='\0';
             }
         }
@@ -240,11 +252,16 @@ main(int argc, char **argv)
 	target[x]->working_len -= trg_common_len;
     }
 
-    DCBufferInit(&dcbuff, 4096, (unsigned long)ref_stat.st_size, 
-	(unsigned long)ver_stat.st_size, DCBUFFER_LLMATCHES_TYPE);
-    DCB_llm_init_buff(&dcbuff, 4096);
+    if(DCBufferInit(&dcbuff, 4096, (unsigned long)ref_stat.st_size, 
+	(unsigned long)ver_stat.st_size, DCBUFFER_LLMATCHES_TYPE) ||
+	DCB_llm_init_buff(&dcbuff, 4096)) {
+	v0printf("error allocing needed memory, exiting\n");
+	exit(1);
+    }
     v1printf("looking for matching filenames in the archives...\n");
+
     for(x=0; x< target_count; x++) {
+
 	v1printf("processing %lu of %lu\n", x + 1, target_count);
 	copen_child_cfh(&ver_window, &ver_full, (512 * target[x]->file_loc),
             (512 * target[x]->file_loc) + 512 + (target[x]->size==0 ? 0 :
@@ -306,6 +323,7 @@ main(int argc, char **argv)
     MultiPassAlg(&dcbuff, &ref_full, &ver_full, hash_size);
     cclose(&ref_full);
 
+    copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY | CFILE_OPEN_FH);
     v1printf("outputing patch...\n");
     v1printf("there were %lu commands\n", dcbuff.DCB.full.buffer_count);
     DCBUFFER_REGISTER_ADD_SRC(&dcbuff, &ver_full, NULL, 0);
@@ -321,6 +339,7 @@ main(int argc, char **argv)
     } else if (BDELTA_FORMAT == patch_format_id) {
         encode_result = bdeltaEncodeDCBuffer(&dcbuff, &out_cfh);
     }
+    v1printf("encoding result was %u\n", encode_result);
     DCBufferFree(&dcbuff);
     cclose(&ver_full);
     cclose(&out_cfh);

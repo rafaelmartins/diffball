@@ -24,10 +24,11 @@ usage(poptContext p_opt, int exitcode, const char *error, const char *addl)
 {    
     poptPrintUsage(p_opt, stderr, 0);
     if(error) {
-	if(addl)
-	    fprintf(stderr, "%s: %s\n", error,addl);
-	else
-	    fprintf(stderr, "%s\n", error);
+	if(addl) {
+	    v0printf("%s: %s\n", error,addl);
+	} else {
+	    v0printf("%s\n", error);
+	}
     }
     exit(exitcode);
 }

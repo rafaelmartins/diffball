@@ -102,7 +102,7 @@ int main(int argc, char **argv)
 	if((patch_name = (char *)poptGetArg(p_opt))==NULL)
 	    usage(p_opt, 1, "Must specify a name for the patch file.",NULL);
 	if((out_fh = open(patch_name, O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1) {
-	    fprintf(stderr, "error creating patch file '%s' (open failed)\n",
+	    v0printf( "error creating patch file '%s' (open failed)\n",
 	    patch_name);
 	    exit(1);
 	}
@@ -113,11 +113,11 @@ int main(int argc, char **argv)
     }
     poptFreeContext(p_opt);
     if ((ref_fh = open(src_file, O_RDONLY,0)) == -1) {
-	fprintf(stderr, "error opening src_file\n");
+	v0printf( "error opening src_file\n");
 	exit(EXIT_FAILURE);
     }
     if ((ver_fh = open(trg_file, O_RDONLY,0)) == -1) {
-	fprintf(stderr, "error opening trg_file\n");
+	v0printf( "error opening trg_file\n");
 	exit(EXIT_FAILURE);
     }
     copen(&ver_cfh, ver_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
@@ -138,7 +138,7 @@ int main(int argc, char **argv)
     } else {
 	patch_id = check_for_format(patch_format, strlen(patch_format));
 	if(patch_id==0) {
-	    fprintf(stderr, "Unknown format '%s'\n", patch_format);
+	    v0printf( "Unknown format '%s'\n", patch_format);
 	    exit(1);
 	}
     }
@@ -147,6 +147,7 @@ int main(int argc, char **argv)
 	seed_len, sample_rate, hash_size);
     v1printf("verbosity level(%u)\n", global_verbosity);
     v1printf("initializing Command Buffer...\n");
+/*    
     if(0==1) {
 	err=DCBufferInit(&buffer, 4096, ref_stat.st_size, ver_stat.st_size, 
 	    DCBUFFER_MATCHES_TYPE);
@@ -161,57 +162,66 @@ int main(int argc, char **argv)
 	if(err)
 	    print_exit(err);
 	v1printf("sorting\n");
-//	RHash_sort(&rhash);
+	RHash_sort(&rhash);
 	v1printf("hunting for matches\n");
-//	RHash_find_matches(&rhash, &ref_cfh);
-//	RHash_cleanse(&rhash);
+	RHash_find_matches(&rhash, &ref_cfh);
+	RHash_cleanse(&rhash);
 	print_RefHash_stats(&rhash);
 	err = OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh);
 	if(err)
 	    print_exit(err);
 	free_RefHash(&rhash);
     } else if (1==1) {
+*/
 	DCBufferInit(&buffer, 4, ref_stat.st_size, ver_stat.st_size,
 	    DCBUFFER_LLMATCHES_TYPE);
 	v1printf("running multipass alg\n");
 	MultiPassAlg(&buffer, &ref_cfh, &ver_cfh, hash_size);
 	DCB_insert(&buffer);
 	//free_RefHash(&rhash);
+/*
     } else {
-	DCBufferInit(&buffer, 4096, ref_stat.st_size, ver_stat.st_size,
-	    DCBUFFER_MATCHES_TYPE);
-//	DCB_llm_init_buff(&buffer, 4096);
+	if(DCBufferInit(&buffer, 4096, ref_stat.st_size, ver_stat.st_size,
+	    DCBUFFER_MATCHES_TYPE) ||
+	    DCB_llm_init_buff(&buffer, 4096)) {
+	    v0printf("error allocing mem, exiting\n");
+	    exit(EXIT_FAILURE);
+	}
 	v1printf("initializing Reference Hash...\n");
-	init_RefHash(&rhash, &ref_cfh, 16, sample_rate, hash_size, 
-	    RH_BUCKET_HASH);
+	if(init_RefHash(&rhash, &ref_cfh, 16, sample_rate, hash_size, 
+	    RH_BUCKET_HASH)) {
+	    v0printf("error allocing mem, exiting\n");
+	    exit(1);
+	}
 	RHash_insert_block(&rhash, &ref_cfh, 0, cfile_len(&ref_cfh));
 	RHash_cleanse(&rhash);
 	print_RefHash_stats(&rhash);
 	v1printf("running 1.5 pass correcting alg...\n");
-	OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh);
-//	DCB_insert(&buffer);
+	if(OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh)) {
+	   v0printf("Error differencing, exiting\n");
+	   exit(1);
+	DCB_insert(&buffer);
 	free_RefHash(&rhash);
-    }	
+    }
+*/
     DCB_test_total_copy_len(&buffer);
     v1printf("outputing patch...\n");
-    copen(&out_cfh, out_fh, 0, 0, patch_compressor, CFILE_WONLY);
+    if(copen(&out_cfh, out_fh, 0, 0, patch_compressor, CFILE_WONLY)) {
+	v0printf("error allocing needed memory for output, exiting\n");
+	exit(1);
+    }
     DCBUFFER_REGISTER_ADD_SRC(&buffer, &ver_cfh, NULL, 0);
     if(GDIFF4_FORMAT == patch_id) {
 	encode_result = gdiff4EncodeDCBuffer(&buffer, &out_cfh);
-//	encode_result = gdiff4EncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
     } else if(GDIFF5_FORMAT == patch_id) {
 	encode_result = gdiff5EncodeDCBuffer(&buffer, &out_cfh);
-//	encode_result = gdiff5EncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
     } else if(BDIFF_FORMAT == patch_id) {
 	encode_result = bdiffEncodeDCBuffer(&buffer, &out_cfh);
-//	encode_result = bdiffEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
     } else if(SWITCHING_FORMAT == patch_id) {
 	DCBufferCollapseAdds(&buffer);
 	encode_result = switchingEncodeDCBuffer(&buffer, &out_cfh);
-//	encode_result = switchingEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
     } else if (BDELTA_FORMAT == patch_id) {
 	encode_result = bdeltaEncodeDCBuffer(&buffer, &out_cfh);
-//	encode_result = bdeltaEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
     }
     v1printf("flushing and closing out file\n");
     cclose(&out_cfh);

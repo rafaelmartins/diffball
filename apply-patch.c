@@ -22,7 +22,7 @@
 #include "apply-patch.h"
 #include "defs.h"
 
-void 
+int 
 reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh)
 {
     DCommand dc;
