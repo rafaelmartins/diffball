@@ -62,7 +62,7 @@ bsdiff_overlay_copy(DCommand *dc,
     unsigned long commands_read = 0;
     DCLoc *dptr;  DCB_registered_src *dsrc;
     overlay_chain *ov;
-    ov = &dc->dcb_src->ov;
+    ov = dc->dcb_src->ov;
 //    index = ov->index[dc->ov_index];
 //    if(dc->ov_index < ov->index_count - 1) {
 //    	index_end = ov->index[dc->ov_index + 1];

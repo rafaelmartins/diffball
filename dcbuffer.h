@@ -129,7 +129,7 @@ typedef unsigned long (*dcb_src_copy_func)(DCommand *, cfile *);
 typedef struct _DCB_registered_src {
     u_dcb_src		src_ptr;
     unsigned char	type;
-    overlay_chain	ov;
+    overlay_chain	*ov;
     dcb_src_read_func	read_func;
     dcb_src_copy_func	copy_func;
     dcb_src_read_func   mask_read_func;
@@ -233,12 +233,12 @@ void DCB_truncate(CommandBuffer *buffer, unsigned long len);
 
 int DCB_add_overlay(CommandBuffer *buffer, off_u32 diff_src_pos, off_u32 len, 
     int add_ov_id, off_u32 copy_src_pos, int ov_src_id);
-int DCB_add_add(CommandBuffer *buffer, off_u64 ver_pos, unsigned long len,
+int DCB_add_add(CommandBuffer *buffer, off_u64 src_pos, unsigned long len,
     unsigned char src_id);
 int DCB_add_copy(CommandBuffer *buffer, off_u64 src_pos, off_u64 ver_pos,
     unsigned long len, unsigned char src_id);
 int DCB_rec_copy_from_DCB_src(CommandBuffer *tdcb, command_list *tcl,
-    CommandBuffer *sdcb, command_list *scl, unsigned short translation_map[256],
+    CommandBuffer *sdcb, command_list *scl, unsigned short *translation_map,
     unsigned long com_offset, off_u64 seek, off_u64 len);
 
 off_u64

@@ -51,7 +51,7 @@ reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh, int reorder_for_seq_acces
     DCBufferReset(dcbuff);
     
     reorder_for_seq_access = 1;
-    reorder_for_seq_access = 0;
+//    reorder_for_seq_access = 0;
 
     assert(reorder_for_seq_access == 0 || CFH_IS_SEEKABLE(out_cfh) || 1);
     if(reorder_for_seq_access) {
@@ -89,7 +89,6 @@ read_seq_write_rand(CommandBuffer *dcb, DCommand_abbrev *dc_array, unsigned long
 {
     #define buf_size 0x10000
     unsigned char buf[buf_size];
-    unsigned long ver_pos;
     unsigned char *p;
     unsigned long x, start=0, end=0, len=0;
     unsigned long max_pos = 0, pos = 0;
@@ -97,14 +96,13 @@ read_seq_write_rand(CommandBuffer *dcb, DCommand_abbrev *dc_array, unsigned long
     signed long tmp_len;
     unsigned int src_id;
     unsigned char is_overlay = 0;
-    DCB_registered_src *cur_src;
     dcb_src_read_func read_func;
     cfile_window *cfw;
     u_dcb_src u_src;
     #define END_POS(x) ((x).data.src_pos + (x).data.len)
     while(end < array_size) {
     	src_id = dc_array[end].src_id;
-	is_overlay = (dcb->srcs[src_id].ov.com_count > 0);
+	is_overlay = (dcb->srcs[src_id].ov > 0);
 	start = end;
 	pos = dc_array[start].data.src_pos;
 	max_pos = END_POS(dc_array[start]);
@@ -134,9 +132,11 @@ read_seq_write_rand(CommandBuffer *dcb, DCommand_abbrev *dc_array, unsigned long
 	    u_src = dcb->srcs[src_id].src_ptr;
 	    if(is_overlay) {
 	    	read_func = dcb->srcs[src_id].mask_read_func;
+//		read_func = dcb->srcs[src_id].read_func;
 	    } else {
-		    read_func = dcb->srcs[src_id].read_func;
+		read_func = dcb->srcs[src_id].read_func;
 	    }
+	    assert(read_func != NULL);
 	    while(pos < max_pos) {
 		len = MIN(max_pos - pos, buf_size);
 		x=read_func(u_src, pos, buf, len);
@@ -145,11 +145,9 @@ read_seq_write_rand(CommandBuffer *dcb, DCommand_abbrev *dc_array, unsigned long
 		    ap_printf("bailing, io_error 2\n");
 		    return IO_ERROR;
 		}
-		printf("start=%lu, end=%lu\n", start, end);
 		for(x=start; x < end; x++) {
 		    offset = MAX(dc_array[x].data.src_pos, pos);
 		    tmp_len = MIN(END_POS(dc_array[x]), pos + len) - offset;
-		    printf("offset=%lu, tmp_len=%lu\n", offset, tmp_len);
 		    if(tmp_len > 0) { 
 			if(dc_array[x].data.ver_pos + (offset - dc_array[x].data.src_pos) != 
 			    cseek(out_cfh, dc_array[x].data.ver_pos + (offset - dc_array[x].data.src_pos),

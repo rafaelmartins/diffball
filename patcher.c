@@ -199,14 +199,8 @@ main(int argc, char **argv)
 	    exit(EXIT_FAILURE);
 	}
 	v1printf("versions size is %lu\n", dcbuff[x % 2].ver_size);
+	v1printf("result was %lu commands\n", dcbuff[x % 2].DCB.full.cl.com_count);
 	if(x) {
-//	    v0printf("merging %lu into %lu, storing in %lu\n", ((y-1)%3), (y%3), ((y+1)%3));
-//    	    if(merge_version_buffers(&dcbuff[(y -1) % 3], &dcbuff[y % 3], src_id, &dcbuff[(y + 1) % 3])) {
-//    	       v0printf("failed merging %lu and %lu, aborting\n", x -1, x);
-//    	       exit(EXIT_FAILURE);
-//    	    }
-	    v1printf("result was %lu commands\n", dcbuff[x % 2].DCB.full.cl.com_count);
-//	    v1printf("freeing %lu\n", (x -1) % 2);
 	    DCBufferFree(&dcbuff[(x - 1) % 2]);
     	}
     }
