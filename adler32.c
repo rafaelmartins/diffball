@@ -4,7 +4,7 @@
  * For conditions of distribution and use, see copyright notice in zlib.h 
  */
 
-/* @(#) $Id: adler32.c,v 1.2 2003/05/28 22:36:18 bharring Exp $ */
+/* @(#) $Id: adler32.c,v 1.3 2003/05/29 07:17:01 bharring Exp $ */
 
 //#include "zlib.h"
 
@@ -23,24 +23,23 @@ unsigned long adler32(char *buf, int len)
 {
     unsigned long s1 = 0;
     unsigned long s2 = 0;
+    //printf("given string('%*s')\n", len, buf);
     //int k;
 
     //if (buf == NULL) return 1L;
 
-    while (len > 0) {
         //k = len < NMAX ? len : NMAX;
         //len -= k;
-        while (len-- > 0) {
+    while (len-- > 0) {
             //DO16(buf);
-	    s1+=*(buf++); s2 += s1;
-        }
+	s1+=*(buf++); s2 += s1;
+    }
         /*if (k != 0) do {
             s1 += *buf++;
 	    s2 += s1;
         } while (--k);*/
         //s1 %= BASE;
         //s2 %= BASE;
-    }
     /* basically attempting to just mask it, rather then then do the whole moduls base thing.
        This *may* cause issues dependent on the checksum length... */
     return (s2 << 16) | (s1 & 0xffff);

@@ -2,16 +2,26 @@
 #include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
-#include "adler32.h"
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include "delta.h"
 
 int main(int argc, char **argv)
 {
     unsigned long int x;
+    struct stat src_stat;
     int src_fh, trg_fh, out_fh;
+    char *src;
     if(argc <3){
 	printf("pardon, but...\nI need at least 2 args- (source file), (target file), [patch-file]\n");
 	exit(EXIT_FAILURE);
     }
+    if(stat(argv[1], &src_stat)) {
+	perror("what the hell, stat failed.  wtf?\n");
+	exit(1);
+    }
+    printf("src_fh size=%lu\n", src_stat.st_size);
     if ((src_fh = open(argv[1], O_RDONLY,0)) == -1) {
 	printf("Couldn't open %s, does it exist?\n", argv[1]);
 	exit(EXIT_FAILURE);
@@ -31,5 +41,7 @@ int main(int argc, char **argv)
     } else {
 	fprintf(stderr,"storing generated delta in '%s'\n", argv[3]);
     }
-    
+    src=(char*)malloc(src_stat.st_size);
+    read(src_fh, src, src_stat.st_size);
+    OneHalfPassCorrecting(src, (unsigned long)src_stat.st_size, 16);
 }
