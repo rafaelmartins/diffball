@@ -16,10 +16,11 @@ DONE	* code cleanup.  EG, add extern global verbosity option for control of
 	  printf statements, start adding better definitions throughout code 
 	  for compilation (eg via compile flags/options disabling certain 
 	  sections of code).
-STARTED	* work out a solution for handling md5's in file format- basically 
+DONE	* code a solution for handling md5's in file format- basically 
 	  handle the goofy nature of some formats (bdelta's lack of a complete 
-	  set of reconstruction commands, trailing null).  Enable checking of 
+	  set of reconstruction commands for instance).  Enable checking of 
 	  md5's if they're included in file (xdelta format).
+	* Actually *use* the md5 solution from above.
 STARTED	* start enabling checking of returned values.  Basically start cleaning
 	  out the use of abort's and exit's, and use appropriate return values.
 DONE	* relevant man pages
@@ -32,9 +33,21 @@ STARTED	* add a set of functions for pulling add len/offset pairs for formats
 	* standardize/fix the hash_size, do it in terms of elements or actual 
 	  memory size?  thinking memory size, since MOD_HASH is 4 bytes each 
 	  element, while CMOD_HASH is 8 bytes...
+DONE	* abstract dcbuffer to support different types of add/copies sets-
+	  ex: bsdiff has technically two add commands, and a copy-
+	  basically it's copy overlay, along w/ standard add.
+	  Bit of a kludge, needs to be generalized a bit, since it only supports 
+	  2 add srcs currently.
+DONE	* bsdiff support (hokay, so I got ambitious)
+DONE	* multipass support
+DONE	* verified hash.  Basically, scan the version file for chksum's 
+	  needed, then scan the reference file for said chksum's.  Doing 
+	  this allows for a hash entry to be verified, eg mark it such 
+	  that these two chksum's match.  Way of cutting down on bad 
+	  matches/worthless seeks.
 
 0.50			Dec 2003
-STARTED	* write *GOOD* man pages
+STARTED	* write *GOOD* man pages (eye of the beholder?)
 DONE	* DCBuffer should be a general struct, with different ways of 
 	  storing entries.  Full for patching/conversion, matches for
 	  standard differencing (difference is it eliminates storing 
@@ -47,7 +60,7 @@ STARTED	* bsdiff support, possibly included into 0.4.
 	* xdelta write support- could do it as of pre-0.4, although md5 support
 	  is needed, and the lovely serialsource memory allocation problem- 
 	  basically the unknown 8 bytes sandwiched between add data and control
-	  block.  Contact bdharring@wisc.edu if anyone has ideas/better 
+	  block.  Contact bdharring at wisc.edu if anyone has ideas/better 
 	  solution for the serialsource stored memory requirement.
 	  No clue why the hell that is stored there let alone if that's what 
 	  it is...
@@ -67,20 +80,13 @@ DONE	* have working compression support in cfile.  Not saying it be'll
 
 0.60			Dec 2003/Feb 2004
 	* add a correcting one pass differencing alg.
+	  This would be good for backup solutions, differencing in one pass.
+	  If you want this, contact me and I'll be a bit more expedient about it, 
+	  otherwise I'll write it when I find a need/time.
 	* possibly add flag to correcting algs, to flag correcting support 
 	  on/off (correcting basically allows for correction (duh))- although 
 	  correcting does slow things down (maybe not by much), possibly give 
 	  them (user/dev) the option?
-	* abstract dcbuffer to support different types of add/copies sets-
-	  ex: bsdiff has technically two add commands, and a copy-
-	  basically it's copy overlay, along w/ standard add.
-	* bsdiff support
-DONE	* multipass support
-DONE	* verified hash.  Basically, scan the version file for chksum's 
-	  needed, then scan the reference file for said chksum's.  Doing 
-	  this allows for a hash entry to be verified, eg mark it such 
-	  that these two chksum's match.  Way of cutting down on bad 
-	  matches/worthless seeks.
 
 0.80			March 2004
 STARTED	* gnudiff support working, for both recursive and  non-recursive patch.

@@ -3,20 +3,61 @@
 diffball is a general purpose delta compression/binary differencing 
 suite.  As of 0.4, it currently supports the follow formats
 
----FORMATS---
+----FORMATS-----
 
-Format		Read		Encode	Conversion
+Format		Read	Encode	Conversion
 bdiff		yes	yes	yes
-bdelta		yes	yes	yes, as of bdelta-0.1
+bdelta		yes	yes	yes, as of bdelta-0.1 (1)
+bsdiff3		yes	no	no-  untested read support.
+bsdiff4		yes	no	no  (2)
+fdtu		yes	no	yes (3)
 gdiff v4	yes	yes	yes
 gdiff v4
-  (tweaked)	yes	yes	yes
+  (tweaked)	yes	yes	yes (4)
 switching	yes	yes	yes
 unified diff	yes*	no	beta, but yes.  Normally disabled.
-				*only non-recursive patches.
+				only non-recursive patches.
 xdelta-1.1.0	yes	no	yes
 
----BINARIES---
+(1) bdelta is a subproject of deltup, which has gone the way of the dodo.
+    deltup was originally intended as src patching solution for gentoo, so 
+    there are a few users still using it.  That said, I'm currently working 
+    on src patching, and will be removing deltup from the gentoo tree.
+    What this means, is that deltup isn't likely to get any updates anytime 
+    soon, let alone bdelta which was a side project of deltup.
+    Interesting format purely due to it's compressability, aside from that, 
+    this format will live on in diffball as long as it's minimal to support it.
+
+(2) The code for conversion has been written already for both versions.  I've not 
+    added a necessary option to convert_delta to pass in the reference file- 
+    bdelta is an overlay format, meaning it's add commands *need* the reference
+    file to work, requiring an extra command line option to convert_delta.
+    Adding this is trivial, so if you want it, either email me, or submit a patch 
+    that uses the popt interface I've so far based all options upon.
+
+(3) fdtu isn't anything to write home about, it's a wrapped xdelta format w/ 
+    redundant information.  It's related to (1) above, a byproduct of deltup.
+    I don't like this format, and intend to remove it once deltup is completely 
+    gone.
+    Frankly I don't like the fact that it *is* xdelta's output, just with a 
+    format header/footer appended on that adds no value, aside from obscuring the 
+    fact that the actual differencing is done by xdelta.
+    That said, if you want it/need it left in, you're going to have to contact me 
+    regarding it.  It'll live through the 0.4* releases, but I intend to remove it 
+    as soon as it won't affect users (considering it can undergo conversion, it 
+    may not even be supported/included past 0.4).
+
+(4) This is completely non-standard, and pretty much a minor tweak I did to the 
+    gdiff4 format.  Gdiff4 in it's original rfc incarnation specifies all offsets 
+    absolute, rather then relative to the last copy position.  This uses relative 
+    addressing, providing a modest (although not trivial) space saving.
+    Modification of apps that support gdiff4 to support this tweak ought to be 
+    minor, contact me if you need a hand or have questions.
+    I'm tempted to submit this as an rfc, although I would think it might be 
+    overruled in preference for vcdiff (the basics of vcdiff I intend to add at a
+    later date).
+
+----BINARIES----
 
 differ 		general purpose differencing program, 
 diffball 	specific implementation for processing tarball's- usually this
@@ -30,18 +71,39 @@ convert_delta	program for converting between formats, if write support
 		the source, it can convert between the two producing a 
 		correct patch.
 
------SETUP-----
+--DEPENDENCIES--
+
+bzip2-1.*   if you need bzip2-0.9.* support, iirc there was a lib interface change 
+	    from what I can recall, it's minor, handled fairly easily by a few 
+	    macro tricks.  If you need bzip2-0.9.* support, email me, and I'll add 
+	    it.
+zlib-1.1.*  I've done my testing/compilation against zlib-1.1.4.  That said, I 
+	    would suspect compiling against anything zlib-1.* wouldn't be an 
+	    issue, but don't quote me on that.
+	    Again, if you experience compilation problems, email the author.
+	    I'm more then willing to check into supporting older versions of zlib, 
+	    just need to told that somebody actually wants this. :)
+popt-1.7    I've not tested against anything prior to 1.7.  Contact me if you have 
+	    issues, and I'll see what I can do.
+
+-----SETUP------
+
+First off, make sure you have the dependencies met.  They're minor, but currently 
+you need all of them met- down the line, I'll likely make zlib/bzip2 a compile time 
+option.  That said, it isn't configurable as of 0.4
 
 To configure and install diffball, first run the 'configure' script 
-which will create a makefile along w/ a config.h appropriate to how you 
-wanted it configured and your system.  From there, just type "make".
+which will create a makefile along w/ a config.h appropriate to your 
+configuration choicse, and your system.  
+From there, just type "make".
+
+Any compilation issues that come up, please contact me with the make failure, 
+OS (eg rh 7.3, OSX 10.2), and be willing to answer a few questions so I can fix 
+the problem. :)
 
 
------BUGS------
 
-Appears not to compile on OSX, although I think that may be do weirdness in 
-tracking down needed libs/headers from fink (popt as an example).
-Will be fixed either when a patch is sent in, or by 0.4 stable release.
+-----BUGS-------
 
 Command line hash_size is not always abided by, notable BUCKET/RBUCKET- will 
 be fixed in the next release (current being 0.4_pre4).
@@ -49,12 +111,21 @@ be fixed in the next release (current being 0.4_pre4).
 Aside from that, if  you've found weird behavior, email a bug 
 report to me at bdharring@wisc.edu .
 
----COPYRIGHT---
+---COPYRIGHT----
 
 The diffball suite is releaed under the GPL v2
 Look in the file COPYING if you're curious of the specifics.
 
---AVAILABILITY-
+--AVAILABILITY--
 
 For the foreseeable future diffball will be hosted through sourceforge, 
 at http://sourceforge.net/projects/diffball .
+
+-----AUTHOR-----
+
+Diffball was written, and is maintained by Brian Harring.
+If you need to contact me, my email address is bdharring at wisc.edu 
+(pardon the spelling of at, spam harvesters suck).  Any weirdness, suggestions, 
+or complaints kindly contact me and I'll see what I can do to make it better.
+
+Hope it's useful for y'all!
