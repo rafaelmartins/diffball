@@ -52,6 +52,66 @@ DCB_test_total_copy_len(CommandBuffer *buff)
 #endif
 }
 
+unsigned int
+DCB_get_next_gap(CommandBuffer *buff, unsigned long gap_req, DCLoc *dc)
+{
+    assert(buff->flags & DCB_LLM_FINALIZED);
+    dc->len = dc->offset = 0;
+    if(buff->DCB.llm.gap_pos == buff->ver_size){ // || buff->DCB.llm.main == NULL) {
+	return 0;
+    } else if(buff->DCB.llm.gap_pos == 0) {
+	if(buff->DCB.llm.main_count==0) {
+	    if(gap_req <= buff->ver_size) {
+		dc->len = buff->ver_size;
+	    }
+	    buff->DCB.llm.gap_pos = buff->ver_size;
+	    return dc->len != 0;
+	} else if(buff->DCB.llm.main_head->ver_pos >= gap_req) {
+	    buff->DCB.llm.gap_pos = dc->len = buff->DCB.llm.main_head->ver_pos;
+	    return 1;
+	}
+    }
+    if(1==1){
+	while(buff->DCB.llm.main != NULL  && 
+	   buff->DCB.llm.gap_pos > buff->DCB.llm.main->ver_pos) {
+//    v1printf("debug info gap_skew, gap_pos(%lu), main(%u), main->next(%u)\n", 
+//	buff->DCB.llm.gap_pos, buff->DCB.llm.main != NULL, 
+//	buff->DCB.llm.main != NULL ? buff->DCB.llm.main->next != NULL : 0);
+//	v1printf("ver_pos %lu\n", buff->DCB.llm.main->ver_pos);
+	    DCBufferIncr(buff);
+	}
+	while(buff->DCB.llm.main != NULL && dc->len == 0) {
+//    v1printf("debug info loop, gap_pos(%lu), main(%u), main->next(%u)\n", 
+//	buff->DCB.llm.gap_pos, buff->DCB.llm.main != NULL, 
+//	buff->DCB.llm.main != NULL ? buff->DCB.llm.main->next != NULL : 0);
+//	v1printf("ver_pos %lu\n", buff->DCB.llm.main->ver_pos);
+	    if(buff->DCB.llm.main->next == NULL) {
+		buff->DCB.llm.gap_pos = buff->ver_size;
+		if(buff->ver_size - LLM_VEND(buff->DCB.llm.main)
+		    >= gap_req) {
+		    dc->offset = LLM_VEND(buff->DCB.llm.main);
+		    dc->len = buff->ver_size - LLM_VEND(buff->DCB.llm.main);
+		} else {
+		    DCBufferIncr(buff);
+		    return 0;
+		}
+	    } else if(buff->DCB.llm.main->next->ver_pos - 
+		LLM_VEND(buff->DCB.llm.main) >= gap_req) {
+		dc->offset = LLM_VEND(buff->DCB.llm.main);
+		dc->len = buff->DCB.llm.main->next->ver_pos - dc->offset;
+		buff->DCB.llm.gap_pos = buff->DCB.llm.main->next->ver_pos;
+	    } else {
+		DCBufferIncr(buff);
+	    }
+	}
+    }
+    if(dc->len != 0) {
+	return 1;
+    }
+    return 0;
+}
+
+
 void
 DCB_get_next_command(CommandBuffer *buff, DCommand *dc)
 {
@@ -376,6 +436,7 @@ DCBufferReset(CommandBuffer *buffer)
     } else if(DCBUFFER_LLMATCHES_TYPE == buffer->DCBtype) {
 	assert(DCB_LLM_FINALIZED & buffer->flags);
 	buffer->DCB.llm.main = buffer->DCB.llm.main_head;
+	buffer->DCB.llm.gap_pos = buffer->DCB.llm.ver_start;
     }
 }
 
@@ -476,6 +537,7 @@ DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
 	buffer->DCB.llm.free_count = 0;
 	buffer->DCB.llm.buff_count = buffer->DCB.llm.main_count = 
 	    buffer->DCB.llm.buff_size = 0;
+	buffer->DCB.llm.ver_start = 0;
 	buffer->flags |= DCB_LLM_FINALIZED;
     }
 }
@@ -570,29 +632,6 @@ cmp_llmatch(void *dl1, void *dl2)
 }
 
 void
-DCB_merge(CommandBuffer *buff)
-{
-    unsigned long x, skip;
-    LL_DCLmatch *mptr;
-    off_u64 last_vend;
-    if(!(buff->DCBtype & DCBUFFER_LLMATCHES_TYPE)) {
-	return;
-    }
-    if((buff->DCB.llm.buff = (LL_DCLmatch *)realloc(buff->DCB.llm.buff, 
-	buff->DCB.llm.buff_count * sizeof(LL_DCLmatch)))==NULL) {
-	abort();
-    }
-//    qsort(buff->DCB.llm.buff, buff->DCB.llm.buff_count, sizeof(LL_DCLmatch),
-//	cmp_llmatch);
-//    mptr = buffer->DCB.llm.main_head;
-    for(x=1; x < buff->DCB.llm.buff_count; x++) {
-	
-    }
-    DCBufferReset(buff);
-    
-}
-    
-void
 DCB_insert(CommandBuffer *buff)
 {
     unsigned long x;
@@ -601,24 +640,11 @@ DCB_insert(CommandBuffer *buff)
     }
     if(buff->DCB.llm.buff_count > 0 ) {
 	buff->DCB.llm.cur--;
-	v1printf("inserting a segment %lu:%lu, commands(%u)\n", 
+	v1printf("inserting a segment %lu:%lu, commands(%lu)\n", 
 	    buff->DCB.llm.buff->ver_pos, LLM_VEND(buff->DCB.llm.cur), 
 	    buff->DCB.llm.buff_count);
 
 	assert(buff->DCB.llm.main_head==NULL ? buff->DCB.llm.main == NULL : 1);
-/*	if(buff->DCB.llm.main_head) {
-	    if(buff->DCB.llm.main->next == NULL) {
-		assert(LLM_VEND(buff->DCB.llm.cur) <= buff->ver_size);
-	    } else if(buff->DCB.llm.main==buff->DCB.llm.main_head) {
-		assert(buff->DCB.llm.main_head->ver_pos >= 
-		    LLM_VEND(buff->DCB.llm.cur));
-	    } else {
-		assert(buff->DCB.llm.cur->ver_pos >= 
-		   LLM_END(buff->DCB.llm.main));
-		assert(LLM_END(buff->DCB.llm.cur)<= 
-		   buff->DCB.llm.main->next->ver_pos);
-	    }
-	}*/
 	if((buff->DCB.llm.buff = (LL_DCLmatch *)realloc(buff->DCB.llm.buff, 
 	    buff->DCB.llm.buff_count * sizeof(LL_DCLmatch)))==NULL) {
 	    abort();
@@ -651,7 +677,7 @@ DCB_insert(CommandBuffer *buff)
 	    DCB_resize_llm_free(buff);
 	}
 	buff->DCB.llm.free[buff->DCB.llm.free_count++] = buff->DCB.llm.buff;
-    } else {
+    } else if(!(buff->flags & DCB_LLM_FINALIZED)){
 	free(buff->DCB.llm.buff);
     }
 //    assert(buff->DCB.llm.buff->ver_pos >= buff->DCB.llm.main->ver_pos);

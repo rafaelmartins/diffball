@@ -31,6 +31,6 @@ void print_RefHash_stats(RefHash *rhash);
 signed int OneHalfPassCorrecting(CommandBuffer *buffer, 
 	RefHash *rhash, cfile *ver_cfh);
 signed int MultiPassAlg(CommandBuffer *buffer, cfile *src_cfh, cfile *ver_cfh,
-    unsigned long hash_size);
+    unsigned long max_hash_size);
 #endif
 

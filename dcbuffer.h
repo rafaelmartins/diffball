@@ -87,7 +87,7 @@ typedef struct {
 	    DCLoc_match *buff, *cur;
 	} matches;
 	struct {
-	    off_u64 ver_start;
+	    off_u64 ver_start, gap_pos;
 	    LL_DCLmatch *main_head, *main;
 	    unsigned long buff_count, buff_size, main_count;
 	    LL_DCLmatch *buff, *cur;
@@ -120,6 +120,8 @@ void DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
     unsigned long src_size, unsigned long ver_size, unsigned char type);
 void DCBufferReset(CommandBuffer *buffer);
 
+unsigned int DCB_get_next_gap(CommandBuffer *buff, unsigned long gap_req, 
+    DCLoc *dc);
 unsigned int DCB_commands_remain(CommandBuffer *buffer);
 void DCB_get_next_command(CommandBuffer *buffer, DCommand *dc);
 void DCB_truncate(CommandBuffer *buffer, unsigned long len);
