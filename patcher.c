@@ -34,6 +34,7 @@
 #include "xdelta1.h"
 #include "bdelta.h"
 
+
 //offset = fh_pos + readSignedBytes(cpy_buff, ctmp);
 //len = readUnsignedBytes(cpy_buff+ctmp, clen);
 
@@ -81,9 +82,10 @@ int main(int argc, char **argv)
 //	switchingReconstructDCBuff(&delta_cfh, &dcbuff, offset_type);
 //   	gdiffReconstructDCBuff(&delta_cfh, &dcbuff, offset_type, 4);
 //	rawReconstructDCBuff(&delta_cfh, &dcbuff, offset_type);
-	bdiffReconstructDCBuff(&delta_cfh, &dcbuff);
+//	bdiffReconstructDCBuff(&delta_cfh, &dcbuff);
 //	xdelta1ReconstructDCBuff(&delta_cfh, &dcbuff, 1);
 //	bdeltaReconstructDCBuff(&delta_cfh, &dcbuff);
+	udiffReconstructDCBuff(&delta_cfh, &src_cfh, NULL, &dcbuff);
    	printf("reconstructing target file based off of dcbuff commands...\n");
    	reconstructFile(&dcbuff, &src_cfh, &delta_cfh, &out_cfh);
    	printf("reconstruction done.  calling close.\n");

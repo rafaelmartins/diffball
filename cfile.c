@@ -146,8 +146,7 @@ cwrite(cfile *cfh, unsigned char *buff, unsigned long len)
     while(bytes_wrote < len) {
 	if(cfh->data.size==cfh->data.pos) {
 	    cflush(cfh);
-	    if(cfh->data.pos!=0)
-		abort();
+	    assert(cfh->data.pos!=0);
 	}
 	x = MIN(cfh->data.size - cfh->data.pos, len - bytes_wrote);
 	memcpy(cfh->data.buff + cfh->data.pos, buff + bytes_wrote, x);
