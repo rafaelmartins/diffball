@@ -29,9 +29,9 @@
 
 signed int 
 bdeltaEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh, 
-    struct cfile *patchf)
+    cfile *patchf)
 {
-    unsigned char buff[1024];
+/*    unsigned char buff[1024];
     unsigned long dc_pos, matches;
     buff[0] = 'B';
     buff[1] = 'D';
@@ -39,7 +39,7 @@ bdeltaEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh,
     writeUBytesLE(buff + 3, 1, 2); //version
     buff[5] = 4;
     cwrite(patchf, buff, 6);
-    
+  */  
 }
 
 signed int 
@@ -73,9 +73,9 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
     matches = readUBytesLE(buff + (2 * int_size), int_size);
     printf("size1=%lu, size2=%lu\nmatches=%lu\n", size1, size2, matches);
     /* add_pos = header info, 3 int_size's (size(1|2), num_match) */
-    add_pos = 3 + 2 + 1 + 3 * int_size;
+    add_pos = 3 + 2 + 1 + (3 * int_size);
     /* add block starts after control data. */
-    add_pos += (matches * 3 * int_size);
+    add_pos += (matches * (3 * int_size));
     add_start = add_pos;
     printf("add block starts at %lu\nprocessing commands\n", add_pos);
     while(matches--){
@@ -91,7 +91,7 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 	/* hokay, this is screwed up.  Course bdelta seems like it's got 
 	a possible problem w/ files produced on one's complement systems when
 	read on a 2's complement system. */
-	if(buff[0] & 0x80) {
+	if(buff[int_size -1] & 0x80) {
 	    copy_offset |= or_mask;
 	    copy_offset = ~copy_offset;
 	    copy_offset += 1;
