@@ -19,6 +19,7 @@
 #define _HEADER_DCBUFFER 1
 
 #include "cfile.h"
+#include "defs.h"
 #include "config.h"
 
 extern unsigned int global_use_md5;
@@ -37,21 +38,25 @@ extern unsigned int global_use_md5;
 #define ADD_CFH_FREE_FLAG		0x1
 #define DCB_LLM_FINALIZED		0x2
 
+// internal dcbuffer macros.
+#define LLM_VEND(l)  ((l)->ver_pos + (l)->len)
+
 typedef struct {
-    unsigned long offset;
+    off_u64 offset;
     unsigned long len;
 } DCLoc;
 
 typedef struct {
-    unsigned long src_pos;
-    unsigned long ver_pos;
+    off_u64 src_pos;
+    off_u64 ver_pos;
     unsigned long len;
 } DCLoc_match;
 
 typedef struct LL_DCLmatch LL_DCLmatch;
 
 struct LL_DCLmatch {
-    unsigned long src_pos, ver_pos, len;
+    off_u64 src_pos, ver_pos;
+    unsigned long len;
     LL_DCLmatch *next;
 };
 
@@ -61,12 +66,12 @@ typedef struct {
 } DCommand;
 
 typedef struct {
-    unsigned long src_size;
-    unsigned long ver_size;
-    unsigned long reconstruct_pos;
+    off_u64 src_size;
+    off_u64 ver_size;
+    off_u64 reconstruct_pos;
     unsigned char DCBtype;
 #ifdef DEBUG_DCBUFFER
-    unsigned long total_copy_len;
+    off_u64 total_copy_len;
 #endif
     union {
 	struct {
@@ -77,12 +82,12 @@ typedef struct {
 	    DCLoc *lb_start, *lb_end, *lb_head, *lb_tail;
 	} full;
 	struct {
-	    unsigned long ver_start;
+	    off_u64 ver_start;
 	    unsigned long buff_count, buff_size;
 	    DCLoc_match *buff, *cur;
 	} matches;
 	struct {
-	    unsigned long ver_start;
+	    off_u64 ver_start;
 	    LL_DCLmatch *main_head, *main;
 	    unsigned long buff_count, buff_size, main_count;
 	    LL_DCLmatch *buff, *cur;
@@ -118,10 +123,9 @@ void DCBufferReset(CommandBuffer *buffer);
 unsigned int DCB_commands_remain(CommandBuffer *buffer);
 void DCB_get_next_command(CommandBuffer *buffer, DCommand *dc);
 void DCB_truncate(CommandBuffer *buffer, unsigned long len);
-void DCB_add_add(CommandBuffer *buffer, unsigned long ver_pos, 
+void DCB_add_add(CommandBuffer *buffer, off_u64 ver_pos, unsigned long len);
+void DCB_add_copy(CommandBuffer *buffer, off_u64 src_pos, off_u64 ver_pos,
     unsigned long len);
-void DCB_add_copy(CommandBuffer *buffer, unsigned long src_pos, 
-    unsigned long ver_pos, unsigned long len);
 
 void DCB_insert(CommandBuffer *buff);
 void DCB_llm_init_buff(CommandBuffer *buff, unsigned long buff_size);
