@@ -5,10 +5,10 @@ FORMATS = cfile.c bit-functions.c gdiff.c switching.c bdiff.c \
     bdelta.c xdelta1.c udiff.c line-util.c formats.c
 DIFF_FILES = diff-algs.c adler32.c primes.c dcbuffer.c hash.c
 
-bin_PROGRAMS = differ patcher diffball convert_delta hash_stats ctest
+bin_PROGRAMS = differ patcher diffball convert_delta #hash_stats ctest
 
-ctest_SOURCES = ctest.c cfile.c
-hash_stats_SOURCES = hash_stats.c $(DIFF_FILES) options.c cfile.c
+#ctest_SOURCES = ctest.c cfile.c
+#hash_stats_SOURCES = hash_stats.c $(DIFF_FILES) options.c cfile.c
 
 patcher_SOURCES = patcher.c apply-patch.c options.c $(FORMATS) dcbuffer.c
 diffball_SOURCES = diffball.c string-misc.c tar.c options.c \

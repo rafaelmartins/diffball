@@ -147,22 +147,42 @@ int main(int argc, char **argv)
     v1printf("verbosity level(%u)\n", global_verbosity);
     v1printf("initializing Command Buffer...\n");
     if(0==1) {
-	DCBufferInit(&buffer, 4096, ref_stat.st_size, ver_stat.st_size,
-	    DCBUFFER_FULL_TYPE);
-	v1printf("initializing Reference Hash...\n");
-	init_RefHash(&rhash, &ref_cfh, 16, sample_rate, hash_size, 
-	    RH_SORT_HASH);
+	DCBufferInit(&buffer, 4096, ref_stat.st_size, ver_stat.st_size, 
+	    DCBUFFER_MATCHES_TYPE);
+	init_RefHash(&rhash, &ref_cfh, seed_len, sample_rate, hash_size, 
+	    RH_MOD_HASH);
+	v1printf("insertting block\n");
+	RHash_insert_block(&rhash, &ref_cfh, 0, cfile_len(&ver_cfh));
+	v1printf("sorting\n");
+//	RHash_sort(&rhash);
+	v1printf("hunting for matches\n");
+//	RHash_find_matches(&rhash, &ref_cfh);
+//	RHash_cleanse(&rhash);
 	print_RefHash_stats(&rhash);
-	v1printf("running 1.5 pass correcting alg...\n");
 	OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh);
 	free_RefHash(&rhash);
-    } else {
+    } else if (1==1) {
 	DCBufferInit(&buffer, 4, ref_stat.st_size, ver_stat.st_size,
 	    DCBUFFER_LLMATCHES_TYPE);
 	v1printf("running multipass alg\n");
 	MultiPassAlg(&buffer, &ref_cfh, &ver_cfh, hash_size);
 	DCB_insert(&buffer);
-    }
+	//free_RefHash(&rhash);
+    } else {
+	DCBufferInit(&buffer, 4096, ref_stat.st_size, ver_stat.st_size,
+	    DCBUFFER_MATCHES_TYPE);
+//	DCB_llm_init_buff(&buffer, 4096);
+	v1printf("initializing Reference Hash...\n");
+	init_RefHash(&rhash, &ref_cfh, 16, sample_rate, hash_size, 
+	    RH_BUCKET_HASH);
+	RHash_insert_block(&rhash, &ref_cfh, 0, cfile_len(&ref_cfh));
+	RHash_cleanse(&rhash);
+	print_RefHash_stats(&rhash);
+	v1printf("running 1.5 pass correcting alg...\n");
+	OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh);
+//	DCB_insert(&buffer);
+	free_RefHash(&rhash);
+    }	
     DCB_test_total_copy_len(&buffer);
     v1printf("outputing patch...\n");
     copen(&out_cfh, out_fh, 0, 0, patch_compressor, CFILE_WONLY);

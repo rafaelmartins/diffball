@@ -337,6 +337,8 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 		if(rhash->type & (RH_BUCKET_HASH)) {
 		    rhash->hash.bucket.offset[index][0] = cfw->offset + 
 			cfw->pos - rhash->seed_len;
+		} else {
+		    rhash->hash.bucket.offset[index][0] = 0;
 		}
 		rhash->hash.bucket.depth[index]++;
 		rhash->inserts++;
@@ -388,7 +390,8 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 			    rhash->hash.bucket.offset[index][low] = cfw->offset +
 				cfw->pos - rhash->seed_len;
 			} else {
-			    rhash->hash.bucket.offset[index][low] = 0;
+			    rhash->hash.bucket.offset[index][
+				rhash->hash.bucket.depth[index]] = 0;
 			}
 		    } else if(low == rhash->hash.bucket.depth[index] -1) {
 			rhash->hash.bucket.chksum[index][
@@ -416,7 +419,8 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 			    rhash->hash.bucket.offset[index][low + 1] = 
 				cfw->offset + cfw->pos - rhash->seed_len;
 			} else {
-			    rhash->hash.bucket.offset[index][low+1] = 0;
+			    rhash->hash.bucket.offset[index][
+				rhash->hash.bucket.depth[index]] = 0;
 			}
 		    }
 		    rhash->inserts++;
@@ -625,7 +629,7 @@ RHash_sort(RefHash *rhash)
 signed int
 RHash_cleanse(RefHash *rhash)
 {
-    unsigned long x=0, hash_offset=0;
+    unsigned long x=0, hash_offset=0, y=0, shift=0;
     assert(rhash->inserts);
     if(rhash->type & RH_SORT_HASH) {
 	assert(rhash->flags & RH_SORTED);
@@ -702,8 +706,26 @@ RHash_cleanse(RefHash *rhash)
 	rhash->hr_size = rhash->inserts;
     } else if (rhash->type & RH_BUCKET_HASH) {
 	for(x=0; x < rhash->hr_size; x++) {
-	    if(rhash->hash.bucket.depth[x] > 0 && 
-		rhash->hash.bucket.depth[x] < rhash->hash.bucket.max_depth) {
+	    if(rhash->hash.bucket.depth[x] > 0) {
+		shift=0;
+		for(y=0; y < rhash->hash.bucket.depth[x]; y++) {
+		    if(rhash->hash.bucket.offset[x][y]==0) {
+			shift++;
+		    } else if(shift) {
+			rhash->hash.bucket.offset[x][y - shift] = 
+			    rhash->hash.bucket.offset[x][y];
+			rhash->hash.bucket.chksum[x][y - shift] = 
+			    rhash->hash.bucket.chksum[x][y];
+		    }
+		}
+		rhash->hash.bucket.depth[x] -= shift;
+		if(rhash->hash.bucket.depth[x]==0) {
+		    free(rhash->hash.bucket.chksum[x]);
+		    free(rhash->hash.bucket.offset[x]);
+		    rhash->hash.bucket.chksum[x] = NULL;
+		    rhash->hash.bucket.offset[x] = NULL;
+		    continue;
+		}
 		if((rhash->hash.bucket.chksum[x] = (unsigned short *) realloc(
 		    rhash->hash.bucket.chksum[x], sizeof(unsigned short) * 
 		    rhash->hash.bucket.depth[x])) == NULL || 

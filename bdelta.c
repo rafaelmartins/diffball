@@ -47,6 +47,7 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *ver_cfh,
     unsigned int intsize;
     unsigned char buff[16];
     unsigned long match_orig = matches;
+    unsigned long ver_size = 0;
     DCommand dc;
     cwrite(patchf, BDELTA_MAGIC, BDELTA_MAGIC_LEN);
     writeUBytesLE(buff, BDELTA_VERSION, BDELTA_VERSION_LEN);
@@ -61,6 +62,7 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *ver_cfh,
 	DCB_get_next_command(dcbuff, &dc);
 	prev = current;
 	current = dc.type;
+	ver_size += dc.loc.len;
 	if(! ((prev==DC_ADD && current==DC_COPY) ||
 	    (prev==DC_ADD && current==DC_ADD)) )
 	    matches++;
@@ -74,12 +76,14 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *ver_cfh,
 	intsize=3;
     else*/
 	intsize=4;
+    
     v2printf("size1=%lu, size2=%lu, matches=%lu, intsize=%u\n", dcbuff->src_size, 
-	dcbuff->ver_size, matches, intsize);
+	(dcbuff->ver_size ? dcbuff->ver_size : ver_size), matches, intsize);
     buff[0] = intsize;
     cwrite(patchf, buff, 1);
     writeUBytesLE(buff, dcbuff->src_size, intsize);
-    writeUBytesLE(buff + intsize, dcbuff->ver_size, intsize);
+    writeUBytesLE(buff + intsize, (dcbuff->ver_size ? dcbuff->ver_size : 
+	ver_size), intsize);
     writeUBytesLE(buff + (2 * intsize), matches, intsize);
     cwrite(patchf, buff, (3 * intsize));
     DCBufferReset(dcbuff);

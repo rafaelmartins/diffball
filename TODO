@@ -4,7 +4,7 @@ That said and done, I need to re-order this to match reality, certain version
 mile-stones I've almost finished prior to finishing the interceding milestone 
 work.
 
-0.4			Sept/Oct 2003.
+0.4			Oct/Nov 2003.
 DONE	* option code in diffball, patcher, differ, and convert_delta
 DONE	* function that is format aware, handles magic sig's.
 DONE	* seperate my modifications of gdiff format into v5, and enable a 
@@ -26,10 +26,14 @@ DONE	* relevant man pages
 DONE	* have a basic (not necessarily cleanest/best) gzip compressor setup so 
 	  compressed xdelta can be handled.
 STARTED	* add a set of functions for pulling add len/offset pairs for formats
-	  reasonning being, make it a default function so I can move optimizing
+	  reasoning being, make it a default function so I can move optimizing
 	  multiple adds (from diffball) into a single add command in the format
 	  encoding.
-0.41			Oct/Nov 2003
+	* standardize/fix the hash_size, do it in terms of elements or actual 
+	  memory size?  thinking memory size, since MOD_HASH is 4 bytes each 
+	  element, whie CMOD_HASH is 8 bytes...
+
+0.41			Nov/Dec 2003
 STARTED	* write *GOOD* man pages
 DONE	* DCBuffer should be a general struct, with different ways of 
 	  storing entries.  Full for patching/conversion, matches for
@@ -61,7 +65,7 @@ STARTED	* refactor memalias for differing alg.  Basically adjustment of
 STARTED	* have working compression support in cfile.  Not saying it be'll 
 	  great, just saying have it working.
 
-0.50/0.60		Nov/Dec 2003
+0.50/0.60		Dec 2003/Feb 2004
 	* add a correcting one pass differencing alg.
 	* possibly add flag to correcting algs, to flag correcting support 
 	  on/off (correcting basically allows for correction (duh))- although 
@@ -78,11 +82,6 @@ DONE	* verified hash.  Basically, scan the version file for chksum's
 	  multiple functions... eg, attempt to make it such that the needed 
 	  command space (CommandBuffer) can be optimized down, so that it 
 	  doesn't require the entire set of delta commands to be stored in mem.
-
-0.75			Jan-Mar 2004
-DONE	* have at least a dev version of gnuDiff support (unified and context).
-	  Note that is for a single patch, eg-non recursive.
-	  for recursive, basically need a for loop opening cfiles as needed.
 
 0.80			March 2004
 STARTED	* gnudiff support working, for both recursive and  non-recursive patch.

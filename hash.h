@@ -34,6 +34,9 @@
 
 #define RH_BUCKET_MIN_ALLOC (4)
 
+#define RH_IS_RLOOKUP_HASH(rh) 						\
+     ((rh)->type & (RH_RBUCKET_HASH | RH_RSORT_HASH | RH_RMOD_HASH))
+
 #define RH_FINALIZED	(0x1)
 #define RH_SORTED	(0x2)
 

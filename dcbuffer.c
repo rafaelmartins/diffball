@@ -380,7 +380,7 @@ DCB_resize_llmatches(CommandBuffer *buff)
 {
     assert(DCBUFFER_LLMATCHES_TYPE == buff->DCBtype);
     assert(buff->DCB.llm.buff_count <= buff->DCB.llm.buff_size);
-    v1printf("resizing ll_matches buffer from %lu to %lu\n",
+    v3printf("resizing ll_matches buffer from %lu to %lu\n",
 	buff->DCB.llm.buff_size, buff->DCB.llm.buff_size * 2);
     buff->DCB.llm.buff_size *= 2;
     if((buff->DCB.llm.buff = (LL_DCLmatch *)realloc(buff->DCB.llm.buff, 

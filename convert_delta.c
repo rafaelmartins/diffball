@@ -161,9 +161,6 @@ main(int argc, char **argv)
     } else if(SWITCHING_FORMAT == trg_format_id) {
         encode_result = switchingEncodeDCBuffer(&dcbuff, &in_cfh, &out_cfh);
     } else if (BDELTA_FORMAT == trg_format_id) {
-	v0printf("\nconversion to bdelta format is not recommended- \n");
-	v0printf("file sizes are stored in this format, and this patch doesn't");
-	v0printf(" contain that info.\nThis patch may be incompatable w/ bpatch\n\n");
         encode_result = bdeltaEncodeDCBuffer(&dcbuff, &in_cfh, &out_cfh);
     }
     v1printf("encoding return=%ld\n", encode_result);

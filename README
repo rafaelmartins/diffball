@@ -1,3 +1,5 @@
+--11/02/2003--
+
 diffball is a general purpose delta compression/binary differencing 
 suite.  As of 0.4, it currently supports the follow formats
 
@@ -5,41 +7,46 @@ suite.  As of 0.4, it currently supports the follow formats
 
 Format		Read		Encode	Conversion
 bdiff		yes	yes	yes
-bdelta		yes	yes	yes, although not guranteed the 
-				resultant delta will be processable by 
-				bpatch.
+bdelta		yes	yes	yes, as of bdelta-0.1
 gdiff v4	yes	yes	yes
 gdiff v4
   (tweaked)	yes	yes	yes
 switching	yes	yes	yes
-unified diff	yes*	no	beta, but yes.
+unified diff	yes*	no	beta, but yes.  Normally disabled.
 				*only non-recursive patches.
 xdelta-1.1.0	yes	no	yes
 
 ---BINARIES---
 
 differ 		general purpose differencing program, 
-diffball 	specific implementation for processing tarball's (producing 
-		smaller deltas then differ typically does for a 
-		tarball)
+diffball 	specific implementation for processing tarball's- usually this
+		results in a smaller delta then differ, w/ a better run-time.
+		Differ does pull ahead for tarballs in some cases, notably 
+		the evolution src tarballs.
 patcher		reconstruction program, if a format has read support 
 		patcher can reconstruct the target file.
 convert_delta	program for converting between formats, if write support 
 		is supported for the target format, and read support for 
 		the source, it can convert between the two producing a 
-		correct patch.  Caveat is bdelta's format, due to it 
-		storing file size information in it.
+		correct patch.
 
 -----SETUP-----
 
 To configure and install diffball, first run the 'configure' script 
 which will create a makefile along w/ a config.h appropriate to how you 
-wanted it configured.  From there, just type "make".
+wanted it configured and your system.  From there, just type "make".
 
 
 -----BUGS------
 
-None are currently known.  If you've found weird behavior, email a bug 
+Appears not to compile on OSX, although I think that may be do weirdness in 
+tracking down needed libs/headers from fink (popt as an example).
+Will be fixed either when a patch is sent in, or by 0.4 stable release.
+
+Command line hash_size is not always abided by, notable BUCKET/RBUCKET- will 
+be fixed in the next release (current being 0.4_pre4).
+
+Aside from that, if  you've found weird behavior, email a bug 
 report to me at bdharring@wisc.edu .
 
 ---COPYRIGHT---
@@ -50,4 +57,4 @@ Look in the file COPYING if you're curious of the specifics.
 --AVAILABILITY-
 
 For the foreseeable future diffball will be hosted through sourceforge, 
-http://sourceforge.net/projects/diffball
+at http://sourceforge.net/projects/diffball .

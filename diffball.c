@@ -277,12 +277,14 @@ int main(int argc, char **argv)
         	tar_ptr->size + 512 - (tar_ptr->size % 512==0 ? 512 : 
         	tar_ptr->size % 512)),
         	NO_COMPRESSOR, CFILE_RONLY | CFILE_BUFFER_ALL);
-            init_RefHash(&rhash_win, &ref_window, 16, 1, 
-		cfile_len(&ref_window), RH_MOD_HASH);
+            init_RefHash(&rhash_win, &ref_window, 24, 1, 
+		cfile_len(&ref_window), RH_BUCKET_HASH);
 	    RHash_insert_block(&rhash_win, &ref_window, 0, 
 		cfile_len(&ref_window));
+	    RHash_cleanse(&rhash_win);
 	    print_RefHash_stats(&rhash_win);
             OneHalfPassCorrecting(&dcbuff, &rhash_win, &ver_window);
+//	    MultiPassAlg(&dcbuff, &ref_window, &ver_window, hash_size);
             free_RefHash(&rhash_win);
 	    cclose(&ref_window);
         }

@@ -110,7 +110,7 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 	    delta_pos += dc.loc.len;
     	}
     }
-    v2printf("output add block, len(%lu)\n", delta_pos);
+    v1printf("output add block, len(%lu)\n", delta_pos);
     DCBufferReset(buffer);
     last_com = DC_COPY;
     dc_pos=0;
