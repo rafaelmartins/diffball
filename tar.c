@@ -116,58 +116,63 @@ struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, 
 	entry->chksum = octal_str2long(&block[TAR_CHKSUM_LOC], TAR_CHKSUM_LEN);
 	entry->typeflag = (unsigned char)block[TAR_TYPEFLAG_LOC];
 	
-	unsigned int l;
-	l = strnlen(&block[TAR_LINKNAME_LOC], TAR_LINKNAME_LEN);
-	if((entry->linkname=(char *)malloc(l+1))==NULL){
+	//unsigned int l;
+	entry->linkname_len = strnlen(&block[TAR_LINKNAME_LOC], TAR_LINKNAME_LEN);
+	if((entry->linkname=(char *)malloc(entry->linkname_len + 1))==NULL){
 	    perror("shite, couldn't alloc.\n");
 	    exit(1);
 	} else {
-	    if (l > 0)
-		strncpy((char *)entry->linkname, &block[TAR_LINKNAME_LOC],l);
-	    entry->linkname[l]='\0';
+	    if (entry->linkname_len > 0)
+		strncpy((char *)entry->linkname, &block[TAR_LINKNAME_LOC],
+		    entry->linkname_len);
+	    entry->linkname[entry->linkname_len]='\0';
 	}
 	strncpy((char *)entry->magic, &block[TAR_MAGIC_LOC], TAR_MAGIC_LEN);
 	strncpy((char *)entry->version, &block[TAR_VERSION_LOC], TAR_VERSION_LEN);
-	l = strnlen(&block[TAR_UNAME_LOC], TAR_UNAME_LEN);
-	if((entry->uname=(char *)malloc(l+1))==NULL){
+	entry->uname_len = strnlen(&block[TAR_UNAME_LOC], TAR_UNAME_LEN);
+	if((entry->uname=(char *)malloc(entry->uname_len + 1))==NULL){
 	    perror("shite, couldn't alloc.\n");
 	    exit(1);
 	} else {
-	    if (l > 0)
-		strncpy((char *)entry->uname, &block[TAR_UNAME_LOC],l);
-	    entry->linkname[l]='\0';
+	    if (entry->uname_len > 0)
+		strncpy((char *)entry->uname, &block[TAR_UNAME_LOC], entry->uname_len);
+	    entry->uname[entry->uname_len]='\0';
 	}
-	l = strnlen(&block[TAR_GNAME_LOC], TAR_GNAME_LEN);
-	if((entry->gname=(char *)malloc(l+1))==NULL){
+	
+	entry->gname_len = strnlen(&block[TAR_GNAME_LOC], TAR_GNAME_LEN);
+	if((entry->gname=(char *)malloc(entry->gname_len + 1))==NULL){
 	    perror("shite, couldn't alloc.\n");
 	    exit(1);
 	} else {
-	    if (l > 0)
-		strncpy((char *)entry->gname, &block[TAR_GNAME_LOC],l);
-	    entry->linkname[l]='\0';
+	    if (entry->gname_len > 0)
+		strncpy((char *)entry->gname, &block[TAR_GNAME_LOC],entry->gname_len);
+	    entry->gname[entry->gname_len]='\0';
 	}
 	entry->devmajor = octal_str2long(&block[TAR_DEVMAJOR_LOC], TAR_DEVMAJOR_LEN);
 	entry->devminor = octal_str2long(&block[TAR_DEVMINOR_LOC], TAR_DEVMINOR_LEN);
 	if((entry->prefix_len=strnlen(&block[TAR_PREFIX_LOC], TAR_PREFIX_LEN))==0) { /* ergo prefix is nothing */
-	    l=strnlen((char *)(&block[TAR_NAME_LOC]), TAR_NAME_LEN);
-	    if((entry->fullname_ptr = entry->fullname = (char *)malloc(l+1))==NULL) {
+	    entry->name_len = strnlen((char *)(&block[TAR_NAME_LOC]), TAR_NAME_LEN);
+	    if((entry->fullname_ptr = entry->fullname =
+		    (char *)malloc(entry->name_len + 1))==NULL) {
 		perror("shite, couldn't alloc memory\n");
 		exit(1);
 	    }
-	    strncpy((char *)entry->fullname, (char *)(&block[TAR_NAME_LOC]), l);
+	    strncpy((char *)entry->fullname, (char *)(&block[TAR_NAME_LOC]),
+		entry->name_len);
 	    entry->name=(char *)entry->fullname;
-	    entry->fullname[l]='\0';
+	    entry->fullname[entry->name_len]='\0';
 	} else {
-	    l=strnlen((char *)(&block[TAR_NAME_LOC]), TAR_NAME_LEN);
-	    if((entry->fullname_ptr = entry->fullname = (char *)malloc(l + entry->prefix_len + 2))==NULL) {
+	    entry->name_len=strnlen((char *)(&block[TAR_NAME_LOC]), TAR_NAME_LEN);
+	    if((entry->fullname_ptr = entry->fullname =
+		    (char *)malloc(entry->name_len + entry->prefix_len + 2))==NULL) {
 		perror("shite, couldn't alloc memory\n");
 		exit(1);
 	    }
 	    strncpy((char *)entry->fullname_ptr, &block[TAR_PREFIX_LOC], entry->prefix_len);
 	    entry->fullname_ptr[entry->prefix_len]= '/';
 	    entry->name = (char *)(entry->fullname_ptr + entry->prefix_len +1);
-	    strncpy((char *)entry->name, (char *)(&block[TAR_NAME_LOC]), l);
-	    entry->fullname_ptr[l + entry->prefix_len + 2] = '\0';
+	    strncpy((char *)entry->name, (char *)(&block[TAR_NAME_LOC]), entry->name_len);
+	    entry->fullname_ptr[entry->name_len + entry->prefix_len + 2] = '\0';
 	    entry->prefix_len++; // increment it to include the trailing slash
 	}
         entry->entry_num = count;

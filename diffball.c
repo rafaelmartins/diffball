@@ -6,6 +6,8 @@
 #include "tar.h"
 #include "data-structs.h"
 
+#define MAX(x,y) ((x) > (y) ? (x) : (y))
+#define MIN(x,y) ((x) < (y) ? (x) : (y))
 int cmp_tar_entries(const void *te1, const void *te2);
 int command_pipes(const char *command, const char *args, int *pipes);
 
@@ -88,15 +90,6 @@ int main(int argc, char **argv)
         }
     }
     printf("final trg_common='%.255s'\n", trg_common);
-        /*perhaps this is a crappy method, but basically for the my sanity, just up the fullname ptr
-         to remove the common-prefix.  wonder if string functions behave and don't go past the sp... */
-        /* init the fullname_ptr to point to the char after the common-prefix dir.  if no prefix, points
-        to the start of fullname. that and look for common info for each entry. */
-        /*note for harring.  deref fullname, add common_len, then assign to ptr after casting */
-    
-    for (x=0; x < source_count; x++) {
-        source[x]->fullname_ptr= (char *)source[x]->fullname + src_common_len;
-    }
     
     struct long_dllist *init_long_dllist(unsigned long int value) {
 	struct long_dllist *em;
@@ -134,12 +127,11 @@ int main(int argc, char **argv)
     trg_devminor_ll = init_long_dllist(target[0]->devminor);
     printf("initing struct's for checking for common strs...\n");
     struct str_dllist *trg_uname_ll, *trg_gname_ll, *trg_magic_ll, *trg_version_ll, *trg_mtime_ll, *sdll_ptr;
-    trg_uname_ll = init_str_dllist(target[0]->uname, strnlen(target[0]->uname, TAR_UNAME_LEN));
-    printf("finished 1\n");
-    trg_gname_ll = init_str_dllist(target[0]->gname, strnlen(target[0]->gname, TAR_GNAME_LEN));
-    trg_magic_ll = init_str_dllist(target[0]->magic, strnlen(target[0]->magic, TAR_MAGIC_LEN));
-    trg_version_ll = init_str_dllist(target[0]->version, strnlen(target[0]->version, TAR_VERSION_LEN));
-    trg_mtime_ll = init_str_dllist(target[0]->mtime, strnlen(target[0]->mtime, TAR_MTIME_LEN));
+    trg_uname_ll = init_str_dllist(target[0]->uname, target[0]->uname_len);
+    trg_gname_ll = init_str_dllist(target[0]->gname, target[0]->gname_len);
+    trg_magic_ll = init_str_dllist(target[0]->magic, TAR_MAGIC_LEN);
+    trg_version_ll = init_str_dllist(target[0]->version, TAR_VERSION_LEN);
+    trg_mtime_ll = init_str_dllist(target[0]->mtime, TAR_MTIME_LEN);
     printf("inited.\n");
     
     void update_long_dllist(struct long_dllist **em, unsigned long int value) {
@@ -186,7 +178,7 @@ int main(int argc, char **argv)
 	//printf("\nupdating\n");
 	for (ptr = *em; ptr != NULL; ptr = (struct str_dllist *)ptr->next, x++) {
 	    //printf("examining node(%u)\n", x);
-	    if(strncmp(ptr->data, value, len) == 0) {
+	    if(strcmp(ptr->data, value) == 0) {
 		//printf("match ptr(%lu), data(%s), current count(%lu)\n", ptr, ptr->data, ptr->count);
 		ptr->count += 1;
 		while (ptr->prev != NULL
@@ -217,20 +209,32 @@ int main(int argc, char **argv)
 	    }
 	}
     }
-		    
+    
+        /*perhaps this is a crappy method, but basically for the my sanity, just up the fullname ptr
+         to remove the common-prefix.  wonder if string functions behave and don't go past the sp... */
+        /* init the fullname_ptr to point to the char after the common-prefix dir.  if no prefix, points
+        to the start of fullname. that and look for common info for each entry. */
+        /*note for harring.  deref fullname, add common_len, then assign to ptr after casting */
+    
+    for (x=0; x < source_count; x++) {
+        source[x]->fullname_ptr= (char *)source[x]->fullname + src_common_len;
+	source[x]->fullname_ptr_len = source[x]->fullname_len - src_common_len;
+    }
+    
     for (x=0; x < target_count; x++) {
         target[x]->fullname_ptr = (char *)target[x]->fullname + trg_common_len;
+	target[x]->fullname_ptr_len = target[x]->fullname_len - trg_common_len;
 	update_long_dllist(&trg_mode_ll, target[x]->mode);
 	update_long_dllist(&trg_uid_ll, target[x]->uid);
 	update_long_dllist(&trg_gid_ll, target[x]->gid);
 	update_long_dllist(&trg_devminor_ll, target[x]->devminor);
 	update_long_dllist(&trg_devmajor_ll, target[x]->devminor);
 	//struct str_dllist *trg_uname_ll, *trg_gname_ll, *trg_magic_ll, *trg_version_ll, *trg_mtime_ll, *sdll_ptr;
-	update_str_dllist(&trg_uname_ll, target[x]->uname, strnlen(target[x]->uname));
-	update_str_dllist(&trg_gname_ll, target[x]->gname, strnlen(target[x]->gname));
-	update_str_dllist(&trg_magic_ll, target[x]->magic, strnlen(target[x]->magic));
-	update_str_dllist(&trg_version_ll, target[x]->version, strnlen(target[x]->version));
-	update_str_dllist(&trg_mtime_ll, target[x]->mtime, strnlen(target[x]->mtime));
+	update_str_dllist(&trg_uname_ll, target[x]->uname, target[x]->uname_len);
+	update_str_dllist(&trg_gname_ll, target[x]->gname, target[x]->gname_len);
+	update_str_dllist(&trg_magic_ll, target[x]->magic, TAR_MAGIC_LEN);
+	update_str_dllist(&trg_version_ll, target[x]->version, TAR_VERSION_LEN);
+	update_str_dllist(&trg_mtime_ll, target[x]->mtime, TAR_MTIME_LEN);
     }
     /*printf("checking ldll\n");
     for(ldll_ptr = trg_mode_ll; ldll_ptr != NULL; ldll_ptr = ldll_ptr->next) 
