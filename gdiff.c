@@ -202,9 +202,9 @@ gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
     unsigned char buff[buff_size];
     unsigned long int len;
     unsigned long ver_pos=0, dc_pos=0;
-    unsigned long int u_off;
-    signed long int s_off;
-    int off_is_sbytes, ob, lb;
+    unsigned long int u_off=0;
+    signed long int s_off=0;
+    int off_is_sbytes, ob=0, lb=0;
     if(offset_type==ENCODING_OFFSET_VERS_POS || offset_type==ENCODING_OFFSET_DC_POS)
 	off_is_sbytes=1;
     else if(offset_type==ENCODING_OFFSET_START)

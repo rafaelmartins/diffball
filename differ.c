@@ -56,7 +56,6 @@ int main(int argc, char **argv)
     //char *src, *trg;
     CommandBuffer buffer;
     RefHash rhash;
-    unsigned int offset_type;
     poptContext p_opt;
 
     signed long optr;
@@ -102,7 +101,7 @@ int main(int argc, char **argv)
     if(patch_to_stdout != 0) {
 	out_fh = 0;
     } else {
-	if((patch_name = poptGetArg(p_opt))==NULL)
+	if((patch_name = (char *)poptGetArg(p_opt))==NULL)
 	    usage(p_opt, 1, "Must specify a name for the patch file.",NULL);
 	if((out_fh = open(patch_name, O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1) {
 	    fprintf(stderr, "error creating patch file '%s' (open failed)\n",

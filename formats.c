@@ -44,8 +44,8 @@ check_for_format(char *format_name, unsigned int len)
 unsigned long int
 identify_format(cfile *patchf)
 {
-    unsigned int val=0;
-    unsigned int format=0;
+    unsigned long int val=0;
+    unsigned long int format=0;
     if((val=check_gdiff4_magic(patchf))) {
 	format = GDIFF4_FORMAT;
     } else if ((val=check_gdiff5_magic(patchf))) {

@@ -47,14 +47,13 @@ int
 main(int argc, char **argv)
 {
     int in_fh, out_fh;
-    struct stat in_stat, out_stat;
-    unsigned int offset_type;
+    struct stat in_stat;
     CommandBuffer dcbuff;
     cfile in_cfh, out_cfh;
     poptContext p_opt;
     signed long optr;
     char *src_file, *trg_file;
-    unsigned long int src_format_id, trg_format_id;
+    unsigned long int src_format_id, trg_format_id=0;
     signed long recon_val=0, encode_result=0;
 
     p_opt = poptGetContext("convert_delta", argc, (const char **)argv, 
@@ -87,7 +86,7 @@ main(int argc, char **argv)
     if(output_to_stdout) {
 	out_fh = 0;
     } else {
-	if((trg_file = poptGetArg(p_opt))==NULL)
+	if((trg_file = (char *)poptGetArg(p_opt))==NULL)
 	    usage(p_opt, 1, "Must specify a name for the new patch.", NULL);
         if((out_fh = open(trg_file, O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1){
 	    fprintf(stderr, "error creating output file '%s'\n", trg_file);

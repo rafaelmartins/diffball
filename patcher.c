@@ -48,7 +48,6 @@ main(int argc, char **argv)
 {
     struct stat src_stat, patch_stat;
     int src_fh, patch_fh, out_fh;
-    unsigned int offset_type;
     cfile src_cfh, patch_cfh, out_cfh;
     CommandBuffer dcbuff;
     poptContext p_opt;
@@ -58,7 +57,7 @@ main(int argc, char **argv)
     char  *out_name;
     char  *patch_name;
     unsigned long int patch_id=0;
-    signed int recon_val=0;
+    signed long int recon_val=0;
 
     p_opt = poptGetContext("patcher", argc, (const char **)argv, options, 0);
     while((optr=poptGetNextOpt(p_opt)) != -1) {
@@ -96,7 +95,7 @@ main(int argc, char **argv)
     if(output_to_stdout != 0) {
 	out_fh = 0;
     } else {
-	if((out_name = poptGetArg(p_opt))==NULL)
+	if((out_name = (char *)poptGetArg(p_opt))==NULL)
 	    usage(p_opt, 1, "Must specify a name for the out file.", 0);
 	if((out_fh = open(out_name, O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1) {
 	    fprintf(stderr, "error creating out file (open failed)\n");

@@ -42,9 +42,9 @@ signed int
 bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh, cfile *out_cfh)
 {
 #define BUFFER_SIZE 1024
-    unsigned char src_md5[16], ver_md5[16];
+//    unsigned char src_md5[16], ver_md5[16];
     unsigned char buff[BUFFER_SIZE];
-    unsigned long count, fh_pos, delta_pos=0;
+    unsigned long count, fh_pos, delta_pos;
     unsigned int lb;
     count = DCBufferReset(buffer);
     memcpy(buff, BDIFF_MAGIC, BDIFF_MAGIC_LEN);
@@ -104,7 +104,7 @@ bdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 {
     unsigned char src_md5[16], ver_md5[16], buff[17];
     unsigned long len, offset, maxlength;
-    unsigned long delta_pos, fh_pos;
+    unsigned long fh_pos;
     memset(src_md5, 0, 16);
     memset(ver_md5, 0, 16);
     /* skippping magic bdiff, and version char 'a' */

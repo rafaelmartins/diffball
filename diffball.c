@@ -59,7 +59,6 @@ src_common_len=0, trg_common_len=0;
 int main(int argc, char **argv)
 {
     int src_fh, trg_fh, out_fh;
-    unsigned int offset_type;
     struct tar_entry **source, **target, *tar_ptr;
     void *vptr;
     unsigned char source_md5[32], target_md5[32];
@@ -70,7 +69,7 @@ int main(int argc, char **argv)
     unsigned long match_count;
     /*probably should convert these arrays to something more compact, 
 	use bit masking. */
-    unsigned char *source_matches, *target_matches;
+//    unsigned char *source_matches, *target_matches;
 	
 	cfile ref_full, ref_window, ver_window, ver_full, out_cfh;
 	struct stat ref_stat, ver_stat;
@@ -128,7 +127,7 @@ int main(int argc, char **argv)
     if(patch_to_stdout != 0) {
 	out_fh = 0;
     } else {
-	if((patch_name = poptGetArg(p_opt))==NULL)
+	if((patch_name = (char *)poptGetArg(p_opt))==NULL)
 	    usage(p_opt, 1, "Must specify a name for the patch file.", NULL);
 	if((out_fh = open(patch_name, O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1) {
 	    fprintf(stderr, "error creating patch file (open failed)\n");

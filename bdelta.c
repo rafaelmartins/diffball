@@ -105,8 +105,8 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *ver_cfh,
 		copy_offset = dcbuff->lb_tail->offset - dc_pos;
 	    }
 	    dc_pos = dcbuff->lb_tail->offset + dcbuff->lb_tail->len;
-	    v2printf("writing copy_len=%lu, offset=%lu, dc_pos=%lu, stored_off=0x%x\n",
-		copy_len, dcbuff->lb_tail->offset, dc_pos, copy_offset);
+	    v2printf("writing copy_len=%lu, offset=%lu, dc_pos=%lu\n",
+		copy_len, dcbuff->lb_tail->offset, dc_pos);
 	} else {
 	    copy_len = 0;
 	    copy_offset = 0;
