@@ -82,7 +82,7 @@ main(int argc, char **argv)
 	(stat(src_file, &in_stat)))
 	usage(p_opt, 1, "Must specify an existing patch.", NULL);
     if(output_to_stdout) {
-	out_fh = 0;
+	out_fh = 1;
     } else {
 	if((trg_file = (char *)poptGetArg(p_opt))==NULL)
 	    usage(p_opt, 1, "Must specify a name for the new patch.", NULL);

@@ -24,23 +24,6 @@
 #include "bit-functions.h"
 #include "bdelta.h"
 
-unsigned long
-null_fill_add(CommandBuffer *dcb, DCommand *dc, cfile *out_cfh)
-{
-    unsigned char buff[512];
-    unsigned long len, x;
-    len = dc->loc.len;
-    memset(buff, 0, 512);
-    while(len) {
-	x = MIN(len, 512);
-	if(x != cwrite(out_cfh, buff, x)) {
-	    return dc->loc.len - len;
-	}
-	len -= x;
-    }
-    return dc->loc.len - len;
-}
-
 unsigned int
 check_bdelta_magic(cfile *patchf)
 {
@@ -202,7 +185,6 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
     add_pos += (matches * (3 * int_size));
     add_start = add_pos;
     DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL, 0);
-    DCBUFFER_REGISTER_ADD_SRC(dcbuff, NULL, &null_fill_add, 0);
     v2printf("add block starts at %lu\nprocessing commands\n", add_pos);
     unsigned long match_orig = matches;
     if(size1==0) {
@@ -247,7 +229,7 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
     assert(ctell(patchf, CSEEK_FSTART)==add_start);
     if(processed_size != size2) {
 	v1printf("hmm, left the trailing nulls out; adding appropriate command\n");
-	DCB_add_add(dcbuff, 0, size2 - processed_size, 1);
+	DCB_add_add(dcbuff, add_pos, size2 - processed_size, 0);
     }
     v2printf("finished reading.  ver_pos=%lu, add_pos=%lu\n",
 	ver_pos, add_pos);

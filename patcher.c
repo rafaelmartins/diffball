@@ -91,7 +91,7 @@ main(int argc, char **argv)
 	(stat(patch_name, &patch_stat)) )
 	usage(p_opt, 1, "Must specify an existing patch file.", 0);
     if(output_to_stdout != 0) {
-	out_fh = 0;
+	out_fh = 1;
     } else {
 	if((out_name = (char *)poptGetArg(p_opt))==NULL)
 	    usage(p_opt, 1, "Must specify a name for the out file.", 0);

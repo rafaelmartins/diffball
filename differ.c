@@ -97,7 +97,7 @@ int main(int argc, char **argv)
 	(stat(trg_file, &ver_stat)) )
 	usage(p_opt, 1, "Must specify an existing target file.",NULL);
     if(patch_to_stdout != 0) {
-	out_fh = 0;
+	out_fh = 1;
     } else {
 	if((patch_name = (char *)poptGetArg(p_opt))==NULL)
 	    usage(p_opt, 1, "Must specify a name for the patch file.",NULL);
