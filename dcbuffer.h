@@ -41,6 +41,9 @@ extern unsigned int global_use_md5;
 #define DCB_FREE_SRC_CFH		(char)0x1
 #define DCB_OVERLAY_SRC			(char)0x80
 
+/* dcb_src related */
+#define DCB_SRC_NOT_TRANSLATED		0xffff
+
 /* essentially dcb->src_type is thus- upper 2 bits 
    the actual type of the src (eg, cfile, another command
    buffer), and the lower bit for if it's an add or copy src.
@@ -83,7 +86,8 @@ typedef struct {
 //    unsigned long		index_count;
 //    unsigned long		index_size;
 //    unsigned long		index_pos;
-    struct _DCB_registered_src	**command_srcs;
+//    struct _DCB_registered_src	**command_srcs;
+    unsigned char		*src_ids;
     DCLoc			*commands;
     unsigned long		com_count;
     unsigned long		com_size;
@@ -92,6 +96,7 @@ typedef struct {
 typedef struct {
     DCLoc_match			data;
     struct _DCB_registered_src	*dcb_src;
+    DCB_ptr			dcb_ptr;
     unsigned long		ov_offset;
     unsigned long		ov_len;
 //    unsigned long		ov_index;
@@ -104,9 +109,15 @@ typedef struct {
     unsigned char		src_id;
 } DCommand_abbrev;
 
+typedef struct {
+    unsigned short		src_map[256];
+    DCB_ptr			src_dcb;
+//    DCBSearch			*s;
+} DCB_src;
+
 typedef union {
     cfile		*cfh;
-    DCB_ptr		dcb;
+    DCB_src		*dcb;
 } u_dcb_src;
 
 typedef unsigned long (*dcb_src_read_func)(u_dcb_src, unsigned long, 

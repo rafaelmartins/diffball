@@ -83,7 +83,7 @@ bsdiff_overlay_copy(DCommand *dc,
     while(dc->ov_len > commands_read) {
     	com_len = 0;
 	dptr = ov->commands + dc->ov_offset + commands_read;
-	dsrc = ov->command_srcs[dc->ov_offset + commands_read];
+	dsrc = &dc->dcb_ptr->srcs[ov->src_ids[dc->ov_offset + commands_read]];
 	while(dptr->len > com_len) {
 	    tmp_len = MIN(dptr->len - com_len, ocfw->size);
 	    if(tmp_len != dsrc->read_func(dsrc->src_ptr, 

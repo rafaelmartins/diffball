@@ -51,7 +51,7 @@ reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh, int reorder_for_seq_acces
     DCBufferReset(dcbuff);
     
     reorder_for_seq_access = 1;
-//    reorder_for_seq_access = 0;
+    reorder_for_seq_access = 0;
 
     assert(reorder_for_seq_access == 0 || CFH_IS_SEEKABLE(out_cfh) || 1);
     if(reorder_for_seq_access) {
