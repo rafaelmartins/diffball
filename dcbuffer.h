@@ -37,7 +37,10 @@ extern unsigned int global_use_md5;
 
 #define ADD_CFH_FREE_FLAG		0x1
 #define DCB_LLM_FINALIZED		0x2
-#define EXTRA_PATCH_DATA_USED		0x4
+
+/* register_src flags */
+#define DCB_FREE_SRC_CFH		(char)0x1
+#define DCB_OVERLAY_SRC			(char)0x80
 
 // internal dcbuffer macros.
 #define LLM_VEND(l)  ((l)->ver_pos + (l)->len)
@@ -60,16 +63,19 @@ struct LL_DCLmatch {
     unsigned long len;
     LL_DCLmatch *next;
 };
+typedef struct _CommandBuffer *DCB_ptr;
 
 typedef struct {
-//    DCLoc loc;
-    DCLoc_match data;
-    unsigned long src_id;
-    unsigned char type;
+    DCLoc_match		data;
+    DCB_ptr		src_dcb;
+    unsigned long	cmd_pos;
+    unsigned long	src_id;
+    unsigned char	type;
 } DCommand;
 
-typedef struct _CommandBuffer *DCB_ptr;
-typedef unsigned long (*dcb_src_read_func)(DCB_ptr, DCommand *, cfile *);
+typedef unsigned long (*dcb_src_read_func)(DCommand *, unsigned long, 
+    unsigned char *, unsigned long);
+typedef unsigned long (*dcb_src_copy_func)(DCommand *, cfile *);
 
 typedef struct _CommandBuffer {
     off_u64 src_size;
@@ -104,36 +110,23 @@ typedef struct _CommandBuffer {
 
     cfile **src_cfh;
     dcb_src_read_func *src_read_func;
+    dcb_src_copy_func *src_copy_func;
     unsigned int src_array_size, src_count;
-    unsigned char src_free[16];
     unsigned char src_type[16];
+    unsigned char src_cfh_flags[256];
 
     /* this is a hack, and not a particularly good one either.
 	things need to be expanded to eliminate the need for this- check the 
 	bsdiff format reconstructor if you're curious of it's reason for 
 	existing*/
-    void *extra_patch_data;
     unsigned long flags;
 } CommandBuffer;
 
-#ifdef DEV_VERSION
-#define DCB_REGISTER_EXTRA_PATCH_DATA(dcbuff, ext_ptr)			\
-    if((dcbuff)->extra_patch_data != NULL){				\
-	abort();							\
-    }									\
-    (dcbuff)->extra_patch_data = (void *)(ext_ptr)
-#else
-#define DCB_REGISTER_EXTRA_PATCH_DATA(dcbuff, ext_ptr)			\
-    (dcbuff)->extra_patch_data = (void *)(ext_ptr)
-#endif
+#define copyDCB_add_src(dcb, dc, out_cfh)				\
+    ((dc)->src_dcb->src_copy_func[(dc)->src_id]((dc), (out_cfh)))
+#define copyDCB_copy_src(dcb, dc, out_cfh)				\
+    ((dc)->src_dcb->src_copy_func[(dc)->src_id]((dc), (out_cfh)))
 
-#define copyDCB_add_src(buff, dc, out_cfh)				\
-    (buff)->src_read_func[(dc)->src_id]((buff), (dc), (out_cfh))
-#define copyDCB_copy_src(buff, dc, out_cfh)				\
-    (buff)->src_read_func[(dc)->src_id]((buff), (dc), (out_cfh))
-
-#define DCB_REGISTER_ADD_SRC(buff, cfh, func, free)	(DCB_register_src((buff), (cfh), (func), (free), DC_ADD))
-#define DCB_REGISTER_COPY_SRC(buff, cfh, func, free)	(DCB_register_src((buff), (cfh), (func), (free), DC_COPY))
 
 /* not used anymore, chuck at some point */
 #define DCB_REGISTER_MATCHES_VER_CFH(buff, cfh)				\
@@ -143,14 +136,19 @@ typedef struct _CommandBuffer {
 	(buff)->DCB.llm.ver_start = cfile_start_offset((cfh));		\
     }
 
-int DCB_register_src(CommandBuffer *dcb, cfile *cfh, dcb_src_read_func read_func, 
+int internal_DCB_register_src(CommandBuffer *dcb, cfile *cfh,
+    dcb_src_read_func read_func, dcb_src_copy_func copy_func, 
     unsigned char free, unsigned char type);
+int DCB_register_overlay_srcs(CommandBuffer *dcb, 
+    int *id1, cfile *src, dcb_src_read_func rf1, dcb_src_copy_func rc1, char free1,
+    int *id2, cfile *add, dcb_src_read_func rf2, dcb_src_copy_func rc2, char free2);
+
+#define DCB_REGISTER_ADD_SRC(dcb, cfh, func, free)	internal_DCB_register_src((dcb), (cfh), NULL, (func), DC_ADD, (free))
+#define DCB_REGISTER_COPY_SRC(dcb, cfh, func, free)	internal_DCB_register_src((dcb), (cfh), NULL, (func), DC_COPY, (free))
+#define DCB_register_src(dcb, cfh, rf, cf, free, type)  internal_DCB_register_src((dcb), (cfh), (rf), (cf), (type), (free))
 
 unsigned long inline current_command_type(CommandBuffer *buff);
-unsigned long default_dcb_add_func(CommandBuffer *dcb, DCommand *dc, 
-    cfile *out_cfh);
-unsigned long default_dcb_copy_func(CommandBuffer *dcb, DCommand *dc,
-    cfile *out_cfh);
+
 void DCBufferIncr(CommandBuffer *buffer);
 void DCBufferDecr(CommandBuffer *buffer);
 void DCBufferCollapseAdds(CommandBuffer *buffer);
@@ -162,7 +160,11 @@ void DCBufferReset(CommandBuffer *buffer);
 unsigned int DCB_get_next_gap(CommandBuffer *buff, unsigned long gap_req, 
     DCLoc *dc);
 unsigned int DCB_commands_remain(CommandBuffer *buffer);
+void internal_DCB_get_next_command(CommandBuffer *buffer, DCommand *dc);
 void DCB_get_next_command(CommandBuffer *buffer, DCommand *dc);
+#define DCB_get_next_actual_command(dcb, dc) \
+	internal_DCB_get_next_command((dcb), (dc))
+
 void DCB_truncate(CommandBuffer *buffer, unsigned long len);
 
 void DCB_add_add(CommandBuffer *buffer, off_u64 ver_pos, unsigned long len,

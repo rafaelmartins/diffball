@@ -20,5 +20,6 @@
 
 int reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh, 
     int reorder_for_seq_access);
-
+int read_seq_write_rand(CommandBuffer *dcb, DCommand *dc_array,
+    unsigned long array_size, cfile *out_cfh);
 #endif 
