@@ -61,6 +61,10 @@ signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer,
     }
     cwrite(out_fh, out_buff, GDIFF_VER_LEN);
     while(buffer->count--){
+		if(buffer->lb_tail->len==0) {
+		    DCBufferIncr(buffer);
+		    continue;
+		}
 		if((*buffer->cb_tail & (1 << buffer->cb_tail_bit))>0) {
 	    	//ptr=ver + buffer->lb_tail->offset;
 	    	type=DC_COPY;

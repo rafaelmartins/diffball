@@ -38,6 +38,7 @@
 
 signed int free_RefHash(struct ref_hash *rhash)
 {
+	printf("free_RefHash\n");
 	free(rhash->hash);
 	rhash->seed_len = rhash->hr_size = rhash->sample_rate = 
 		rhash->inserts = rhash->duplicates = 0;
@@ -45,19 +46,22 @@ signed int free_RefHash(struct ref_hash *rhash)
 }
 
 signed int init_RefHash(struct ref_hash *rhash, struct cfile *ref_cfh, 
-	unsigned int seed_len, unsigned long hr_size)
+	unsigned int seed_len, unsigned int sample_rate, 
+	unsigned long hr_size)
 {
 	unsigned long x, index;
     //unsigned long inserts=0, duplicates=0;
-    unsigned int const rbuff_size = 1024;
+    unsigned int const rbuff_size = 16 * 4096;
     unsigned char rbuff[rbuff_size];
     unsigned long rbuff_start=0, rbuff_end=0;
     unsigned long ref_len;
+    unsigned int missed;
 
     struct adler32_seed ads;
     //unsigned long copies=0, adds=0, truncations=0;
     //unsigned long min_offset_dist = 0, max_offset_dist = 0;
 	struct prime_ctx pctx;
+    printf("init_RefHash\n");
 
 	/*if((buffer=(struct CommandBuffer *)malloc(sizeof(struct CommandBuffer)))==NULL) {
 		perror("shite, couldn't alloc needed memory.\n");
@@ -81,41 +85,36 @@ signed int init_RefHash(struct ref_hash *rhash, struct cfile *ref_cfh,
     init_adler32_seed(&ads, seed_len, 1);
     rbuff_start = cseek(ref_cfh, 0, CSEEK_FSTART);
     rbuff_end=cread(ref_cfh, rbuff, rbuff_size);
-    printf("inited hash start(%lu), end(%lu), requested(%u)\n", rbuff_start, rbuff_end,
-    	rbuff_size);
     //printf("rbuff_end(%lu)\n", rbuff_end);
 
     update_adler32_seed(&ads, rbuff, seed_len);
-
+    missed=0;
     for(x=seed_len; x < ref_len - seed_len; x++) {
 		if(x - rbuff_start >= rbuff_size) {
 			rbuff_start += rbuff_end;
 			rbuff_end   = cread(ref_cfh, rbuff, 
 				MIN(ref_len - rbuff_start, rbuff_size));
 		}
-		/*s1 = s1 - last_seed[x % seed_len] +
-			rbuff[x - rbuff_start];
-		s2 = s2 - (seed_len * last_seed[x % seed_len]) + s1;
-		last_seed[x % seed_len] = rbuff[x - rbuff_start];
-		*/
-		/*for(rm=x; rm < x + seed_len; rm++){
-			s1 += rbuff[rm - rbuff_start];
-			s2 += s1;
-		}*/
-		//hr[x - seed_len+1];
 		update_adler32_seed(&ads, rbuff + (x - rbuff_start), 1);
 		index=hash_it(ads, rhash->hr_size);
-		//printf("s1(%lu), s2(%lu) hashed(%lu), off(%lu)\n", ads.s1,ads.s2, index, 
-		//	x - seed_len + 1);
+
 		/*note this has the ability to overwrite offset 0...
 	  but thats alright, cause a correcting alg if a match at offset1, will grab the offset 0 */
 		if(rhash->hash[index]==0) {
-	    	rhash->inserts++;
-	    	rhash->hash[index] =x - seed_len + 1;
+		    rhash->inserts++;
+		    rhash->hash[index] =x - seed_len + 1;
+		    if(sample_rate > 1 && missed < sample_rate) {
+			x+= sample_rate - missed;
+		    }
+		    //x += (missed >= sample_rate ? 0 : sample_rate - missed);
+		    missed=0;
 		} else {
-			rhash->duplicates++;
+		    rhash->duplicates++;
+		    missed++;
 	    }
     }
+    free_primes(&pctx);
+    free_adler32_seed(&ads);
     return 0;
 }
 
@@ -126,7 +125,7 @@ signed int OneHalfPassCorrecting(struct CommandBuffer *buffer,
     unsigned long x, index, len;
 	unsigned long no_match=0, bad_match=0, good_match=0;
     unsigned long vc, va, vs, vm, rm;
-    unsigned int const rbuff_size = 512, vbuff_size = 1024;
+    unsigned int const rbuff_size = 4096, vbuff_size = 4096;
     unsigned char rbuff[rbuff_size], vbuff[vbuff_size];
     unsigned long rbuff_start=0, vbuff_start=0, rbuff_end=0, vbuff_end=0;
     struct adler32_seed ads;
@@ -297,5 +296,6 @@ signed int OneHalfPassCorrecting(struct CommandBuffer *buffer,
     if (vs != ver_len) {
     	DCBufferAddCmd(buffer, DC_ADD, ver_cfh->raw_fh_start + vs, ver_len - vs);
     }
+    free_adler32_seed(&ads);
     return 0;
 }

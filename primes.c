@@ -69,13 +69,20 @@ void init_primes(struct prime_ctx *ctx) {
 7753,7757,7759,7789,7793,7817,7823,7829,7841,7853,7867,7873,7877,7879,7883,7901,
 7907,7919,7933};
 	unsigned int x;
+	printf("init_primes\n");
 	if((ctx->base_primes = (unsigned int *)malloc(1000 * sizeof(int)))==NULL) {
-		/*do something */
+		abort();
 	}
 	ctx->prime_count=1000;
 	ctx->array_size = 1000;
 	for(x=0; x < ctx->prime_count; x++)
 		ctx->base_primes[x] = primes[x];
+}
+
+void free_primes(struct prime_ctx *ctx) {
+	printf("free_primes\n");
+	free(ctx->base_primes);
+	ctx->prime_count = ctx->array_size = 0;
 }
 
 void find_next_prime(struct prime_ctx *ctx) {

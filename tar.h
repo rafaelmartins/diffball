@@ -59,13 +59,26 @@ inline unsigned long octal_str2long(char *string, unsigned int length);
 struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, unsigned char *md5sum);
 
 struct tar_entry {
+    unsigned long	file_loc;
+    unsigned long       entry_num;
+    unsigned long	size;
+//concattenation of prefix and name, +1 extra for null, +1 for slash if prefix is not null 
+    unsigned char       *fullname;
+    unsigned short int  fullname_len;
+    unsigned char	*working_name;
+    unsigned int	working_len;
+//    unsigned char       *fullname_ptr;
+//    unsigned short int	fullname_ptr_len;
+};
+
+/*
+struct tar_entry {
     unsigned char       *name;
     unsigned short int  name_len;
     unsigned long int   mode;
     unsigned long int   uid;
     unsigned long int   gid;
     unsigned long       size;
-    /*unsigned long     mtime;*/
     unsigned char       mtime[12];
     unsigned long       chksum;
     unsigned char       typeflag;
@@ -82,11 +95,12 @@ struct tar_entry {
     unsigned char       prefix_len;
     unsigned long	file_loc;
     unsigned int        entry_num;
-/*concattenation of prefix and name, +1 extra for null, +1 for slash if prefix is not null */
+//concattenation of prefix and name, +1 extra for null, +1 for slash if prefix is not null 
     unsigned char       *fullname;
     unsigned short int  fullname_len;
-/*used by common-dir alg, pts to fullname offset. */
     unsigned char       *fullname_ptr;
     unsigned short int	fullname_ptr_len;
-};
+};*/
+
 #endif
+

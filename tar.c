@@ -69,6 +69,8 @@ struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, 
     unsigned long count =0;
     unsigned int read_bytes;
     unsigned int block_is_zero=0;
+    unsigned int name_len, prefix_len;
+    unsigned int extra_size;
     /* md5 stuff */
     EVP_MD_CTX mdctx;
     const EVP_MD *md;
@@ -88,6 +90,7 @@ struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, 
     }
     EVP_DigestInit(&mdctx, md);
 
+	extra_size=0;
     while((read_bytes=read(src_fh, block, 512))==512 /*&& strnlen(block)!=0*/) {
 		EVP_DigestUpdate(&mdctx, block, 512);
 		//printf("count(%lu)\n", count);
@@ -96,117 +99,67 @@ struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, 
 			//printf("block was '%.512s'\n", block);
 			break;
 		}
-		if (! check_str_chksum((const char *)&block)) {
-		    perror("shite chksum didn't match on tar header\n");
-		    //exit(EXIT_FAILURE);
+		if((entry=(struct tar_entry *)malloc(sizeof(struct tar_entry)))==NULL){
+			printf("shite, low on good ole mem.\n");
 			abort();
 		}
-		/* check for gnu extensions.  posix extensions will need to be checked too */
-		if (block[TAR_TYPEFLAG_LOC] == (char )'L') {
-    	    /* LongLink.  hence the need for previous. as I said, it's a hack at best.*/
-			/* this also needs testing/verification. */
-			/* first run, seems fine.  haven't checked w/ prefix.  further, check offset code */
-		    printf("got us a long link at count(%lu)\n", count);
-		    char *rep;
-		    char data[512];
-		    unsigned int name_len=octal_str2long(&block[TAR_SIZE_LOC], TAR_SIZE_LEN);
-		    if(read(src_fh, data, 512) != 512) {
-				perror("eh?  unexpected end of file when handling gnu extension LongLink\n");
-				exit(EXIT_FAILURE);
-		    }
-		    if ((rep = (char *)malloc(
-				file[count-1]->prefix_len + name_len + 1)) == NULL) {
-				perror("shite, ran out of memory.\n");
-				exit(EXIT_FAILURE);
-		    }
-		    strncpy((char *)rep, file[count-1]->fullname, file[count-1]->prefix_len);
-		    strncpy((char *)(rep + file[count-1]->prefix_len), data, name_len);
-		    file[count-1]->fullname_ptr = (file[count-1]->fullname_ptr - file[count-1]->fullname) + rep;
-		    free(file[count-1]->fullname);
-		    file[count-1]->fullname = rep;
-		    file[count-1]->name = rep + file[count-1]->prefix_len + 1;
-		    file[count-1]->fullname[file[count-1]->prefix_len + name_len] = '\0';
-		    EVP_DigestUpdate(&mdctx, data, 512);
-		    //update offset, 1 for the header, 1 for the data block.
-		    offset +=2;
-		    continue;
+		if (! check_str_chksum((const char *)block)) {
+		    printf("shite chksum didn't match on tar header\n");
+		    abort();
 		}
-		if((entry=(struct tar_entry *)malloc(sizeof(struct tar_entry)))==NULL){
-		    printf("Shite.  Couldn't allocate needed memory...\n");
-		    exit(EXIT_FAILURE);
-		}
-		/* I'm using strncpy purely so that things get null padded for sure.  memcpy elsewhere most likely */
-		entry->mode = octal_str2long(&block[TAR_MODE_LOC], TAR_MODE_LEN);
-		entry->uid = octal_str2long(&block[TAR_UID_LOC], TAR_UID_LEN);
-		entry->gid = octal_str2long(&block[TAR_GID_LOC], TAR_GID_LEN);
-		entry->size = octal_str2long(&block[TAR_SIZE_LOC], TAR_SIZE_LEN);
-		strncpy((char *)entry->mtime, &block[TAR_MTIME_LOC], TAR_MTIME_LEN);
-		entry->chksum = octal_str2long(&block[TAR_CHKSUM_LOC], TAR_CHKSUM_LEN);
-		entry->typeflag = (unsigned char)block[TAR_TYPEFLAG_LOC];
-	
-		//unsigned int l;
-		entry->linkname_len = strnlen(&block[TAR_LINKNAME_LOC], TAR_LINKNAME_LEN);
-		if((entry->linkname=(char *)malloc(entry->linkname_len + 1))==NULL){
-		    perror("shite, couldn't alloc.\n");
-		    exit(1);
+		if('L'==block[TAR_TYPEFLAG_LOC]) {
+			extra_size = 1024;
+			printf("handling longlink\n");
+			entry->size = octal_str2long(block + TAR_SIZE_LOC, TAR_SIZE_LEN);
+			if((read_bytes=read(src_fh, block, 512))!=512) {
+				printf("shite, unexpected eof\n");
+				abort();
+			}
+			EVP_DigestUpdate(&mdctx, block, 512);
+			name_len = strnlen(block, entry->size);
+			if((entry->working_name = entry->fullname = 
+				(unsigned char *)malloc(name_len))==NULL){
+				printf("shite, lack o' the good ole mem.\n");
+				abort();
+			}
+			memcpy(entry->fullname, block, entry->size);
+			if((read_bytes=read(src_fh, block, 512))!=512){
+				printf("shite, unexpected eof\n");
+				abort();
+			}
+			EVP_DigestUpdate(&mdctx, block, 512);
+			if(! check_str_chksum((const char *)block)) {
+				printf("shite chksum didn't match on tar header\n");
+				abort();
+			}
+			entry->size = octal_str2long(block + TAR_SIZE_LOC, TAR_SIZE_LEN);
+			entry->file_loc = offset;
+			offset += 2;
 		} else {
-		    if (entry->linkname_len > 0)
-			strncpy((char *)entry->linkname, &block[TAR_LINKNAME_LOC],
-			    entry->linkname_len);
-		    entry->linkname[entry->linkname_len]='\0';
+			name_len = strnlen(block + TAR_NAME_LOC, TAR_NAME_LEN) + 1;
+			prefix_len = strnlen(block + TAR_PREFIX_LOC, TAR_PREFIX_LEN);
+			prefix_len += (prefix_len==0 ? 0 : 1);
+			if((entry->working_name = entry->fullname = 
+				(unsigned char *)malloc(name_len + prefix_len))==NULL){
+				printf("shite, lack o' the good ole mem.\n");
+				abort();
+			}
+			if(prefix_len) {
+				memcpy(entry->fullname, block + TAR_PREFIX_LOC, prefix_len -1);
+				entry->fullname[prefix_len] = '/';
+				memcpy(entry->fullname + prefix_len, block + TAR_NAME_LOC, name_len -1);
+				entry->working_len = entry->fullname_len = prefix_len + name_len;
+				entry->fullname[entry->fullname_len - 1] = '\0';
+			} else {
+				memcpy(entry->fullname, block + TAR_NAME_LOC, name_len -1);
+				entry->fullname[name_len -1] = '\0';
+				entry->working_len = entry->fullname_len = name_len;
+			}
+			//printf("final name was %s\n", entry->fullname);
+			entry->file_loc = offset;
+			entry->size = octal_str2long(block + TAR_SIZE_LOC, TAR_SIZE_LEN);
 		}
-		strncpy((char *)entry->magic, &block[TAR_MAGIC_LOC], TAR_MAGIC_LEN);
-		strncpy((char *)entry->version, &block[TAR_VERSION_LOC], TAR_VERSION_LEN);
-		entry->uname_len = strnlen(&block[TAR_UNAME_LOC], TAR_UNAME_LEN);
-		if((entry->uname=(char *)malloc(entry->uname_len + 1))==NULL){
-		    perror("shite, couldn't alloc.\n");
-		    exit(1);
-		} else {
-		    if (entry->uname_len > 0)
-				strncpy((char *)entry->uname, &block[TAR_UNAME_LOC], entry->uname_len);
-		    entry->uname[entry->uname_len]='\0';
-		}
-	
-		entry->gname_len = strnlen(&block[TAR_GNAME_LOC], TAR_GNAME_LEN);
-		if((entry->gname=(char *)malloc(entry->gname_len + 1))==NULL){
-		    perror("shite, couldn't alloc.\n");
-		    exit(1);
-		} else {
-		    if (entry->gname_len > 0)
-				strncpy((char *)entry->gname, &block[TAR_GNAME_LOC],entry->gname_len);
-		    entry->gname[entry->gname_len]='\0';
-		}
-		entry->devmajor = octal_str2long(&block[TAR_DEVMAJOR_LOC], TAR_DEVMAJOR_LEN);
-		entry->devminor = octal_str2long(&block[TAR_DEVMINOR_LOC], TAR_DEVMINOR_LEN);
-		if((entry->prefix_len=strnlen(&block[TAR_PREFIX_LOC], TAR_PREFIX_LEN))==0) { 
-			/* ergo prefix is nothing */
-		    entry->name_len = strnlen((char *)(&block[TAR_NAME_LOC]), TAR_NAME_LEN);
-		    if((entry->fullname_ptr = entry->fullname =
-			    (char *)malloc(entry->name_len + 1))==NULL) {
-				perror("shite, couldn't alloc memory\n");
-				exit(1);
-		    }
-		    strncpy((char *)entry->fullname, (char *)(&block[TAR_NAME_LOC]),
-			entry->name_len);
-		    entry->name=(char *)entry->fullname;
-		    entry->fullname[entry->name_len]='\0';
-		} else {
-		    entry->name_len=strnlen((char *)(&block[TAR_NAME_LOC]), TAR_NAME_LEN);
-		    if((entry->fullname_ptr = entry->fullname =
-			    (char *)malloc(entry->name_len + entry->prefix_len + 2))==NULL) {
-				perror("shite, couldn't alloc memory\n");
-				exit(1);
-		    }
-		    strncpy((char *)entry->fullname_ptr, &block[TAR_PREFIX_LOC], entry->prefix_len);
-		    entry->fullname_ptr[entry->prefix_len]= '/';
-		    entry->name = (char *)(entry->fullname_ptr + entry->prefix_len +1);
-		    strncpy((char *)entry->name, (char *)(&block[TAR_NAME_LOC]), entry->name_len);
-		    entry->fullname_ptr[entry->name_len + entry->prefix_len + 2] = '\0';
-		    entry->prefix_len++; // increment it to include the trailing slash
-		}
-   	    entry->entry_num = count;
-   	    entry->file_loc = offset;
-   	    if (entry->size !=0) {
+		if (entry->size !=0) {
             int x= entry->size>>9;
             if (entry->size % 512)
                 x++;
@@ -217,18 +170,23 @@ struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, 
 				    EVP_DigestUpdate(&mdctx, block, 512);
                 } else 
                     perror("Unexpected end of file encountered, exiting\n");
-            }                
+            }    
         } else {
             offset++;
         }
+        if(extra_size) {
+        	entry->size += extra_size;
+        	extra_size=0;
+        }
         if(count==array_size) {
             /* out of room, resize */
-            if ((file=(struct tar_entry **)realloc(file,(array_size+=50000)*sizeof(struct tar_entry *)))==NULL){
-                perror("Eh?  Ran out of room for file array...\n");
+            if ((file = (struct tar_entry **)realloc(
+            	file,(array_size+=50000)*sizeof(struct tar_entry *)))==NULL){
+                printf("Eh?  Ran out of room for file array...\n");
                 exit(EXIT_FAILURE);
             }
         }
-        file[count++] = entry;
+		file[count++] = entry;
     }
     //printf("exiting function, count(%lu)\n", count);
     *total_count = count;

@@ -8,5 +8,6 @@ struct prime_ctx {
 };
 
 void init_primes(struct prime_ctx *ctx);
+void free_primes(struct prime_ctx *ctx);
 unsigned long get_nearest_prime(struct prime_ctx *ctx, unsigned long near);
 #endif

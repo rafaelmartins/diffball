@@ -50,6 +50,7 @@ void init_adler32_seed(struct adler32_seed *ads, unsigned int seed_len,
 	ads->seed_len = seed_len;
 	ads->multi = multi;
 	ads->parity=0;
+	printf("init_adler32_seed\n");
 	if((ads->last_seed = (unsigned int *)malloc(seed_len*sizeof(int)))==NULL) {\
 		//printf("shite, error allocing needed memory\n");
 		abort();
@@ -117,4 +118,13 @@ unsigned long get_checksum(struct adler32_seed *ads) {
 	return (unsigned long)(chksum + ads->parity);
 	//return (unsigned long)((ads->s2 << 16) | (ads->s1 & 0xffff));
 }
+
+signed int free_adler32_seed(struct adler32_seed *ads) {
+	printf("free_adler32_seed\n");
+	free(ads->last_seed);
+	free(ads->seed_chars);
+	free(ads->last_parity_bits);
+	ads->s1 = ads->s2 = ads->parity = ads->tail = 0;
+}
+
 

@@ -1,5 +1,5 @@
 
-AM_CFLAGS = -ftest-coverage -fprofile-arcs -pg -ftest-coverage
+AM_CFLAGS = -ftest-coverage -fprofile-arcs -pg -ftest-coverage -Wall 
 bin_PROGRAMS = differ patcher diffball
 diffball_SOURCES = diffball.c diff-algs.c gdiff.c string-misc.c tar.c \
 		  primes.c bit-functions.c cfile.c adler32.c dcbuffer.c

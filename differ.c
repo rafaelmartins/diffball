@@ -95,7 +95,7 @@ int main(int argc, char **argv)
     printf("using seed_len(%lu), multi(%lu)\n", seed_len, multi);
     DCBufferInit(&buffer, 1000000);
     copen(&ref_cfh, ref_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
-    init_RefHash(&rhash, &ref_cfh, seed_len, ref_cfh.byte_len);
+    init_RefHash(&rhash, &ref_cfh, seed_len, 1, ref_cfh.byte_len /6);
     copen(&ver_cfh, ver_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     printf("opened\n");
     OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh);

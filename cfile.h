@@ -17,9 +17,8 @@
 */
 #ifndef _HEADER_CFILE
 #define _HEADER_CFILE
-#define CFILE_RAW_BUFF_SIZE   300    //(4096 * 8)
-#define CFILE_TRANS_BUFF_SIZE 300 //(4096 * 8)
- //8 * 4096
+#define CFILE_RAW_BUFF_SIZE   (4096)
+#define CFILE_TRANS_BUFF_SIZE (4096)
 #define NO_COMPRESSOR      0
 #define GZIP_COMRPESSOR    1
 #define BZIP2_COMPRESSOR   2
@@ -27,9 +26,10 @@
 #define CFILE_WONLY 2
 
 #define CFILE_RAW_BUFF_FULL		0x1
-#define CFILE_TRANS_BUFF_FULL	0x2
+#define CFILE_TRANS_BUFF_FULL		0x2
 #define CFILE_LENGTH_KNOWN		0x80
 #define CFILE_MEM_ALIAS			0x40
+#define CFILE_BUFFER_ALL		0x10
 
 /*lseek type stuff
 SEEK_SET
@@ -70,18 +70,7 @@ struct cfile {
 	unsigned long trans_fh_pos;
 	//misc state info
 	unsigned long state_flags;
-	/*
-	
 
-    int fh;
-    unsigned long fh_pos;
-    unsigned int compressor_type;
-    unsigned char raw_buff[CFILE_RAW_BUFF_SIZE];
-    unsigned int raw_buff_size;
-    unsigned int raw_buff_filled;
-    unsigned int raw_buff_pos;
-    unsigned long raw_buff_fh_pos;
-    unsigned int access_flags;*/
 };
 
 signed int copen(struct cfile *cfile, int fh, unsigned long fh_start,

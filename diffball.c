@@ -152,7 +152,7 @@ int main(int argc, char **argv)
     unsigned char source_md5[32], target_md5[32];
     unsigned long source_count, target_count, halfway;
     unsigned long x;
-    char src_common[256], trg_common[256], *p;  /* common dir's... */
+    char src_common[512], trg_common[512], *p;  /* common dir's... */
     //unsigned int src_common_len=0, trg_common_len=0;
     unsigned long match_count;
     /*probably should convert these arrays to something more compact, use bit masking. */
@@ -198,8 +198,12 @@ int main(int argc, char **argv)
     printf("source file md5sum=%.32s, count(%lu)\n", source_md5, source_count);
     target = read_fh_to_tar_entry(trg_fh, &target_count, target_md5);
     printf("target file md5sum=%.32s, count(%lu)\n", target_md5, target_count);
-    
-    
+    /*for(x=0; x < source_count; x++) {
+    	printf("have file %s\n", source[x]->working_name);
+    }
+    printf("count(%lu)\n", source_count);
+    exit(0);
+    */
     /* this next one is moreso for bsearch's, but it's prob useful for the common-prefix alg too */
     
     printf("qsorting\n");
@@ -248,94 +252,22 @@ int main(int argc, char **argv)
     }
     printf("final trg_common='%.*s'\n", trg_common_len, trg_common);
 
-    /*printf("initing struct's for checking for common longs...\n");
-    trg_mode_ll = init_long_dllist(target[0]->mode);
-    trg_uid_ll = init_long_dllist(target[0]->uid);
-    trg_gid_ll = init_long_dllist(target[0]->gid);
-    trg_devmajor_ll = init_long_dllist(target[0]->devmajor);
-    trg_devminor_ll = init_long_dllist(target[0]->devminor);
-    printf("initing struct's for checking for common strs...\n");
-    trg_uname_ll = init_str_dllist(target[0]->uname, target[0]->uname_len);
-    trg_gname_ll = init_str_dllist(target[0]->gname, target[0]->gname_len);
-    trg_magic_ll = init_str_dllist(target[0]->magic, TAR_MAGIC_LEN);
-    trg_version_ll = init_str_dllist(target[0]->version, TAR_VERSION_LEN);
-    trg_mtime_ll = init_str_dllist(target[0]->mtime, TAR_MTIME_LEN);
-    printf("inited.\n");
-    */
-        /*perhaps this is a crappy method, but basically for the my sanity, just up the fullname ptr
-         to remove the common-prefix.  wonder if string functions behave and don't go past the sp... */
-        /* init the fullname_ptr to point to the char after the common-prefix dir.  if no prefix, points
-        to the start of fullname. that and look for common info for each entry. */
-        /*note for harring.  deref fullname, add common_len, then assign to ptr after casting */
-    /*
     for (x=0; x < source_count; x++) {
-        source[x]->fullname_ptr= (char *)source[x]->fullname + src_common_len;
-	source[x]->fullname_ptr_len = source[x]->fullname_len - src_common_len;
+        source[x]->working_name += src_common_len;
+		source[x]->working_len -=  src_common_len;
+//        source[x]->fullname_ptr= (char *)source[x]->fullname + src_common_len;
+//		source[x]->fullname_ptr_len = source[x]->fullname_len - src_common_len;
     }
     
     for (x=0; x < target_count; x++) {
-        target[x]->fullname_ptr = (char *)target[x]->fullname + trg_common_len;
-	target[x]->fullname_ptr_len = target[x]->fullname_len - trg_common_len;
+		target[x]->working_name += trg_common_len;
+		target[x]->working_len -= trg_common_len;
+//        target[x]->fullname_ptr = (char *)target[x]->fullname + trg_common_len;
+//		target[x]->fullname_ptr_len = target[x]->fullname_len - trg_common_len;
     }
-    halfway = (target_count+1)/2; // give it a +1 for those odd numbers, ensure it's 50%
-    for (x=0; x < target_count && halfway > trg_mode_ll->count; x++)
-	update_long_dllist(&trg_mode_ll, target[x]->mode);
-    for (x=0; x < target_count && halfway > trg_uid_ll->count; x++)
-	update_long_dllist(&trg_uid_ll, target[x]->uid);
-    for (x=0; x < target_count && halfway > trg_gid_ll->count; x++)
-	update_long_dllist(&trg_gid_ll, target[x]->gid);
-    for (x=0; x < target_count && halfway > trg_devminor_ll->count; x++)
-	update_long_dllist(&trg_devminor_ll, target[x]->devminor);
-    for (x=0; x < target_count && halfway > trg_devmajor_ll->count; x++)
-	update_long_dllist(&trg_devmajor_ll, target[x]->devminor);
-    for (x=0; x < target_count && halfway > trg_uname_ll->count; x++)
-	update_str_dllist(&trg_uname_ll, target[x]->uname, target[x]->uname_len);
-    for (x=0; x < target_count && halfway > trg_gname_ll->count; x++)
-	update_str_dllist(&trg_gname_ll, target[x]->gname, target[x]->gname_len);
-    for (x=0; x < target_count && halfway > trg_magic_ll->count; x++)
-	update_str_dllist(&trg_magic_ll, target[x]->magic, TAR_MAGIC_LEN);
-    for (x=0; x < target_count && halfway > trg_version_ll->count; x++)
-	update_str_dllist(&trg_version_ll, target[x]->version, TAR_VERSION_LEN);
-    for (x=0; x < target_count && halfway > trg_mtime_ll->count; x++)
-	update_str_dllist(&trg_mtime_ll, target[x]->mtime, TAR_MTIME_LEN);
-    */
-    /*printf("target has %lu files, halfway=%lu\n", target_count, halfway);
-    printf("\ndumping mode\n");
-    for(ldll_ptr = trg_mode_ll, x=0; ldll_ptr != NULL; ldll_ptr = ldll_ptr->next, x++) 
-	printf("node (%lu), value=%lu, count=%lu\n", x, ldll_ptr->data, ldll_ptr->count);
-    printf("mode total count=%lu\n", x);
-    printf("\ndumping uid\n");
-    for(ldll_ptr = trg_uid_ll, x=0; ldll_ptr != NULL; ldll_ptr = ldll_ptr->next, x++) 
-	printf("value=%lu, count=%lu\n", ldll_ptr->data, ldll_ptr->count);
-    printf("uid total count=%lu\n", x);
-    printf("\ndumping gid\n");
-    for(ldll_ptr = trg_gid_ll, x=0; ldll_ptr != NULL; ldll_ptr = ldll_ptr->next, x++) 
-	printf("value=%lu, count=%lu\n", ldll_ptr->data, ldll_ptr->count);
-    printf("gid total count=%lu\n", x);
-    printf("\ndumping uname\n");
-    for(sdll_ptr = trg_uname_ll, x=0; sdll_ptr != NULL; sdll_ptr = sdll_ptr->next, x++) 
-	printf("value='%.*s', count=%lu\n", sdll_ptr->len, sdll_ptr->data, sdll_ptr->count);
-    printf("uname total count=%lu\n", x);
-    printf("\ndumping gname\n");
-    for(sdll_ptr = trg_gname_ll, x=0; sdll_ptr != NULL; sdll_ptr = sdll_ptr->next, x++) 
-	printf("value='%.*s', count=%lu\n", sdll_ptr->len, sdll_ptr->data, sdll_ptr->count);
-    printf("gname total count=%lu\n", x);
-    printf("\ndumping magic\n");
-    for(sdll_ptr = trg_magic_ll, x=0; sdll_ptr != NULL; sdll_ptr = sdll_ptr->next, x++) 
-	printf("value='%.*s', count=%lu\n", sdll_ptr->len, sdll_ptr->data, sdll_ptr->count);
-    printf("magic total count=%lu\n", x);
-    printf("\ndumping version\n");
-    for(sdll_ptr = trg_version_ll, x=0; sdll_ptr != NULL; sdll_ptr = sdll_ptr->next, x++) 
-	printf("value='%.*s', count=%lu\n", sdll_ptr->len, sdll_ptr->data, sdll_ptr->count);
-    printf("version total count=%lu\n", x);
-    printf("\ndumping mtime\n");
-    for(sdll_ptr = trg_mtime_ll, x=0; sdll_ptr != NULL; sdll_ptr = sdll_ptr->next, x++) 
-	printf("value='%.*s', count=%lu\n", sdll_ptr->len, sdll_ptr->data, sdll_ptr->count);
-    printf("mtime total count=%lu\n\n", x);*/
-    
 
     /* the following is for identifying changed files. */
-    if((source_matches = (char*)malloc(source_count))==NULL) {
+    /*if((source_matches = (char*)malloc(source_count))==NULL) {
 		perror("couldn't alloc needed memory, dieing.\n");
 		exit(EXIT_FAILURE);
     }
@@ -343,28 +275,33 @@ int main(int argc, char **argv)
 		perror("couldn't alloc needed memory, dieing.\n");
 		exit(EXIT_FAILURE);
     }
-    match_count=0;
+    match_count=0;*/
     //for(x=0; x < target_count; x++)
 	//	target_matches[x] = '0';
     
     copen(&ref_full, src_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
-    printf("initing full hash\n");
-    DCBufferInit(&dcbuff, 1000000);
-    init_RefHash(&rhash_full, &ref_full, 24, ref_full.byte_len);
-    printf("inited.\n");
+    DCBufferInit(&dcbuff, 20000000);
+    init_RefHash(&rhash_full, &ref_full, 24, 6, ref_full.byte_len/6);
     printf("looking for matching filenames in the archives...\n");
     for(x=0; x< target_count; x++) {
         //entry=source[x];
 	//printf("checking '%s'\n", source[x]->fullname);
-		copen(&ver_window, trg_fh, (512 * target[x]->file_loc),
-        		(512 * target[x]->file_loc) + 512 + (target[x]->size==0 ? 0 :
-        			target[x]->size + 512 - (target[x]->size % 512==0 ? 512 : 
-        			target[x]->size % 512)),
-        			NO_COMPRESSOR, CFILE_RONLY);
+	copen(&ver_window, trg_fh, (512 * target[x]->file_loc),
+        	(512 * target[x]->file_loc) + 512 + (target[x]->size==0 ? 0 :
+        		target[x]->size + 512 - (target[x]->size % 512==0 ? 512 : 
+        		target[x]->size % 512)),
+        		NO_COMPRESSOR, CFILE_RONLY | CFILE_BUFFER_ALL);
         vptr = bsearch((const void **)&target[x], (const void **)source, source_count,
             sizeof(struct tar_entry **), cmp_tar_entries);
         if(vptr == NULL) {
-        	printf("didn't find a match for %.255s\n", target[x]->fullname_ptr);
+        	printf("didn't find a match for %.255s\n", target[x]->fullname);
+		printf("target loc(%lu:%lu)\n",
+        		(512 * target[x]->file_loc), 
+        		(512 * target[x]->file_loc) + 512 +(target[x]->size==0 ? 0 : 
+        			target[x]->size + 512 - (target[x]->size % 512==0 ? 512 : 
+        			target[x]->size % 512) ));
+        		printf("file_loc(%u), size(%lu)\n", target[x]->file_loc,
+        			target[x]->size);
         	OneHalfPassCorrecting(&dcbuff, &rhash_full, &ver_window);
 	    	//_matches[x] = '0';
 	    	//printf("couldn't match '%.255s'\n",
@@ -372,8 +309,8 @@ int main(int argc, char **argv)
             //printf("'%s' not found!\n", source[x]->fullname_ptr);
         } else {
         	tar_ptr = (struct tar_entry *)*((struct tar_entry **)vptr);
-        	printf("found match between %.255s and %.255s\n", target[x]->fullname_ptr,
-        		tar_ptr->fullname_ptr);
+        	printf("found match between %.255s and %.255s\n", target[x]->fullname,
+        		tar_ptr->fullname);
         	printf("differencing src(%lu:%lu) against trg(%lu:%lu)\n",
         		(512 * tar_ptr->file_loc), 
         		(512 * tar_ptr->file_loc) + 512 + (tar_ptr->size==0 ? 0 :
@@ -390,8 +327,8 @@ int main(int argc, char **argv)
         		(512 * tar_ptr->file_loc) + 512 + (tar_ptr->size==0 ? 0 :
         			tar_ptr->size + 512 - (tar_ptr->size % 512==0 ? 512 : 
         			tar_ptr->size % 512)),
-        			NO_COMPRESSOR, CFILE_RONLY);
-        	init_RefHash(&rhash_win, &ref_window, 16, ref_window.byte_len);
+        			NO_COMPRESSOR, CFILE_RONLY | CFILE_BUFFER_ALL);
+        	init_RefHash(&rhash_win, &ref_window, 16, 1, ref_window.byte_len);
         	OneHalfPassCorrecting(&dcbuff, &rhash_win, &ver_window);
         	free_RefHash(&rhash_win);
 		cclose(&ref_window);
@@ -420,26 +357,22 @@ int main(int argc, char **argv)
     	target_count -match_count, target_count);
         
     /* cleanup */
-    printf("freeing source: elements, ");
     for(x=0; x< source_count; x++) {
         tar_ptr=source[x];
         free(tar_ptr);
     }
-    printf("array.\n");
-    free(source);
-    printf("freeing target: elements, ");
     for(x=0; x< target_count; x++) {
         tar_ptr=target[x];
         free(tar_ptr);
     }
-    printf("array.\n");
+    free(target);
+    free(source);
     printf("outputing patch...\n");
     copen(&ver_full, trg_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     offset_type= ENCODING_OFFSET_DC_POS;
     gdiffEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
-    cclose(&out_cfh);
     cclose(&ver_full);
-    free(target);
+    cclose(&out_cfh);
     close(src_fh);
     close(trg_fh);
 
@@ -450,8 +383,8 @@ int cmp_tar_entries(const void *te1, const void *te2)
     //printf("in cmp_tar_entries\n");
     struct tar_entry *p1=*((struct tar_entry **)te1);
     struct tar_entry *p2=*((struct tar_entry **)te2);
-    return(strncmp((char *)(p1->fullname_ptr + trg_common_len), 
-    	(char *)(p2->fullname_ptr + src_common_len), 255));
+    return(strcmp((char *)(p1->working_name), 
+    	(char *)(p2->working_name)));
 }
 
 int command_pipes(const char *command, const char *args, int *ret_pipes)

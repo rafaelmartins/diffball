@@ -46,6 +46,22 @@ signed int copen(struct cfile *cfile, int fh,
 	unsigned long fh_start, unsigned long fh_end, unsigned int compressor_type, 
 	unsigned int access_flags)
 {
+    if(access_flags & CFILE_BUFFER_ALL) {
+	unsigned char *ptr;
+	lseek(fh, fh_start, SEEK_SET);
+	if((ptr = (unsigned char *)malloc(fh_end - fh_start))==NULL){
+	    printf("shite, failed buffer_add\n");
+	    abort();
+	} else if(fh_end - fh_start != read(fh, ptr, fh_end - fh_start)) {
+	    printf("shite, failed reading buffer_all\n");
+	    abort();
+	}
+        cmemopen(cfile, ptr, fh_start, fh_end, NO_COMPRESSOR);
+	cfile->state_flags |= CFILE_BUFFER_ALL;
+	printf("calling w/ buffer_all(%u)\n",
+	cfile->state_flags & CFILE_BUFFER_ALL);
+	return 0;
+    }
     cfile->access_flags = access_flags;
     cfile->state_flags = 0;
 	switch(compressor_type) {
@@ -69,6 +85,7 @@ signed int copen(struct cfile *cfile, int fh,
     //cfile->access_flags = access_flags;
     /* while raw_buff_size is currently redundant, at some point I'll likely allow variable buffer size*/
     /* not now though... */
+    printf("cfile: copen init\n");
     if((cfile->raw_buff=malloc(CFILE_RAW_BUFF_SIZE))==NULL) {
     	printf("shite, couldn't alloc needed mem for trans_buff\n");
     	exit(1);
@@ -99,6 +116,12 @@ signed int cclose(struct cfile *cfile)
 			break;
 		}
 	}
+	if((cfile->state_flags & CFILE_MEM_ALIAS)==0 || 
+		(cfile->state_flags & CFILE_BUFFER_ALL)) {
+		printf("copen: freeing memory\n");
+		free(cfile->raw_buff);
+	}
+	cfile->raw_buff = cfile->raw_pos = cfile->raw_filled = NULL;
 	return 0;
 }
 

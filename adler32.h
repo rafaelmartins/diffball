@@ -34,5 +34,7 @@ struct adler32_seed {
 void init_adler32_seed(struct adler32_seed *ads, unsigned int seed_len, unsigned int multi);
 void update_adler32_seed(struct adler32_seed *ads, unsigned char *buff, unsigned int len); 
 unsigned long get_checksum(struct adler32_seed *ads);
+signed int free_adler32_seed(struct adler32_seed *ads) ;
+
 #endif
 

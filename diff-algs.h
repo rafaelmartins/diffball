@@ -30,7 +30,8 @@ struct ref_hash {
 };
 
 signed int init_RefHash(struct ref_hash *rhash, struct cfile *ref_cfh, 
-	unsigned int seed_len, unsigned long hr_size);
+	unsigned int seed_len, unsigned int sample_rate, 
+	unsigned long hr_size);
 	
 signed int OneHalfPassCorrecting(struct CommandBuffer *buffer, 
 	struct ref_hash *rhash, struct cfile *ver_cfh);
