@@ -22,22 +22,29 @@
 #include "defs.h"
 
 #define DEFAULT_SEED_LEN 	(16)
-#define DEFAULT_MAX_HASH_COUNT	(64000000/sizeof(unsigned long))
+#define DEFAULT_MAX_HASH_COUNT	(96000000/sizeof(unsigned long))
 #define RH_MOD_HASH	(0x1)
 #define RH_SORT_HASH	(0x2)
 
 typedef struct {
-    unsigned long chksum;
-    off_u64       offset;
+    unsigned long	chksum;
+    off_u64		offset;
 } chksum_ent;
+
+typedef struct {
+    unsigned long	chksum;
+    off_u64      	src_pos;
+    off_u64		ver_pos;
+} match_ent;
 
 typedef struct {
     unsigned int seed_len;
     unsigned long hr_size;
     unsigned char type;
     union {
-	unsigned long *mod;
-        chksum_ent *chk;
+	unsigned long	*mod;
+        chksum_ent	*chk;
+	match_ent 	*match;
     } hash;
     unsigned int  sample_rate;
     cfile *ref_cfh;
@@ -54,6 +61,9 @@ inline unsigned long get_offset(RefHash *rhash, unsigned long index);
 signed int init_RefHash(RefHash *rhash, cfile *ref_cfh, 
 	unsigned int seed_len, unsigned int sample_rate, 
 	unsigned long hr_size, unsigned int hash_type);
+signed int RHash_insert_block(RefHash *rhash, cfile *ref_cfh, 
+    off_u64 ref_start, off_u64 ref_end);
+signed int RHash_finalize(RefHash *rhash);
 signed int free_RefHash(RefHash *rhash);	
 void print_RefHash_stats(RefHash *rhash);
 #endif

@@ -49,8 +49,11 @@ get_offset(RefHash *rhash, unsigned long index)
 inline unsigned long 
 hash_it(RefHash *rhash, ADLER32_SEED_CTX *ads)
 {
-    if(rhash->type & RH_MOD_HASH)
+    if(rhash->type & RH_MOD_HASH) {
 	return (get_checksum(ads) % rhash->hr_size);
+//  could use just a bitmask, although doesn't perform quite as well.
+//	return (get_checksum(ads) & rhash->hr_size);
+    }
     return get_checksum(ads);
 }
 
@@ -72,87 +75,102 @@ signed int
 init_RefHash(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len, 
     unsigned int sample_rate, unsigned long hr_size, unsigned int hash_type)
 {
-    unsigned long index, old_chksum;
-    off_u64 hash_offset = 0;
+    off_u64 x;
+    PRIME_CTX pctx;
     assert(seed_len);
-    unsigned int const rbuff_size = 16 * 4096;
-    unsigned char rbuff[rbuff_size];
-    unsigned long rbuff_start=0, rbuff_end=0;
-    off_u64 ref_len, x;
-    unsigned int missed;
 
     rhash->type = hash_type;
-    ADLER32_SEED_CTX ads;
-    PRIME_CTX pctx;
-#ifdef DEBUG_HASH
-    unsigned char *test_buff;
-    if((test_buff=(unsigned char*)malloc(seed_len))==NULL) {
-	abort();
-    }
-    rhash->bad_duplicates=0;
-#endif
-
     v2printf("init_RefHash\n");
     init_primes(&pctx);
     rhash->hr_size = get_nearest_prime(&pctx, hr_size);
+    free_primes(&pctx);
+    rhash->sample_rate = sample_rate;
     rhash->ref_cfh = ref_cfh;
     rhash->seed_len = seed_len;
-    ref_len = cfile_len(ref_cfh);
     rhash->inserts = rhash->duplicates = 0;
+#ifdef DEBUG_HASH
+    rhash->bad_duplicates=0;
+#endif
     if(rhash->type & RH_MOD_HASH) {
 	if((rhash->hash.mod=(unsigned long*)malloc(sizeof(unsigned long) * 
 	    (rhash->hr_size)))==NULL) {
 		perror("Shite.  couldn't allocate needed memory for reference hash table.\n");
 		exit(EXIT_FAILURE);
 	}
-    // init the bugger==0
+	// init the bugger==0
 	for(x=0; x < rhash->hr_size; x++) {
 	    rhash->hash.mod[x] = 0;
 	}
-    } else {
+    } else if (rhash->type & RH_SORT_HASH){
 	if((rhash->hash.chk = (chksum_ent *)malloc(sizeof(chksum_ent) * 
 	    rhash->hr_size))==NULL) {
 	    perror("shite, couldn't alloc needed memory for ref hash\n");
 	    exit(EXIT_FAILURE);
 	}
     }
-    init_adler32_seed(&ads, seed_len, 1);
-    rbuff_start = cseek(ref_cfh, 0, CSEEK_FSTART);
-    rbuff_end=cread(ref_cfh, rbuff, rbuff_size);
-    //v2printf("rbuff_end(%lu)\n", rbuff_end);
+    return 0;
+}
 
-    update_adler32_seed(&ads, rbuff, seed_len);
+signed int
+RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start, 
+    off_u64 ref_end)
+{
+    ADLER32_SEED_CTX ads;
+    off_u64 rbuff_start, rbuff_end=0;
+    off_u64 x;
+    off_u64 hash_offset = 0;
+    unsigned long index;
+    unsigned int const rbuff_size = 16 * 4096;
+    unsigned char rbuff[rbuff_size];
+    unsigned int missed;
+
+#ifdef DEBUG_HASH
+    unsigned char *test_buff;
+    if((test_buff=(unsigned char*)malloc(rhash->seed_len))==NULL) {
+	abort();
+    }
+#endif
+    v2printf("inserting block %lu to %lu, seed(%lu), sr(%lu), hr(%lu)\n",
+	ref_start, ref_end, rhash->seed_len, rhash->sample_rate,
+	rhash->hr_size);
+    
+    init_adler32_seed(&ads, rhash->seed_len, 1);
+    rbuff_start = cseek(ref_cfh, ref_start, CSEEK_FSTART);
+    rbuff_end=cread(ref_cfh, rbuff, rbuff_size);
+
+    update_adler32_seed(&ads, rbuff, rhash->seed_len);
     missed=0;
+
 /* kludge I realize for the init, but neh, need something better.
    the specific issue is that mod_hash can track if it's inserted in a sample 
    window or not (and adjust accordingly)- this results in a better cross 
    section, not always starting on the same offset.
    sort_hash cannot unfortunately, so need a kludge of some sort to try and
    vary up the start position. */
-    for(x=seed_len * (sample_rate > 1 ? 1.5 : 1); 
-	x < ref_len - seed_len; x++) {
+
+    for(x=rhash->seed_len * ((rhash->sample_rate > 1 && 
+	(rhash->type & RH_SORT_HASH)) ? 1.5 : 1) + ref_start; x < ref_end - 
+	rhash->seed_len; x++) {
 	if(x - rbuff_start >= rbuff_size) {
 	    rbuff_start += rbuff_end;
+
 #ifdef DEBUG_HASH
 	    cseek(ref_cfh, rbuff_start, CSEEK_FSTART);
 #endif
 	    rbuff_end   = cread(ref_cfh, rbuff, 
-		MIN(ref_len - rbuff_start, rbuff_size));
+		MIN(ref_end - rbuff_start, rbuff_size));
 	}
 	update_adler32_seed(&ads, rbuff + (x - rbuff_start), 1);
 	index=hash_it(rhash, &ads);
 
 	if(rhash->type & RH_MOD_HASH) {
-	    /*note this has the ability to overwrite offset 0...
-	      but thats alright, cause a correcting alg if a match at offset1, will grab the offset 0 */
 	    hash_offset = get_offset(rhash, index);
 	    if(hash_offset==0) {
 		rhash->inserts++;
-		rhash->hash.mod[index] =x - seed_len + 1;
-		if(sample_rate > 1 && missed < sample_rate) {
-		    x+= sample_rate - missed;
+		rhash->hash.mod[index] =x - rhash->seed_len + 1;
+		if(rhash->sample_rate > 1 && missed < rhash->sample_rate) {
+		    x+= rhash->sample_rate - missed;
 		}
-		//x += (missed >= sample_rate ? 0 : sample_rate - missed);
 		missed=0;
 	    } else {
 		rhash->duplicates++;
@@ -180,22 +198,30 @@ init_RefHash(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len,
 		rhash->hr_size +=1000;
 	    }
 	    rhash->hash.chk[rhash->inserts].chksum = index;
-	    rhash->hash.chk[rhash->inserts].offset = x - seed_len + 1;
+	    rhash->hash.chk[rhash->inserts].offset = x - rhash->seed_len + 1;
 	    rhash->inserts++;
-	    if(sample_rate > 1)
-		x += sample_rate;
+	    if(rhash->sample_rate > 1)
+		x += rhash->sample_rate;
 	}
     }
+    free_adler32_seed(&ads);
+#ifdef DEBUG_HASH
+    free(test_buff);
+#endif
+    return 0;
+}
+
+signed int
+RHash_finalize(RefHash *rhash)
+{
+    unsigned long old_chksum, x, hash_offset;
     if(rhash->type & RH_SORT_HASH) {
 	v1printf("inserts=%lu, hr_size=%lu\n", rhash->inserts, rhash->hr_size);
 	qsort(rhash->hash.chk, rhash->inserts, sizeof(chksum_ent), 
 	    cmp_chksum_ent);
 	old_chksum = rhash->hash.chk[0].chksum;
 	rhash->duplicates=0;
-//	v1printf("chksums dump\n");
 	for(x=1; x < rhash->inserts; x++) {
-//	    v1printf("%10.10lu, %10.10lu\n", rhash->hash.chk[x].chksum,
-//		rhash->hash.chk[x].offset);
 	    if(rhash->hash.chk[x].chksum==old_chksum) {
 		rhash->duplicates++;
 	    } else {
@@ -216,11 +242,6 @@ init_RefHash(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len,
 	rhash->hr_size = rhash->inserts;
 	v1printf("hash is %lu bytes\n", rhash->hr_size * sizeof(chksum_ent));
     }
-    free_primes(&pctx);
-    free_adler32_seed(&ads);
-#ifdef DEBUG_HASH
-    free(test_buff);
-#endif
     return 0;
 }
 
