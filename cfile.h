@@ -32,13 +32,13 @@
 #define CFILE_RONLY			(0x1)
 #define CFILE_WONLY			(0x2)
 /* note, CFILE_COMPUTE_MD5 is common to both state_flags and access_flags */
-#define CFILE_COMPUTE_MD5		(0x8)
-#define CFILE_OPEN_FH			(0x10)
+#define CFILE_COMPUTE_MD5		(0x4)
+#define CFILE_OPEN_FH			(0x8)
 
 #define CFILE_MD5_FINALIZED		(0x10)
-#define CFILE_SEEK_NEEDED		(0x4)
-#define CFILE_MEM_ALIAS			(0x2)
-#define CFILE_BUFFER_ALL		(0x1)
+#define CFILE_BUFFER_ALL		(0x20)
+#define CFILE_MEM_ALIAS			(0x40)
+#define CFILE_SEEK_NEEDED		(0x80)
 
 #define BZIP2_DEFAULT_COMPRESS_LEVEL	9
 

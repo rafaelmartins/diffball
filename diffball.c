@@ -161,7 +161,8 @@ int main(int argc, char **argv)
     copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY | CFILE_OPEN_FH);
     source = read_fh_to_tar_entry(src_fh, &source_count);
     target = read_fh_to_tar_entry(trg_fh, &target_count);
-    v1printf("count(%lu)\n", source_count);
+    v1printf("source tarball's entry count=%lu\n", source_count);
+    v1printf("target tarball's entry count=%lu\n", target_count);
     /* this next one is moreso for bsearch's, but it's prob useful for the common-prefix alg too */
     
     v1printf("qsorting\n");
@@ -247,7 +248,7 @@ int main(int argc, char **argv)
     print_RefHash_stats(&rhash_full);
     v1printf("looking for matching filenames in the archives...\n");
     for(x=0; x< target_count; x++) {
-	v1printf("processing %lu of %lu\n", x, target_count);
+	v1printf("processing %lu of %lu\n", x + 1, target_count);
         //entry=source[x];
 	//printf("checking '%s'\n", source[x]->fullname);
 	copen(&ver_window, trg_fh, (512 * target[x]->file_loc),
@@ -323,14 +324,14 @@ int main(int argc, char **argv)
 //	match_count, target_count -match_count, target_count);
         
     /* cleanup */
-    for(x=0; x< source_count; x++) {
+/*    for(x=0; x< source_count; x++) {
         free(source[x]->fullname);
         free(source[x]);
     }
     for(x=0; x< target_count; x++) {
-    free(target[x]->fullname);
-    free(target[x]);
-    }
+	free(target[x]->fullname);
+	free(target[x]);
+    }*/
     free(target);
     free(source);
     copen(&ver_full, trg_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);

@@ -119,7 +119,8 @@ unsigned long
 get_checksum(ADLER32_SEED_CTX *ads)
 {
 	unsigned long chksum;
-	chksum = (unsigned long)(((ads->s2) << 16) | ((ads->s1) & 0xffff));
+	chksum = (unsigned long)(((ads->s2) << 16) | 
+	    ((ads->s1 + ads->parity) & 0xffff));
 	return (unsigned long)(chksum);
 //	    (unsigned long)((ads->s1 << 16) | (ads->s1 & 0xffff)) + ads->parity);
 }

@@ -67,10 +67,13 @@ copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
 	dcprintf("copen: opening w/ no_compressor\n");
 	cfh->data_fh_offset = fh_start;
 	cfh->data_total_len = fh_end - fh_start;
-	if((access_flags & CFILE_BUFFER_ALL) != 0)
+	if(access_flags & CFILE_BUFFER_ALL) {
 	    cfh->data.size = cfh->data_total_len;
-	else 
+	} else {
 	    cfh->data.size = CFILE_DEFAULT_BUFFER_SIZE;
+	}
+	dcprintf("copen: buffer size(%lu), buffer_all(%u)\n", cfh->data.size,
+	    access_flags & CFILE_BUFFER_ALL);
 	cfh->raw.size = 0;
  	break;
 /*    case BZIP2_COMPRESSOR:

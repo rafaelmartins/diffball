@@ -147,9 +147,12 @@ int main(int argc, char **argv)
     v1printf("using seed_len(%lu), sample_rate(%lu), hash_size(%lu)\n", 
 	seed_len, sample_rate, hash_size);
     v1printf("verbosity level(%u)\n", global_verbosity);
+    v1printf("initializing Command Buffer...\n");
     DCBufferInit(&buffer, 4096, ref_stat.st_size, ver_stat.st_size);
+    v1printf("initializing Reference Hash...\n");
     init_RefHash(&rhash, &ref_cfh, seed_len, sample_rate, hash_size);
     print_RefHash_stats(&rhash);
+    v1printf("running 1.5 pass correcting alg...\n");
     OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh);
     v1printf("outputing patch...\n");
     v1printf("there were %lu commands\n", buffer.buffer_count);
