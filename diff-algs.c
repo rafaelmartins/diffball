@@ -110,6 +110,17 @@ init_RefHash(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len,
     return 0;
 }
 
+void
+print_RefHash_stats(RefHash *rhash) {
+    v1printf("hash stats: inserts(%lu), duplicates(%lu), hash size(%lu)\n",
+	rhash->inserts, rhash->duplicates, rhash->hr_size);
+    v1printf("hash stats: load factor(%f%%)\n", 
+	((float)rhash->inserts/rhash->hr_size* 100));
+    v1printf("hash stats: duplicate rate(%f%%)\n", 
+	((float)rhash->duplicates/rhash->hr_size * 100));
+    v1printf("hash stats: seed_len(%u)\n", rhash->seed_len);
+}
+
 signed int 
 OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 {

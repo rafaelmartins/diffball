@@ -151,6 +151,7 @@ int main(int argc, char **argv)
     v1printf("verbosity level(%u)\n", verbosity);
     DCBufferInit(&buffer, 1000000, ref_stat.st_size, ver_stat.st_size);
     init_RefHash(&rhash, &ref_cfh, seed_len, sample_rate, hash_size);
+    print_RefHash_stats(&rhash);
     OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh);
     v1printf("outputing patch...\n");
     v1printf("there were %lu commands\n", buffer.buffer_count);

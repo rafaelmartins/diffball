@@ -1,6 +1,8 @@
 A very general (and likely quite off) intended schedule for versions (and work 
-    that needs completion prior to hitting said version)...
-
+that needs completion prior to hitting said version)...
+That said and done, I need to re-order this to match reality, certain version 
+mile-stones I've almost finished prior to finishing the interceding milestone 
+work.
 
 0.4			Sept/Oct 2003.
 DONE	* option code in diffball, patcher, differ, and convert_delta
@@ -21,7 +23,8 @@ STARTED	* work out a solution for handling md5's in file format- basically
 STARTED	* start enabling checking of returned values.  Basically start cleaning
 	  out the use of abort's and exit's, and use appropriate return values.
 DONE	* relevant man pages
-
+	* have a basic (not necessarily cleanest/best) gzip compressor setup so 
+	  compressed xdelta can be handled.
 0.41			Oct/Nov 2003
 STARTED	* write *GOOD* man pages
 	* add patch info functions, for polling info on existant patches.

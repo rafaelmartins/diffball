@@ -163,10 +163,8 @@ int main(int argc, char **argv)
 	exit(1);
     }
     copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY | CFILE_OPEN_FH);
-    source = read_fh_to_tar_entry(src_fh, &source_count, source_md5);
-    v1printf("source file md5sum=%.32s, count(%lu)\n", source_md5, source_count);
-    target = read_fh_to_tar_entry(trg_fh, &target_count, target_md5);
-    v1printf("target file md5sum=%.32s, count(%lu)\n", target_md5, target_count);
+    source = read_fh_to_tar_entry(src_fh, &source_count);
+    target = read_fh_to_tar_entry(trg_fh, &target_count);
     v1printf("count(%lu)\n", source_count);
     /* this next one is moreso for bsearch's, but it's prob useful for the common-prefix alg too */
     
@@ -247,7 +245,9 @@ int main(int argc, char **argv)
 	CFILE_OPEN_FH);
     DCBufferInit(&dcbuff, 20000000, (unsigned long)ref_stat.st_size, 
 	(unsigned long)ver_stat.st_size);
-    init_RefHash(&rhash_full, &ref_full, 16, 1, cfile_len(&ref_full)/1);
+    init_RefHash(&rhash_full, &ref_full, seed_len, sample_rate, 
+	hash_size);
+    print_RefHash_stats(&rhash_full);
     v1printf("looking for matching filenames in the archives...\n");
     for(x=0; x< target_count; x++) {
         //entry=source[x];
@@ -295,6 +295,8 @@ int main(int argc, char **argv)
         			tar_ptr->size % 512)),
         			NO_COMPRESSOR, CFILE_RONLY | CFILE_BUFFER_ALL);
         	init_RefHash(&rhash_win, &ref_window, 16, 1, cfile_len(&ref_window));
+		v1printf("reference window stats:\n");
+		print_RefHash_stats(&rhash_win);
         	OneHalfPassCorrecting(&dcbuff, &rhash_win, &ver_window);
         	free_RefHash(&rhash_win);
 		cclose(&ref_window);

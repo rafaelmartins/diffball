@@ -1,6 +1,8 @@
 The (sole) author is Brian Harring, <bdharring@wisc.edu>.
 
-As for the differencing alg, Randal Burns and Andrew Tridgell- I pulled the 
+Currently I only have a 1.5 pass correcting alg in place, although more are 
+coming.
+For the differencing alg, Randal Burns and Andrew Tridgell- I pulled the 
 concept's/algorithm out of their papers (Tridgell for background, Burns for 
 alg description).
 

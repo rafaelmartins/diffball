@@ -36,6 +36,7 @@ signed int init_RefHash(RefHash *rhash, cfile *ref_cfh,
 	unsigned int seed_len, unsigned int sample_rate, 
 	unsigned long hr_size);
 signed int free_RefHash(RefHash *rhash);	
+void print_RefHash_stats(RefHash *rhash);
 signed int OneHalfPassCorrecting(CommandBuffer *buffer, 
 	RefHash *rhash, cfile *ver_cfh);
 
