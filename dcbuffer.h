@@ -42,6 +42,18 @@ extern unsigned int global_use_md5;
 #define DCB_FREE_SRC_CFH		(char)0x1
 #define DCB_OVERLAY_SRC			(char)0x80
 
+/* internal DCB src types */
+#define DCB_CFH_SRC			(char)0x80
+#define DCB_DCB_SRC			(char)0x00
+
+/* essentially dcb->src_type is thus- upper 2 bits 
+   the actual type of the src (eg, cfile, another command
+   buffer), and the lower bit for if it's an add or copy src.
+   The lower bit will likely be phased out, moving to a dynamic 
+   add/copy determination depending on what the desired end result
+   is.
+*/
+
 // internal dcbuffer macros.
 #define LLM_VEND(l)  ((l)->ver_pos + (l)->len)
 
@@ -116,7 +128,7 @@ typedef struct _CommandBuffer {
     dcb_src_read_func *src_read_func;
     dcb_src_copy_func *src_copy_func;
     unsigned int src_array_size, src_count;
-    unsigned char src_type[16];
+    unsigned char src_type[256];
     unsigned char src_flags[256];
 
     /* this is a hack, and not a particularly good one either.
@@ -181,7 +193,9 @@ int DCB_llm_init_buff(CommandBuffer *buff, unsigned long buff_size);
 unsigned int DCB_test_llm_main(CommandBuffer *buff);
 void DCB_test_total_copy_len(CommandBuffer *buff);
 
-int DCB_resize_full(CommandBuffer *buffer);
-int DCB_resize_matches(CommandBuffer *buffer);
-int DCB_resize_llmatches(CommandBuffer *buffer);
+int internal_DCB_resize_full(CommandBuffer *buffer);
+int internal_DCB_resize_matches(CommandBuffer *buffer);
+int internal_DCB_resize_llmatches(CommandBuffer *buffer);
+
+int internal_DCB_resize_srcs(CommandBuffer *buffer);
 #endif

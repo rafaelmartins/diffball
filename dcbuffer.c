@@ -49,6 +49,16 @@ internal_DCB_register_DCB_src(CommandBuffer *dcb, CommandBuffer *dcb_src,
     unsigned char type, unsigned char flags)
 {
     v3printf("registering dcb_src(%x), as buffer id(%u)\n", (unsigned long)dcb, dcb->src_count);
+    if(dcb->src_count == dcb->src_array_size && internal_DCB_resize_srcs(dcb)) {
+	return MEM_ERROR;
+    }
+    dcb->srcs[dcb->src_count].dcb = dcb_src;
+    dcb->src_flags[dcb->src_count] = flags;
+    dcb->src_type[dcb->src_count] = ((type & 0x1) | DCB_DCB_SRC);
+    dcb->src_read_func[dcb->src_count] = (read_func == NULL ? default_dcb_src_read_func : read_func);
+    dcb->src_copy_func[dcb->src_count] = (copy_func == NULL ? default_dcb_src_copy_func : copy_func);
+    dcb->src_count;
+    return dcb->src_count - 1;
 }
 
 int
@@ -58,27 +68,33 @@ internal_DCB_register_src(CommandBuffer *dcb, cfile *cfh,
     unsigned char type, unsigned char flags)
 {
     v3printf("registering cfh_id(%u), as buffer id(%u)\n", cfh->cfh_id, dcb->src_count);
-    if(dcb->src_count == dcb->src_array_size) {
-	if((dcb->srcs = (dcb_src *)realloc(dcb->srcs, sizeof(dcb_src) 
-	    * dcb->src_array_size * 2))==NULL) {
-	    return MEM_ERROR;
-	} else if((dcb->src_read_func = (dcb_src_read_func *)realloc(dcb->src_read_func, 
-	    sizeof(dcb_src_read_func) * dcb->src_array_size * 2))==NULL) {
-	    return MEM_ERROR;
-	} else if((dcb->src_copy_func = (dcb_src_copy_func *)realloc(dcb->src_copy_func, 
-	    sizeof(dcb_src_copy_func) * dcb->src_array_size * 2))==NULL) {
-	    return MEM_ERROR;
-	}
-	dcb->src_array_size *= 2;
+    if(dcb->src_count == dcb->src_array_size && internal_DCB_resize_srcs(dcb)) {
+	return MEM_ERROR;
     }
     v2printf("registering %u src\n", dcb->src_count);
     dcb->srcs[dcb->src_count].cfh = cfh;
     dcb->src_flags[dcb->src_count] = flags;
-    dcb->src_type[dcb->src_count / 8] |= ((type & 0x1) << (dcb->src_count % 8));
+    dcb->src_type[dcb->src_count] = ((type & 0x1) | DCB_CFH_SRC);
     dcb->src_read_func[dcb->src_count] = (read_func == NULL ? default_dcb_src_read_func : read_func);
     dcb->src_copy_func[dcb->src_count] = (copy_func == NULL ? default_dcb_src_copy_func : copy_func);
     dcb->src_count++;
     return dcb->src_count - 1;
+}
+
+int
+internal_DCB_resize_srcs(CommandBuffer *dcb)
+{
+    if((dcb->srcs = (dcb_src *)realloc(dcb->srcs, sizeof(dcb_src) 
+	* dcb->src_array_size * 2))==NULL) {
+	return MEM_ERROR;
+    } else if((dcb->src_read_func = (dcb_src_read_func *)realloc(dcb->src_read_func, 
+	sizeof(dcb_src_read_func) * dcb->src_array_size * 2))==NULL) {
+	return MEM_ERROR;
+    } else if((dcb->src_copy_func = (dcb_src_copy_func *)realloc(dcb->src_copy_func, 
+	sizeof(dcb_src_copy_func) * dcb->src_array_size * 2))==NULL) {
+	return MEM_ERROR;
+    }
+    dcb->src_array_size *= 2;
 }
 
 unsigned long 
@@ -88,7 +104,7 @@ inline current_command_type(CommandBuffer *buff)
     if(DCBUFFER_FULL_TYPE == buff->DCBtype) {
 //        return ((*buff->DCB.full.cb_tail >> buff->DCB.full.cb_tail_bit) & 0x1);
 	x = buff->DCB.full.src_id[buff->DCB.full.command_pos];
-	return ((buff->src_type[x / 8] >> (x % 8)) & 0x1);
+	return (buff->src_type[x] & 0x1);
     }
     return 0;
 }
@@ -385,7 +401,7 @@ DCB_add_add(CommandBuffer *buffer, unsigned long ver_pos,
 #endif
     if(DCBUFFER_FULL_TYPE == buffer->DCBtype) {
 	if(buffer->DCB.full.lb_tail == buffer->DCB.full.lb_end)
-	    DCB_resize_full(buffer);
+	    internal_DCB_resize_full(buffer);
 
 	buffer->DCB.full.src_id[buffer->DCB.full.command_pos] = src_id;
 	buffer->DCB.full.lb_tail->offset = ver_pos;
@@ -410,7 +426,7 @@ DCB_add_copy(CommandBuffer *buffer, unsigned long src_pos,
 
     if(DCBUFFER_FULL_TYPE == buffer->DCBtype) {
 	if(buffer->DCB.full.lb_tail == buffer->DCB.full.lb_end)
-	    DCB_resize_full(buffer);
+	    internal_DCB_resize_full(buffer);
 	buffer->DCB.full.lb_tail->offset = src_pos;
 	buffer->DCB.full.lb_tail->len = len;
 //	*buffer->DCB.full.cb_tail |= (1 << buffer->DCB.full.cb_tail_bit);
@@ -419,7 +435,7 @@ DCB_add_copy(CommandBuffer *buffer, unsigned long src_pos,
 	buffer->reconstruct_pos += len;
     } else if(DCBUFFER_MATCHES_TYPE == buffer->DCBtype) {
 	if(buffer->DCB.matches.buff_count == buffer->DCB.matches.buff_size) {
-	    DCB_resize_matches(buffer);
+	    internal_DCB_resize_matches(buffer);
 	}
 	assert(buffer->DCB.matches.buff_count == 
 	    (buffer->DCB.matches.cur - buffer->DCB.matches.buff));
@@ -431,7 +447,7 @@ DCB_add_copy(CommandBuffer *buffer, unsigned long src_pos,
     } else if(DCBUFFER_LLMATCHES_TYPE == buffer->DCBtype) {
 	assert((DCB_LLM_FINALIZED & buffer->flags)==0);
 	if(buffer->DCB.llm.buff_count == buffer->DCB.llm.buff_size) {
-	    DCB_resize_llmatches(buffer);
+	    internal_DCB_resize_llmatches(buffer);
 	}
 	assert(buffer->DCB.llm.buff_count == (buffer->DCB.llm.cur - 
 	   buffer->DCB.llm.buff));
@@ -446,7 +462,7 @@ DCB_add_copy(CommandBuffer *buffer, unsigned long src_pos,
 }
 
 int
-DCB_resize_llm_free(CommandBuffer *buff)
+internal_DCB_resize_llm_free(CommandBuffer *buff)
 {
     if((buff->DCB.llm.free = (void **)realloc(buff->DCB.llm.free, 
 	buff->DCB.llm.free_size * 2 * sizeof(void *)))==NULL) {
@@ -457,7 +473,7 @@ DCB_resize_llm_free(CommandBuffer *buff)
 }
 
 int
-DCB_resize_llmatches(CommandBuffer *buff)
+internal_DCB_resize_llmatches(CommandBuffer *buff)
 {
     assert(DCBUFFER_LLMATCHES_TYPE == buff->DCBtype);
     assert(buff->DCB.llm.buff_count <= buff->DCB.llm.buff_size);
@@ -653,7 +669,7 @@ DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
 }
 
 int
-DCB_resize_matches(CommandBuffer *buffer)
+internal_DCB_resize_matches(CommandBuffer *buffer)
 {
     assert(DCBUFFER_MATCHES_TYPE == buffer->DCBtype);
     v1printf("resizing matches buffer from %lu to %lu\n", 
@@ -670,7 +686,7 @@ DCB_resize_matches(CommandBuffer *buffer)
 }
 
 int
-DCB_resize_full(CommandBuffer *buffer)
+internal_DCB_resize_full(CommandBuffer *buffer)
 {
     assert(DCBUFFER_FULL_TYPE == buffer->DCBtype);
     v1printf("resizing command buffer from %lu to %lu\n", 
@@ -783,7 +799,7 @@ DCB_insert(CommandBuffer *buff)
 	}
 	buff->DCB.llm.main_count += buff->DCB.llm.buff_count;
 	if(buff->DCB.llm.free_count == buff->DCB.llm.free_size) {
-	    DCB_resize_llm_free(buff);
+	    internal_DCB_resize_llm_free(buff);
 	}
 	buff->DCB.llm.free[buff->DCB.llm.free_count++] = buff->DCB.llm.buff;
     } else if(!(buff->flags & DCB_LLM_FINALIZED)){
