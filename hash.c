@@ -169,71 +169,44 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
     off_u64 ref_end)
 {
     ADLER32_SEED_CTX ads;
-    off_u64 rbuff_start, rbuff_end=0;
-    off_u64 x;
     off_u64 hash_offset = 0;
     unsigned long index;
-    unsigned int const rbuff_size = 16 * 4096;
-    unsigned char rbuff[rbuff_size];
+    cfile_window *cfw;
     unsigned int missed;
-#ifdef DEBUG_HASH
-    unsigned char *test_buff;
-    if((test_buff=(unsigned char*)malloc(rhash->seed_len))==NULL) {
-	abort();
-    }
-#endif
-    init_adler32_seed(&ads, rhash->seed_len, 1);
-    rbuff_start = cseek(ref_cfh, ref_start, CSEEK_FSTART);
-    rbuff_end=cread(ref_cfh, rbuff, rbuff_size);
 
-    update_adler32_seed(&ads, rbuff, rhash->seed_len);
+    init_adler32_seed(&ads, rhash->seed_len, 1);
+    cseek(ref_cfh, ref_start, CSEEK_FSTART);
+    cfw = expose_page(ref_cfh);
+    if(cfw->end==0) {
+	return 0;
+    }
+
+    update_adler32_seed(&ads, cfw->buff + cfw->pos, rhash->seed_len);
     missed=0;
 
-/* kludge I realize for the init, but neh, need something better.
-   the specific issue is that mod_hash can track if it's inserted in a sample 
-   window or not (and adjust accordingly)- this results in a better cross 
-   section, not always starting on the same offset.
-   sort_hash cannot unfortunately, so need a kludge of some sort to try and
-   vary up the start position. */
-
-//    for(x=rhash->seed_len * ((rhash->sample_rate > 1 && 
-//	(rhash->type & RH_SORT_HASH)) ? 1.5 : 1) + ref_start; x <= ref_end - 
-//	rhash->seed_len; x++) {
-    for(x=rhash->seed_len + ref_start; x <= ref_end; x++) {
-	if(x - rbuff_start >= rbuff_size) {
-	    rbuff_start += rbuff_end;
-
-#ifdef DEBUG_HASH
-	    cseek(ref_cfh, rbuff_start, CSEEK_FSTART);
-#endif
-	    rbuff_end   = cread(ref_cfh, rbuff, 
-		MIN(ref_end - rbuff_start, rbuff_size));
+    for(cfw->pos += rhash->seed_len; cfw->offset + cfw->pos < ref_end; 
+	cfw->pos++) {
+	if(cfw->pos >= cfw->end) {
+	    cfw = next_page(ref_cfh);
+	    if(cfw->end==0) {
+		abort();
+	    }
 	}
-	update_adler32_seed(&ads, rbuff + (x - rbuff_start), 1);
 
 	if(rhash->type & RH_MOD_HASH) {
 	    index=hash_it(rhash, &ads);
 	    hash_offset = get_offset(rhash, index);
 	    if(hash_offset==0) {
 		rhash->inserts++;
-		rhash->hash.mod[index] =x - rhash->seed_len + 1;
+		rhash->hash.mod[index] = cfw->offset + cfw->pos - 
+		    rhash->seed_len;
 		if(rhash->sample_rate > 1 && missed < rhash->sample_rate) {
-		    x+= rhash->sample_rate - missed;
+		    cfw->pos += rhash->sample_rate - missed;
 		}
 		missed=0;
 	    } else {
 		rhash->duplicates++;
 		missed++;
-#ifdef DEBUG_HASH
-		cseek(ref_cfh, hash_offset, CSEEK_FSTART);
-		cread(ref_cfh, test_buff, seed_len);
-		if((memcmp(test_buff, ads.seed_chars + ads.tail, seed_len - 
-		    ads.tail)!=0) &&
-		    (memcmp(test_buff + ads.tail, ads.seed_chars, 
-		    ads.tail)!=0)) {
-			rhash->bad_duplicates++;
-		}
-#endif
 	    }
 	} else if(rhash->type & RH_RMOD_HASH) {
 	    index = hash_it(rhash, &ads);
@@ -241,7 +214,7 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 		rhash->inserts++;
 		rhash->hash.chk[index].chksum = get_checksum(&ads);
 		if(rhash->sample_rate > 1 && missed < rhash->sample_rate) {
-		    x+= rhash->sample_rate - missed;
+		    cfw->pos += rhash->sample_rate - missed;
 		}
 		missed=0;
 	    } else {
@@ -260,10 +233,11 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 		rhash->hr_size +=1000;
 	    }
 	    rhash->hash.chk[rhash->inserts].chksum = get_checksum(&ads);
-	    rhash->hash.chk[rhash->inserts].offset = x - rhash->seed_len + 1;
+	    rhash->hash.chk[rhash->inserts].offset = cfw->offset + 
+		cfw->pos - rhash->seed_len;
 	    rhash->inserts++;
 	    if(rhash->sample_rate > 1)
-		x += rhash->sample_rate;
+		cfw->pos += rhash->sample_rate;
 	} else if(rhash->type & RH_RSORT_HASH) {
 	    if(rhash->hr_size == rhash->inserts) {
 		v1printf("resizing from %lu to %lu\n", rhash->hr_size, 
@@ -279,13 +253,11 @@ RHash_insert_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start,
 	    rhash->hash.chk[rhash->inserts].offset = 0;
 	    rhash->inserts++;
 	    if(rhash->sample_rate > 1)
-		x += rhash->sample_rate;
+		cfw->pos += rhash->sample_rate;
 	}		
+	update_adler32_seed(&ads, cfw->buff + cfw->pos, 1);
     }
     free_adler32_seed(&ads);
-#ifdef DEBUG_HASH
-    free(test_buff);
-#endif
     return 0;
 }
 
