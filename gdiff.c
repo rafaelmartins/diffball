@@ -100,13 +100,13 @@ signed int gdiffEncodeDCBuffer(struct CommandBuffer *buffer,
 				printf("wtf, encountered an offset larger then int size.  croaking.\n");
 				exit(1);
 		    }
-		    printf("cseeking to (%lu), got (%lu)\n",
-		    	buffer->lb_tail->offset, 
-		    	cseek(ver_cfh, buffer->lb_tail->offset, CSEEK_ABS));
+		    //printf("cseeking to (%lu), got (%lu)\n",
+		    //	buffer->lb_tail->offset, 
+		    cseek(ver_cfh, buffer->lb_tail->offset, CSEEK_ABS);
 		    bytes_wrote=0;
 		    while(buffer->lb_tail->len - bytes_wrote > 0) {
-		    	printf("len(%lu), bytes_wrote(%lu), left(%lu)\n", 
-		    	buffer->lb_tail->len, bytes_wrote, buffer->lb_tail->len - bytes_wrote);
+		    	//printf("len(%lu), bytes_wrote(%lu), left(%lu)\n", 
+		    	//buffer->lb_tail->len, bytes_wrote, buffer->lb_tail->len - bytes_wrote);
 		    	temp = MIN(buffer->lb_tail->len - bytes_wrote, add_buff_size);
 			    if((bytes_read=cread(ver_cfh, add_buff, temp))!=temp) {
 			    	printf("add failure, offset(%lu), len(%lu)\n", 

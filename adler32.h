@@ -15,6 +15,19 @@
   along with this program; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, US 
 */
-unsigned long adler32(char *buf, int len);
+#ifndef _HEADER_ADLER32
+#define _HEADER_ADLER32 1
 
+struct adler32_seed {
+	unsigned int seed_len;
+	unsigned char *last_seed;
+	unsigned int tail;
+	unsigned long s1;
+	unsigned long s2;
+};
+
+void init_adler32_seed(struct adler32_seed *ads, unsigned int seed_len);
+void update_adler32_seed(struct adler32_seed *ads, unsigned char *buff, unsigned int len);
+
+#endif
 
