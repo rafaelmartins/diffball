@@ -72,7 +72,7 @@ main(int argc, char **argv)
     char *src_format = NULL, *trg_format = NULL;
 
     #define DUMP_USAGE(exit_code) \
-	print_usage("convert_delta", "src_patch [new_patch|or to stdout]", help_opts, exit_code)
+	print_usage("convert_delta", "src_patch -t format [new_patch|or to stdout]", help_opts, exit_code)
 
     while((optr = getopt_long(argc, argv, short_opts, long_opts, NULL)) != -1) {
 	switch(optr) {
