@@ -67,6 +67,7 @@ struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, 
 	if (block[TAR_TYPEFLAG_LOC] == (char )'L') {
         /* LongLink.  hence the need for previous. as I said, it's a hack at best.*/
 	/* this also needs testing/verification. */
+	/* first run, seems fine.  haven't checked w/ prefix.  further, check offset code */
 	    char *rep;
 	    char data[512];
 	    unsigned int name_len=octal_str2long(&block[TAR_SIZE_LOC], TAR_SIZE_LEN);
@@ -88,6 +89,8 @@ struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, 
 	    file[count-1]->fullname[file[count-1]->prefix_len + name_len] = '\0';
 	    /* ensure md5 is handled */
 	    write(pipes[1], data, 512);
+	    //update offset, 1 for the header, 1 for the data block.
+	    offset +=2;
 	    //printf("encountered longlink.  rewrote the previous entry to '%s'\n", file[count-1]->fullname);
 	    continue;
 	}
@@ -96,17 +99,10 @@ struct tar_entry **read_fh_to_tar_entry(int src_fh, unsigned long *total_count, 
 	    exit(EXIT_FAILURE);
 	}
 /* I'm using strncpy purely so that things get null padded for sure.  memcpy elsewhere most likely */
-	//block = block;
-	//strncpy((char *)tmp8, (const char *)block[TAR_MODE_LOC], TAR_MODE_LEN);
-	//tmp8[8]='\0'; /* overkill? */
-	//entry->mode = strtol((char *)tmp8, NULL, 8);
 	entry->mode = octal_str2long(&block[TAR_MODE_LOC], TAR_MODE_LEN);
-	/*strncpy((char *)tmp8, (const char *)block, 8);          tmp8[8]='\0';
-	entry->uid = strtol((char *)tmp8, NULL, 8);                 block+=8;*/
 	entry->uid = octal_str2long(&block[TAR_UID_LOC], TAR_UID_LEN);
 	entry->gid = octal_str2long(&block[TAR_GID_LOC], TAR_GID_LEN);
 	entry->size = octal_str2long(&block[TAR_SIZE_LOC], TAR_SIZE_LEN);
-	//entry->mtime = octal_str2long(&block[TAR_MTIME_LOC], TAR_MTIME_LEN);
 	strncpy((char *)entry->mtime, &block[TAR_MTIME_LOC], TAR_MTIME_LEN);
 	entry->chksum = octal_str2long(&block[TAR_CHKSUM_LOC], TAR_CHKSUM_LEN);
 	entry->typeflag = (unsigned char)block[TAR_TYPEFLAG_LOC];
