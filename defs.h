@@ -21,7 +21,7 @@
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
-extern unsigned int verbosity;
+extern unsigned int global_verbosity;
 
 #define PATCH_TRUNCATED	0x1
 #define PATCH_CORRUPT	0x2
@@ -31,13 +31,13 @@ extern unsigned int verbosity;
 #ifdef DEV_VERSION
 #include <assert.h>
 #define v1printf(expr...)  fprintf(stderr,expr);
-#define v2printf(expr...)  if(verbosity>0){fprintf(stderr,expr);}
-#define v3printf(expr...)  if(verbosity>1){fprintf(stderr,expr);}
+#define v2printf(expr...)  if(global_verbosity>0){fprintf(stderr,expr);}
+#define v3printf(expr...)  if(global_verbosity>1){fprintf(stderr,expr);}
 #else
 #define assert(expr) ((void)0)
-#define v1printf(expr...)  if(verbosity>0){fprintf(stderr,expr);}
-#define v2printf(expr...)  if(verbosity>1){fprintf(stderr,expr);}
-#define v3printf(expr...)  if(verbosity>2){fprintf(stderr,expr);}
+#define v1printf(expr...)  if(global_verbosity>0){fprintf(stderr,expr);}
+#define v2printf(expr...)  if(global_verbosity>1){fprintf(stderr,expr);}
+#define v3printf(expr...)  if(global_verbosity>2){fprintf(stderr,expr);}
 #endif
 
 #ifdef DEBUG_CFILE

@@ -30,16 +30,15 @@
 #include "defs.h"
 #include "options.h"
 
-unsigned int verbosity = 0;
+unsigned int global_verbosity = 0;
 unsigned int out_compressor = 0;
 unsigned int output_to_stdout = 0;
-unsigned int use_md5 = 0;
+unsigned int global_use_md5 = 0;
 char  *patch_format;
 
 struct poptOption options[] = {
     STD_OPTIONS(output_to_stdout),
     FORMAT_OPTIONS("patch-format", 'f', patch_format),
-    MD5_OPTION(use_md5),
     POPT_TABLEEND
 };
 
@@ -67,10 +66,9 @@ main(int argc, char **argv)
 	}
 	switch(optr) {
 	case OVERSION:
-	    // print version.
-	    exit(0);
+	    print_version("patcher");
 	case OVERBOSE:
-	    verbosity++;
+	    global_verbosity++;
 	    break;
 	case OBZIP2:
 	    if(out_compressor) {
@@ -107,7 +105,7 @@ main(int argc, char **argv)
 	"unknown option");
     }	
     poptFreeContext(p_opt);
-    v1printf("verbosity level(%u)\n", verbosity);
+    v1printf("verbosity level(%u)\n", global_verbosity);
     if ((src_fh = open(src_name, O_RDONLY,0)) == -1) {
 	fprintf(stderr,"error opening source file '%s'\n", src_name);
 	exit(EXIT_FAILURE);
@@ -159,7 +157,7 @@ main(int argc, char **argv)
     }
     v1printf("reconstruction return=%ld\n", recon_val);
     v1printf("reconstructing target file based off of dcbuff commands...\n");
-    reconstructFile(&dcbuff, &src_cfh, &patch_cfh, &out_cfh);
+    reconstructFile(&dcbuff, &src_cfh, &out_cfh);
     if(BDELTA_FORMAT==patch_id) {
 	if(ctell(&out_cfh, CSEEK_ABS) < dcbuff.ver_size) {
 	    unsigned char buff[512];

@@ -33,7 +33,8 @@
 #include "defs.h"
 #include "options.h"
 
-unsigned int verbosity = 0;
+unsigned int global_verbosity = 0;
+unsigned int global_use_md5 = 0;
 
 int cmp_tar_entries(const void *te1, const void *te2);
 
@@ -42,26 +43,22 @@ unsigned long seed_len = 0;
 unsigned long hash_size = 0;
 unsigned int patch_compressor = 0;
 unsigned int patch_to_stdout = 0;
-unsigned int use_md5 = 0;
 char  *patch_format;
 
 struct poptOption options[] = {
     STD_OPTIONS(patch_to_stdout),
     DIFF_OPTIONS(seed_len, sample_rate, hash_size),
     FORMAT_OPTIONS("patch-format", 'f', patch_format),
-    MD5_OPTION(use_md5),
     POPT_TABLEEND
 };
 
-int 
-src_common_len=0, trg_common_len=0;
+int src_common_len=0, trg_common_len=0;
 
 int main(int argc, char **argv)
 {
     int src_fh, trg_fh, out_fh;
     struct tar_entry **source, **target, *tar_ptr;
     void *vptr;
-    unsigned char source_md5[32], target_md5[32];
     unsigned long source_count, target_count;
     unsigned long x, patch_format_id, encode_result;
     char src_common[512], trg_common[512], *p;  /* common dir's... */
@@ -90,10 +87,9 @@ int main(int argc, char **argv)
 	}
 	switch(optr) {
 	case OVERSION:
-	    // print version.
-	    exit(0);
+	    print_version("diffball");
 	case OVERBOSE:
-	    verbosity++;
+	    global_verbosity++;
 	    break;
 	case OBZIP2:
 	    if(patch_compressor) {
@@ -153,7 +149,7 @@ int main(int argc, char **argv)
     v1printf("using patch format %lu\n", patch_format_id);
     v1printf("using seed_len(%lu), sample_rate(%lu), hash_size(%lu)\n", 
 	seed_len, sample_rate, hash_size);
-    v1printf("verbosity level(%u)\n", verbosity);
+    v1printf("verbosity level(%u)\n", global_verbosity);
     if((src_fh = open(src_file, O_RDONLY,0)) == -1) {
 	fprintf(stderr, "error opening source file '%s'\n", src_file);
 	exit(1);
@@ -245,11 +241,13 @@ int main(int argc, char **argv)
 	CFILE_OPEN_FH);
     DCBufferInit(&dcbuff, 4096, (unsigned long)ref_stat.st_size, 
 	(unsigned long)ver_stat.st_size);
+    v1printf("initing backup full hash\n");
     init_RefHash(&rhash_full, &ref_full, seed_len, sample_rate, 
 	hash_size);
     print_RefHash_stats(&rhash_full);
     v1printf("looking for matching filenames in the archives...\n");
     for(x=0; x< target_count; x++) {
+	v1printf("processing %lu of %lu\n", x, target_count);
         //entry=source[x];
 	//printf("checking '%s'\n", source[x]->fullname);
 	copen(&ver_window, trg_fh, (512 * target[x]->file_loc),

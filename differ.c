@@ -31,20 +31,19 @@
 #include "defs.h"
 #include "options.h"
 
-unsigned int verbosity=0;
+unsigned int global_verbosity=0;
 unsigned long sample_rate=0;
 unsigned long seed_len = 0;
 unsigned long hash_size = 0;
 unsigned int patch_compressor = 0;
 unsigned int patch_to_stdout = 0;
-unsigned int use_md5 = 0;
+unsigned int global_use_md5 = 0;
 char  *patch_format;
 
 struct poptOption options[] = {
     STD_OPTIONS(patch_to_stdout),
     DIFF_OPTIONS(seed_len, sample_rate,hash_size),
     FORMAT_OPTIONS("patch-format", 'f', patch_format),
-    MD5_OPTION(use_md5),
     POPT_TABLEEND
 };
 
@@ -73,10 +72,9 @@ int main(int argc, char **argv)
 	}
 	switch(optr) {
 	case OVERSION:
-	    // print version.
-	    exit(0);
+	    print_version("differ");
 	case OVERBOSE:
-	    verbosity++;
+	    global_verbosity++;
 	    break;
 	case OBZIP2:
 	    if(patch_compressor) {
@@ -148,7 +146,7 @@ int main(int argc, char **argv)
     v1printf("using patch format %lu\n", patch_id);
     v1printf("using seed_len(%lu), sample_rate(%lu), hash_size(%lu)\n", 
 	seed_len, sample_rate, hash_size);
-    v1printf("verbosity level(%u)\n", verbosity);
+    v1printf("verbosity level(%u)\n", global_verbosity);
     DCBufferInit(&buffer, 4096, ref_stat.st_size, ver_stat.st_size);
     init_RefHash(&rhash, &ref_cfh, seed_len, sample_rate, hash_size);
     print_RefHash_stats(&rhash);

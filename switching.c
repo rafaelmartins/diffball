@@ -331,7 +331,8 @@ signed int switchingReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff /*,
     v2printf("closing command was (%u)\n", *buff);
     v2printf("cread fh_pos(%lu)\n", ctell(patchf, CSEEK_ABS)); 
     v2printf("ver_pos(%lu)\n", ver_pos);
-    
+    DCBUFFER_REGISTER_ADD_CFH(dcbuff, patchf);
+
     return 0;    
 }
 

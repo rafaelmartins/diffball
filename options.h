@@ -30,14 +30,14 @@ enum {OVERSION=100, OVERBOSE,OFORMAT,OSEED,OSAMPLE,OSTDOUT,OBZIP2,OGZIP};
 {"version",		'V', POPT_ARG_NONE,0,OVERSION,0,0},	\
 {"verbose",		'v', POPT_ARG_NONE,0,OVERBOSE,0,0},	\
 {"to-stdout",		'c', POPT_ARG_NONE,&(stdout), 0,0,0},	\
-{"bzip2-compress",	'j', POPT_ARG_NONE,0, OBZIP2,0,0},	\
-{"gzip-compress",	'z', POPT_ARG_NONE,0, OGZIP,0,0}
+/*{"bzip2-compress",	'j', POPT_ARG_NONE,0, OBZIP2,0,0},	\
+{"gzip-compress",	'z', POPT_ARG_NONE,0, OGZIP,0,0} */	\
+{"use-md5",	'm',POPT_ARG_NONE, &global_use_md5, 0,0,0}
 
 #define FORMAT_OPTIONS(long, short, string)		\
 {long, short, POPT_ARG_STRING, &string, 0,0,0}
-#define MD5_OPTION(md5var)				\
-{"ignore-md5",	'm',POPT_ARG_NONE, &(md5var),0,0,0}
 
+void print_version();
 void usage(poptContext p_opt, int exitcode, const char *error, 
     const char *addl);
 

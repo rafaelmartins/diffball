@@ -169,6 +169,7 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
     }
     if(ctell(src_cfh, CSEEK_FSTART)!=cfile_len(src_cfh))
 	DCBufferAddCmd(dcbuff, DC_COPY, s_lastoff, cfile_len(src_cfh) - s_lastoff);
+    DCBUFFER_REGISTER_ADD_CFH(dcbuff, patchf);
     return 0;
 
     TRUNCATED_PATCH:

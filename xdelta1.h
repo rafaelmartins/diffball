@@ -19,6 +19,8 @@
 #define _HEADER_XDELTA1 1
 #include "cfile.h"
 
+#define XD_COMPRESSED_FLAG	0x8
+
 #define XDELTA_110_MAGIC "%XDZ004%"
 #define XDELTA_104_MAGIC "%XDZ003%"
 #define XDELTA_100_MAGIC "%XDZ002%"

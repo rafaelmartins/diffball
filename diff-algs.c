@@ -138,7 +138,7 @@ print_RefHash_stats(RefHash *rhash) {
     v1printf("hash stats: load factor(%f%%)\n", 
 	((float)rhash->inserts/rhash->hr_size* 100));
     v1printf("hash stats: duplicate rate(%f%%)\n", 
-	((float)rhash->duplicates/rhash->hr_size * 100));
+	((float)rhash->duplicates/(rhash->inserts + rhash->duplicates) * 100));
 #ifdef DEBUG_HASH
     v1printf("hash stats: bad duplicates(%f%%)\n",((float)
 	rhash->bad_duplicates/rhash->duplicates * 100));

@@ -207,6 +207,7 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 	}
     }
     assert(ctell(patchf, CSEEK_FSTART)==add_start);
+    DCBUFFER_REGISTER_ADD_CFH(dcbuff, patchf);
     v2printf("finished reading.  ver_pos=%lu, add_pos=%lu\n",
 	ver_pos, add_pos);
     return 0;

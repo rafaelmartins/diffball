@@ -20,7 +20,6 @@
 #include "defs.h"
 #include <string.h>
 #include <fcntl.h>
-#include <openssl/evp.h>
 #include "cfile.h"
 
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -48,11 +47,8 @@ copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
     cfh->raw_fh = fh;
     cfh->access_flags = (access_flags & ~CFILE_COMPUTE_MD5);
     cfh->state_flags = 0;
-    /*if((cfh->data = (cfile_window *)malloc(sizeof(cfile_window)))==NULL)
-	abort();
-    if((cfh->raw = (cfile_window *)malloc(sizeof(cfile_window)))==NULL)
-	abort();*/
     cfh->data_md5 = NULL;
+    cfh->compressor_type = compressor_type;
     if(access_flags & CFILE_COMPUTE_MD5) {
 	if((cfh->data_md5_ctx = (EVP_MD_CTX *)malloc(sizeof(EVP_MD_CTX)))==NULL)
 	    abort();
@@ -66,8 +62,9 @@ copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
 	/* watch this, may need to change it when compression comes about */
 	cfh->data_md5_pos = cfh->data_total_len;
     }
-    switch( cfh->compressor_type = compressor_type ) {
+    switch(compressor_type) {
     case NO_COMPRESSOR: 
+	dcprintf("copen: opening w/ no_compressor\n");
 	cfh->data_fh_offset = fh_start;
 	cfh->data_total_len = fh_end - fh_start;
 	if((access_flags & CFILE_BUFFER_ALL) != 0)
@@ -76,6 +73,48 @@ copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
 	    cfh->data.size = CFILE_DEFAULT_BUFFER_SIZE;
 	cfh->raw.size = 0;
  	break;
+/*    case BZIP2_COMPRESSOR:
+	if((cfh->bz_stream = (bz_stream *)
+	    malloc(sizeof(bz_stream)))==NULL) {
+	    abort();
+	}
+	cfh->bz_stream->bzalloc = NULL;
+	cfh->bz_stream->bzfree =  NULL;
+	cfh->bz_stream->opaque = NULL;
+	if(cfh->access_flags & CFILE_WONLY)
+	    BZ2_bzCompressInit(cfh->bz_stream, 
+		BZIP2_DEFAULT_COMPRESS_LEVEL, 0, 0);
+	else 
+	    BZ2_bzDecompressInit(cfh->bz_stream, 0 ,0);
+	cfh->data.size = CFILE_DEFAULT_BUFFER_SIZE;
+	cfh->raw.size = CFILE_DEFAULT_BUFFER_SIZE;
+	break;*/
+    case GZIP_COMPRESSOR:
+	/* error checking ?!?! */
+	dcprintf("copen: opening w/ gzip_compressor\n");
+//	dcprintf("copen: lseeking to start(%lu).\n", cfh->raw_fh_offset);
+	cfh->raw_fh_offset = fh_start;
+	cfh->raw_total_len = fh_end - fh_start;
+	cfh->raw_fh = dup(fh);
+	cfh->data_fh_offset = 0;
+/*	if((cfh->gz_handle = (gzFile *)
+	    malloc(sizeof(gzFile)))==NULL) {
+	    abort();
+	}*/
+	if(cfh->access_flags & CFILE_WONLY) {
+	    v0printf("aborting, I won't write in gzip.\nyet...\n");
+	    exit(1);
+	} else {
+	    dcprintf("copen: gzdopen'ing readonly\n");
+	    cfh->data.size = CFILE_DEFAULT_BUFFER_SIZE;
+	    lseek(cfh->raw_fh, cfh->raw_fh_offset, SEEK_SET);
+	    if((cfh->gz_handle=gzdopen(fh, "rb"))==NULL) {
+		v0printf("crap, problem w/ gzdopen.\n");
+		exit(1);
+	    }
+	}
+	cfh->raw.size = 0;
+	break;
     }
     cfh->raw.pos = cfh->raw.offset  = cfh->raw.end = cfh->data.pos = 
 	cfh->data.offset = cfh->data.end = 0;
@@ -90,7 +129,7 @@ copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
 	    abort();
     } else
 	cfh->raw.buff = NULL;
-    cfh->state_flags |= CFILE_SEEK_NEEDED;
+   cfh->state_flags |= CFILE_SEEK_NEEDED;
     return 0;
 }
 
@@ -109,6 +148,13 @@ cclose(cfile *cfh)
 	if(cfh->state_flags & CFILE_MD5_FINALIZED)
 	    free(cfh->data_md5);
 	cfh->data_md5_pos = 0;
+    }
+    if(cfh->compressor_type == BZIP2_COMPRESSOR) {
+	free(cfh->bz_stream);
+    }
+    if(cfh->compressor_type == GZIP_COMPRESSOR) {
+	gzclose(cfh->gz_handle);
+	//free(cfh->gz_handle);
     }
     cfh->raw.pos = cfh->raw.end = cfh->raw.size = cfh->raw.offset = 
 	cfh->data.pos = cfh->data.end = cfh->data.size = cfh->data.offset = 
@@ -177,24 +223,42 @@ cseek(cfile *cfh, signed long offset, int offset_type)
     assert(data_offset >= 0);
 
 /* not sure on this next assert, probably should be < rather then <= */
-    assert(data_offset <= cfh->data_total_len);
+//    assert(data_offset <= cfh->data_total_len);
 
     /* see if the desired location is w/in the data buff */
     if(data_offset >= cfh->data.offset &&
 	data_offset <  cfh->data.offset + cfh->data.size && 
 	cfh->data.end > data_offset - cfh->data.offset) {
-
+	dcprintf("cseek: buffered data, repositiong pos\n");
 	cfh->data.pos = data_offset - cfh->data.offset;
 	return (CSEEK_ABS==offset_type ? data_offset + cfh->data_fh_offset: 
 	    data_offset);
     }
     cfh->data.offset = data_offset;
     cfh->data.pos = cfh->data.end = 0;
+    int err;
     switch(cfh->compressor_type) {
     case NO_COMPRESSOR:
+	dcprintf("cseek: no_compressor, lseeking\n");
  	if(lseek(cfh->raw_fh, data_offset + cfh->data_fh_offset, SEEK_SET) !=
 	    data_offset + cfh->data_fh_offset)
 	    abort();
+	break;
+    case GZIP_COMPRESSOR:
+	dcprintf("cseek: gzip_compressor, gzseeking\n");
+	err = gzseek(cfh->gz_handle, data_offset + cfh->data_fh_offset, 
+	    SEEK_SET);
+	printf("pos=(%i), desired(%lu)\n", err, 
+	    data_offset + cfh->raw_fh_offset);
+	if(err <0 ) {
+	    v0printf("gzseek error: %s\n", gzerror(cfh->gz_handle, &err));
+	    abort();
+	}
+	if((err=gzseek(cfh->gz_handle, data_offset + cfh->data_fh_offset, SEEK_SET)
+	    )!= data_offset + cfh->data_fh_offset) {
+	    v0printf("gzseek error: %s\n", gzerror(cfh->gz_handle, &err));
+	    abort();
+	}
 	break;
     }
     return (CSEEK_ABS==offset_type ? data_offset + cfh->data_fh_offset : 
@@ -226,6 +290,32 @@ cflush(cfile *cfh)
 	    cfh->data.offset += cfh->data.pos;
 	    cfh->data.pos=0;
 	    break;
+/*	case BZIP2_COMPRESSOR:
+	    // fairly raw, if working at all //
+	    if(cfh->raw.pos == cfh->raw.end) {
+		if(cfh->raw.pos != write(cfh->raw_fh, cfh->raw.buff, 
+		    cfh->raw.size))
+		    abort();
+		cfh->raw.offset += cfh->raw.end;
+		cfh->raw.pos = 0;
+	    }
+	    cfh->bz_stream->next_in = cfh->data.buff;
+	    cfh->bz_stream->avail_in = cfh->data.end;
+	    if(cfh->bz_stream->avail_out==0) {
+		cfh->bz_stream->next_out = cfh->raw.buff;
+		cfh->bz_stream->avail_out = cfh->raw.size;
+	    }
+	    if(BZ_RUN_OK != BZ2_bzCompress(cfh->bz_stream, BZ_RUN)) {
+		abort();
+	    }
+	    break;*/
+	case GZIP_COMPRESSOR:
+	    if(cfh->data.pos != gzwrite(cfh->gz_handle, cfh->data.buff, 
+		cfh->data.pos)) 
+		abort();
+	    cfh->data.offset += cfh->data.pos;
+	    cfh->data.pos=0;
+	    break;
 	}
     }
     return 0;
@@ -235,15 +325,41 @@ unsigned long
 crefill(cfile *cfh)
 {
     unsigned long x;
-    if(cfh->state_flags & CFILE_SEEK_NEEDED)
+    if(cfh->state_flags & CFILE_SEEK_NEEDED) {
+	dcprintf("crefill: calling cseek (CFILE_SEEK_NEEDED)\n");
 	cseek(cfh, cfh->data.offset, CSEEK_FSTART);
+    }
+    int err;
     switch(cfh->compressor_type) {
     case NO_COMPRESSOR:
 	x = read(cfh->raw_fh, cfh->data.buff, cfh->data.size);
 	cfh->data.offset += cfh->data.end;
 	cfh->data.end = x;
 	cfh->data.pos = 0;
+	dcprintf("crefill: no_compress, got %lu\n", x);
 	break;
+/*    case BZIP2_COMPRESSOR:
+	// fairly raw
+	if(cfh->raw.pos == cfh->data.end) {
+	    x=read(cfh->raw_fh, cfh->raw.buff, cfh->raw.size);
+	    cfh->raw.offset += cfh->raw.end;
+	    cfh->raw.end = x;
+	    cfh->raw.pos = 0;
+	}
+	break;*/
+    case GZIP_COMPRESSOR:
+	x = gzread(cfh->gz_handle, cfh->data.buff, cfh->data.size);
+	if((signed long)x < 0) {
+	    dcprintf("crefill: gzread prob\n");
+	    fprintf(stderr, "gzread err: %s\n", 
+		gzerror(cfh->gz_handle, &err));
+	    abort();
+	}
+	cfh->data.offset += cfh->data.end;
+	cfh->data.end = x;
+	cfh->data.pos = 0;
+	dcprintf("crefill: gzip_compressor, got(%lu) asked(%lu)\n", x, cfh->data.size);
+	break;	
     }
     if((cfh->state_flags & CFILE_COMPUTE_MD5) &&
 	((cfh->state_flags & CFILE_MD5_FINALIZED)==0) && 

@@ -276,6 +276,7 @@ gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 		ver_pos+=len;
 	    }
     }
+    DCBUFFER_REGISTER_ADD_CFH(dcbuff, patchf);
     v2printf("closing command was (%u)\n", *buff);
     v2printf("cread fh_pos(%lu)\n", ctell(patchf, CSEEK_ABS)); 
     v2printf("ver_pos(%lu)\n", ver_pos);

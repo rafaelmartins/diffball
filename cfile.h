@@ -19,6 +19,8 @@
 #define _HEADER_CFILE
 
 #include <openssl/evp.h>
+#include <bzlib.h>
+#include <zlib.h>
 
 //#define CFILE_RAW_BUFF_SIZE   (4096)
 //#define CFILE_TRANS_BUFF_SIZE (4096)
@@ -38,6 +40,7 @@
 #define CFILE_MEM_ALIAS			(0x2)
 #define CFILE_BUFFER_ALL		(0x1)
 
+#define BZIP2_DEFAULT_COMPRESS_LEVEL	9
 
 /*lseek type stuff
 SEEK_SET
@@ -77,6 +80,11 @@ typedef struct {
     unsigned long	raw_fh_offset;
     unsigned long	raw_total_len;
     cfile_window	raw;
+
+    /* compression crap */
+    bz_stream		*bz_stream;
+    gzFile		gz_handle;
+//    gzFile		*gz_handle;
 
     /* other fun stuff, compression/md5 related. */
     EVP_MD_CTX 		*data_md5_ctx;

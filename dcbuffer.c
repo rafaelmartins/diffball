@@ -29,32 +29,6 @@ unsigned long inline current_command_type(CommandBuffer *buff) {
         return ((*buff->cb_tail >> buff->cb_tail_bit) & 0x01);
 }
 
-void updateDCCopyStats(DCStats *stats, signed long pos_offset, signed long dc_offset, unsigned long len)
-{
-    stats->copy_count++;
-    stats->copy_pos_offset_bytes[MAX( MIN(signedBytesNeeded(pos_offset) - 1, 0), 5)]++;
-    stats->copy_rel_offset_bytes[MAX(MIN(signedBytesNeeded(dc_offset) -1, 0), 5)]++;
-    stats->copy_len_bytes[MAX(MIN(unsignedBytesNeeded(len)-1, 0),5)]++;
-}
-
-void updateDCAddStats(DCStats *stats, unsigned long len)
-{
-    stats->add_count++;    
-}
-
-void undoDCCopyStats(DCStats *stats, signed long pos_offset, unsigned long len)
-{
-    stats->copy_count++;
-    stats->copy_pos_offset_bytes[MAX( MIN(signedBytesNeeded(pos_offset) - 1, 0), 5)]--;
-//    stats->copy_rel_offset_bytes[MAX(MIN(signedBytesNeeded(dc_offset) -1, 0), 5)]--;
-    stats->copy_len_bytes[MAX(MIN(unsignedBytesNeeded(len)-1, 0),5)]--;
-}
-
-void undoDCAddStats(DCStats *stats, unsigned long len)
-{
-    stats->add_count--;
-}
-
 void DCBufferTruncate(CommandBuffer *buffer, unsigned long len)
 {
     //get the tail to an actual node.
@@ -173,6 +147,8 @@ DCBufferReset(CommandBuffer *buffer)
 
 void DCBufferFree(CommandBuffer *buffer)
 {
+    if(buffer->flags & ADD_CFH_FREE_FLAG)
+	free(buffer->add_cfh);
     free(buffer->cb_start);
     free(buffer->lb_start);
 }
@@ -181,6 +157,7 @@ void DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
     unsigned long src_size, unsigned long ver_size)
 {
     buffer->buffer_count=0;
+    buffer->flags =0;
     buffer->src_size = src_size;
     buffer->ver_size = ver_size;
     buffer_size = (buffer_size > 0 ? (buffer_size/8) : 0) + 1;

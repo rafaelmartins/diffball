@@ -29,17 +29,16 @@
 #include "defs.h"
 #include "options.h"
 
-unsigned int verbosity = 0;
+unsigned int global_verbosity = 0;
 unsigned int patch_compressor = 0;
 unsigned int output_to_stdout = 0;
-unsigned int use_md5 = 0;
+unsigned int global_use_md5 = 0;
 char *src_format, *trg_format;
 
 struct poptOption options[] = {
     STD_OPTIONS(output_to_stdout),
     FORMAT_OPTIONS("src-format", 's', src_format),
     FORMAT_OPTIONS("trg-format", 't', trg_format),
-    MD5_OPTION(use_md5),
     POPT_TABLEEND
 };
 
@@ -61,10 +60,9 @@ main(int argc, char **argv)
     while((optr=poptGetNextOpt(p_opt)) != -1) {
 	switch(optr) {
 	case OVERSION:
-	    // print version.
-	    exit(0);
+	    print_version("convert_delta");
 	case OVERBOSE:
-	    verbosity++;
+	    global_verbosity++;
 	    break;
 	case OBZIP2:
 	    if(patch_compressor) {

@@ -165,5 +165,6 @@ bdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 	    }
 	}
     }
+    DCBUFFER_REGISTER_ADD_CFH(dcbuff, patchf);
     return 0;
 }

@@ -23,7 +23,7 @@ STARTED	* work out a solution for handling md5's in file format- basically
 STARTED	* start enabling checking of returned values.  Basically start cleaning
 	  out the use of abort's and exit's, and use appropriate return values.
 DONE	* relevant man pages
-STARTED	* have a basic (not necessarily cleanest/best) gzip compressor setup so 
+DONE	* have a basic (not necessarily cleanest/best) gzip compressor setup so 
 	  compressed xdelta can be handled.
 	* add a set of functions for pulling add len/offset pairs for formats
 	  reasonning being, make it a default function so I can move optimizing
@@ -33,7 +33,7 @@ STARTED	* have a basic (not necessarily cleanest/best) gzip compressor setup so
 STARTED	* write *GOOD* man pages
 	* add patch info functions, for polling info on existant patches.
 	  possibly a new binary, although might be overkill.
-	* bsdiff support, possibly included into 0.4.
+STARTED	* bsdiff support, possibly included into 0.4.
 	* xdelta write support- could do it as of pre-0.4, although md5 support
 	  is needed, and the lovely serialsource memory allocation problem- 
 	  basically the unknown 8 bytes sandwiched between add data and control
@@ -69,7 +69,7 @@ STARTED	* have working compression support in cfile.  Not saying it be'll
 	  doesn't require the entire set of delta commands to be stored in mem.
 
 0.75			Jan-Mar 2004
-STARTED	* have at least a dev version of gnuDiff support (unified and context).
+DONE	* have at least a dev version of gnuDiff support (unified and context).
 	  Note that is for a single patch, eg-non recursive.
 	  for recursive, basically need a for loop opening cfiles as needed.
 

@@ -32,3 +32,9 @@ usage(poptContext p_opt, int exitcode, const char *error, const char *addl)
     exit(exitcode);
 }
 
+void
+print_version(const char *prog)
+{
+    v0printf("%s version %s\n", prog, VERSION);
+    exit(0);
+}

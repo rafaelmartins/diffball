@@ -17,13 +17,17 @@
 */
 #ifndef _HEADER_DCBUFFER
 #define _HEADER_DCBUFFER 1
-#define DC_ADD 0
-#define DC_COPY 1
-#define ENCODING_OFFSET_START 0
-#define ENCODING_OFFSET_VERS_POS 1
-#define ENCODING_OFFSET_DC_POS 2
-#define USE_GDIFF_ENCODING 0
-#define LOOKBACK_SIZE 100000
+
+#include "cfile.h"
+
+extern unsigned int global_use_md5;
+
+#define DC_ADD				0x0
+#define DC_COPY				0x1
+#define ENCODING_OFFSET_START		0x0
+#define ENCODING_OFFSET_VERS_POS	0x1
+#define ENCODING_OFFSET_DC_POS		0x2
+#define ADD_CFH_FREE_FLAG		0x1
 
 typedef struct {
     unsigned long offset;
@@ -45,18 +49,15 @@ typedef struct {
     unsigned char *cb_start, *cb_end, *cb_head, *cb_tail;
     unsigned char cb_tail_bit, cb_head_bit;
     DCLoc *lb_start, *lb_end, *lb_head, *lb_tail;
+    cfile *add_cfh;
+    unsigned long flags;
 } CommandBuffer;
 
-typedef struct {
-    unsigned long copy_count;
-    unsigned long add_count;
-    unsigned long copy_pos_offset_bytes[5];
-    unsigned long copy_rel_offset_bytes[5];
-    unsigned long copy_len_bytes[5];
-} DCStats;
 
+#define DCBUFFER_REGISTER_ADD_CFH(buff, handle)		\
+    (buff)->add_cfh = (handle)
+#define DCBUFFER_FREE_ADD_CFH_FLAG(buff) (buff)->flags |= ADD_CFH_FREE_FLAG;
 unsigned long inline current_command_type(CommandBuffer *buff);
-void updateDCCopyStats(DCStats *stats, signed long pos_offset, signed long dc_offset, unsigned long len);
 void DCBufferIncr(CommandBuffer *buffer);
 void DCBufferDecr(CommandBuffer *buffer);
 void DCBufferCollapseAdds(CommandBuffer *buffer);

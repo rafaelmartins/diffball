@@ -25,7 +25,8 @@ skip_lines_forward(cfile *cfh, unsigned long n)
     unsigned long lines=0;
     cfw = expose_page(cfh);
     while(lines < n && cfw->end) {
-	assert(cfw->offset + cfw->pos <= cfh->data_total_len);
+	/* a compressed handle will have probs here... */
+//	assert(cfw->offset + cfw->pos <= cfh->data_total_len);
 	assert(cfw->pos <= cfw->end);
 	if(cfw->buff[cfw->pos]=='\n') {
 	    lines++;
