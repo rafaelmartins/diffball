@@ -37,7 +37,7 @@ getUDec(cfile *cfh)
 
 signed int
 udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
-    struct tar_entry **tarball, CommandBuffer *dcbuff)
+    tar_entry **tarball, CommandBuffer *dcbuff)
 {
     unsigned long s_line, s_len, v_line, v_len;
     unsigned long s_lastline, s_lastoff;

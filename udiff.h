@@ -22,6 +22,6 @@
 #include "tar.h"
 #include "dcbuffer.h"
 
-signed int UdiffReconstructDCBuff(cfile *patchf, struct tar_entry **tarball,
+signed int UdiffReconstructDCBuff(cfile *patchf, tar_entry **tarball,
     CommandBuffer *dcbuff);
 #endif
