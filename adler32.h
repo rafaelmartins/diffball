@@ -24,6 +24,7 @@ struct adler32_seed {
 //	unsigned char *last_seed;
 	unsigned int *last_seed;
 	unsigned char *seed_chars;
+	unsigned char *last_parity_bits;
 	unsigned int parity;
 	unsigned int tail;
 	unsigned long s1;

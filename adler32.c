@@ -45,6 +45,7 @@ static unsigned int PRIMES[] = {1583,113,919,719,1373,659,503,373,653,1759,1289,
 
 void init_adler32_seed(struct adler32_seed *ads, unsigned int seed_len,
 	unsigned int multi) {
+	unsigned int x;
 	ads->s1 = ads->s2 = ads->tail = 0;
 	ads->seed_len = seed_len;
 	ads->multi = multi;
@@ -53,13 +54,26 @@ void init_adler32_seed(struct adler32_seed *ads, unsigned int seed_len,
 		//printf("shite, error allocing needed memory\n");
 		abort();
 	}
+	for(x=0; x < seed_len; x++) {
+		ads->last_seed[x] = 0;
+	}
 	if((ads->seed_chars = (unsigned char *)malloc(seed_len))==NULL) {
 		abort();
+	}
+	for(x=0; x < seed_len; x++) {
+		ads->seed_chars[x] = x;
+	}
+	if((ads->last_parity_bits = (unsigned char *)malloc(seed_len))==NULL) {
+		abort();
+	}
+	for(x=0; x < seed_len; x++) {
+		ads->last_parity_bits[x]=0;
 	}
 }
 
 void update_adler32_seed(struct adler32_seed *ads, unsigned char *buff, unsigned int len) {
 	unsigned int x;
+	signed long int parity;
 	if(len==ads->seed_len) {
 		//printf("computing seed fully\n");
 		ads->s1 = ads->s2 = ads->tail =0;
@@ -68,32 +82,39 @@ void update_adler32_seed(struct adler32_seed *ads, unsigned char *buff, unsigned
 			ads->s2 += ads->s1;
 			ads->last_seed[x] = PRIMES[buff[x]];
 			ads->seed_chars[x] = buff[x];
+			ads->last_parity_bits[x] = ads->last_seed[x] % 2;
+			ads->parity += ads->last_parity_bits[x];
 		}
+		ads->parity %= 2;
 		ads->tail = 0;
+		
 	} else {
+		parity = ads->parity;
 		for(x=0; x < len; x++){
 			ads->s1 = ads->s1 - (ads->multi * ads->last_seed[ads->tail]) + 
 				(ads->multi * PRIMES[buff[x]]);
 			ads->s2 = ads->s2 - (ads->multi * ads->seed_len * 
 				ads->last_seed[ads->tail]) + ads->s1;
-			//ads->last_seed[ads->tail] = buff[x%4];
-			//if((x%4)==3) {
-				ads->seed_chars[ads->tail] = buff[x];
-				ads->last_seed[ads->tail] = PRIMES[buff[x]];
-				ads->tail = (ads->tail + 1) % ads->seed_len;
-			//}
+			ads->seed_chars[ads->tail] = buff[x];
+			ads->last_seed[ads->tail] = PRIMES[buff[x]];
+			ads->tail = (ads->tail + 1) % ads->seed_len;
+			parity -= ads->last_parity_bits[ads->tail];
+			ads->last_parity_bits[ads->tail] = 
+				ads->last_seed[ads->tail] %2;
+			parity += ads->last_parity_bits[ads->tail];
 		}
+		ads->parity = (abs(parity) %2);
 	}
 }
 
 unsigned long get_checksum(struct adler32_seed *ads) {
 	unsigned long chksum;
 	unsigned int parity=0, x=0;
-	for(x=0; x < ads->seed_len; x++) {
+/*	for(x=0; x < ads->seed_len; x++) {
 		parity = (ads->seed_chars[x] + parity) % 2;
-	}
+	}*/
 	chksum = (unsigned long)((ads->s2 << 16) | (ads->s1 & 0xffff));
-	return (unsigned long)(chksum + parity);
+	return (unsigned long)(chksum + ads->parity);
 	//return (unsigned long)((ads->s2 << 16) | (ads->s1 & 0xffff));
 }
 
