@@ -128,6 +128,10 @@ int main(int argc, char **argv)
 	"unknown option");
     }
     poptFreeContext(p_opt);
+    unsigned long patch_id;
+    patch_id = check_for_format(patch_format, strlen(patch_format));
+    printf("patch_id=%lu\n",patch_id);
+    exit(0);
     if ((ref_fh = open(src_file, O_RDONLY,0)) == -1) {
 		fprintf(stderr, "error opening src_file\n");
 		exit(EXIT_FAILURE);
@@ -158,8 +162,8 @@ int main(int argc, char **argv)
     OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh);
     v1printf("outputing patch...\n");
     v1printf("there were %lu commands\n", buffer.buffer_count);
-    offset_type = ENCODING_OFFSET_START;
-//    offset_type = ENCODING_OFFSET_DC_POS;
+//    offset_type = ENCODING_OFFSET_START;
+    offset_type = ENCODING_OFFSET_DC_POS;
 //    bdiffEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
     gdiffEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
 //    switchingEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);

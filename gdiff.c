@@ -29,11 +29,11 @@ check_gdiff4_magic(cfile *patchf)
     cseek(patchf, 0, CSEEK_FSTART);
     if(GDIFF_MAGIC_LEN != cread(patchf, buff, GDIFF_MAGIC_LEN)) {
 	return 0;
-    } else if (memcmp(GDIFF_MAGIC, buff, GDIFF_MAGIC_LEN)!=0) {
+    } else if(readUBytesBE(buff, GDIFF_MAGIC_LEN)!=GDIFF_MAGIC) {
 	return 0;
     } else if (GDIFF_VER_LEN!=cread(patchf, buff, GDIFF_VER_LEN)) {
 	return 0;
-    } else if (memcmp(buff, GDIFF_VER4_MAGIC, GDIFF_VER_LEN)==0) {
+    } else if(readUBytesBE(buff, GDIFF_VER_LEN) == GDIFF_VER4_MAGIC) {
 	return 2;
     }
     return 0;
@@ -46,11 +46,11 @@ check_gdiff5_magic(cfile *patchf)
     cseek(patchf, 0, CSEEK_FSTART);
     if(GDIFF_MAGIC_LEN != cread(patchf, buff, GDIFF_MAGIC_LEN)) {
 	return 0;
-    } else if (memcmp(GDIFF_MAGIC, buff, GDIFF_MAGIC_LEN)!=0) {
+    } else if(readUBytesBE(buff, GDIFF_MAGIC_LEN)!=GDIFF_MAGIC) {
 	return 0;
     } else if (GDIFF_VER_LEN!=cread(patchf, buff, GDIFF_VER_LEN)) {
 	return 0;
-    } else if (memcmp(buff, GDIFF_VER5_MAGIC, GDIFF_VER_LEN)==0) {
+    } else if(readUBytesBE(buff, GDIFF_VER_LEN) == GDIFF_VER5_MAGIC) {
 	return 2;
     }
     return 0;
@@ -80,8 +80,8 @@ gdiffEncodeDCBuffer(CommandBuffer *buffer,
     else if(offset_type==ENCODING_OFFSET_DC_POS)
 	writeUBytesBE(out_buff, GDIFF_VER5_MAGIC, GDIFF_VER_LEN);
 /*    else if(offset_type==ENCODING_OFFSET_DC_POS)
-	writeUBytesBE(out_buff, GDIFF_VER6, GDIFF_VER_LEN);
-*/    else {
+	writeUBytesBE(out_buff, GDIFF_VER6, GDIFF_VER_LEN);*/
+    else {
 	v2printf("wtf, gdiff doesn't know offset_type(%u). bug.\n",offset_type);
 	exit(1);
     }

@@ -129,6 +129,8 @@ main(int argc, char **argv)
     copen(&src_cfh, src_fh, 0, src_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     copen(&patch_cfh, patch_fh, 0, patch_stat.st_size, 
 	NO_COMPRESSOR, CFILE_RONLY);
+    v1printf("patch_type=%lu\n", identify_format(&patch_cfh));
+    cseek(&patch_cfh, 0, CSEEK_FSTART);
     copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
 //    offset_type = ENCODING_OFFSET_START;
     offset_type = ENCODING_OFFSET_DC_POS;
