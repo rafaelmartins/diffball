@@ -79,19 +79,24 @@ struct LL_DCLmatch {
 typedef struct _CommandBuffer *DCB_ptr;
 
 typedef struct {
-    unsigned long 	*index;
-//    unsigned short 	*len;
-    DCLoc		*commands;
-    unsigned long	com_count;
-    unsigned long	com_size;
+    // isn't it fun managing arrays, 'ey kiddies? :)
+    unsigned long 		*index;
+    struct _DCB_registered_src	*command_srcs;
+    unsigned long		index_count;
+    unsigned long		index_size;
+
+    DCLoc			*commands;
+    unsigned long		com_count;
+    unsigned long		com_size;
 } overlay_chain;
 
 typedef struct {
 //    DCB_ptr			src_dcb;
 //    unsigned long		src_id;
+
     DCLoc_match			data;
-    struct _DCB_registered_src	*dcb_src;    
-    unsigned long		extra_pos;
+    struct _DCB_registered_src	*dcb_src;
+    unsigned long		ov_index;
     unsigned char		type;
 } DCommand;
 

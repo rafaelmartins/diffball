@@ -32,6 +32,61 @@ unsigned long
 bsdiff_overlay_copy(DCommand *dc, 
     cfile *out_cfh)
 {
+    #define MIN(x,y) ((x) < (y) ? (x) : (y))
+    cfile_window *cfw;
+    cfile_window *ocfw;
+    unsigned long bytes_wrote = 0;
+    unsigned long index, index_end, com_len;
+    unsigned long tmp_len;
+    DCLoc *dptr;  DCB_registered_src *dsrc;
+    overlay_chain *ov;
+    ov = dc->dcb_src->ov;
+    index = ov->index[dc->ov_index];
+    if(dc->ov_index < ov->index_count - 1) {
+    	index_end = ov->index[dc->ov_index + 1];
+    } else {
+    	index_end = ov->com_count;
+    }
+    // error checking...
+    cflush(out_cfh);
+    if(dc->data.src_pos != cseek(dc->dcb_src->src_ptr.cfh, dc->data.src_pos, CSEEK_FSTART)) {
+    	return 0L;
+    }
+    cfw = expose_page(dc->dcb_src->src_ptr.cfh);
+    ocfw = expose_page(out_cfh);
+    while(index < index_end) {
+    	com_len = 0;
+	dptr = ov->commands + index;
+	dsrc = ov->command_srcs + index;
+	while(ov->commands[index].len > com_len) {
+	    tmp_len = MIN(dptr->len - com_len, ocfw->size);
+	    if(tmp_len != dsrc->read_func(dsrc->src_ptr, 
+	    	dptr->offset + com_len, ocfw->buff, tmp_len)) {
+		// note thate just the previous byte_count is returned.
+		// that number contains the copyed (eg read AND overlayed)
+		// don't want the data to be considered valid, hence leavng ocfw->pos as 0.
+	    	return bytes_wrote;
+	    }
+	    while(ocfw->pos < tmp_len) {
+	    	if(cfw->pos < cfw->end) {
+	    	    ocfw->buff[ocfw->pos] += cfw->buff[cfw->pos];
+	    	    cfw->pos++;
+	    	    ocfw->pos++;
+	    	} else {
+		    cfw = next_page(dc->dcb_src->src_ptr.cfh);
+		    if(cfw->end == 0) {
+		    	return bytes_wrote + ocfw->pos;
+		    }
+		}
+	    }
+	    cflush(out_cfh);
+	    bytes_wrote += tmp_len;
+	}
+	index++;
+    }
+    return bytes_wrote;
+	    
+    	
 /*    unsigned char buff1[CFILE_DEFAULT_BUFFER_SIZE];
     unsigned char buff2[CFILE_DEFAULT_BUFFER_SIZE];
     cfile *src_cfh, *diff_cfh;
@@ -105,14 +160,14 @@ check_bsdiff_magic(cfile *patchf)
 signed int 
 bsdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff)
 {
-    cfile ctrl_cfh, *diff_cfh, *extra_cfh;
+    cfile ctrl_cfh, *diff_cfh, *extra_cfh = NULL;
 //  following variables are related to allowing conversion of bsdiff formats, 
 //  once a reference file option is added to convert_delta (if ever)
 /*    cfile_window *cfw;
     unsigned char processing_add;
     off_u32 add_start;
 */
-    int diff_id, extra_id, ref_id, diff_src_id;
+    int diff_id, extra_id = -1, ref_id, diff_src_id;
     unsigned char ver;
     unsigned char buff[32];
     off_u32 len1, len2, diff_offset, extra_offset;

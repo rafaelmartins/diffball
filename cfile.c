@@ -834,22 +834,26 @@ cfile_finalize_md5(cfile *cfh)
 cfile_window *
 expose_page(cfile *cfh)
 {
-    if(cfh->data.end==0) 
-	crefill(cfh);
+    if(cfh->access_flags & CFILE_WONLY) {
+    	if(cfh->data.end==0) 
+	    crefill(cfh);
+    }
     return &cfh->data;
 }
 
 cfile_window *
 next_page(cfile *cfh)
 {
-    crefill(cfh);
+    if(cfh->access_flags & CFILE_RONLY) {
+	crefill(cfh);
+    }
     return &cfh->data;
 }
 
 cfile_window *
 prev_page(cfile *cfh)
 {
-    /* possibly due an error check or something here */
+    /* possibly do an error check or something here */
     if(cfh->data.offset ==0) {
 	cfh->data.end=0;
 	cfh->data.pos=0;
