@@ -36,6 +36,14 @@
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 #define hash_it(ads, tbl_size) (get_checksum(&ads) % tbl_size)
 
+signed int free_RefHash(struct ref_hash *rhash)
+{
+	free(rhash->hash);
+	rhash->seed_len = rhash->hr_size = rhash->sample_rate = 
+		rhash->inserts = rhash->duplicates = 0;
+	return 0;
+}
+
 signed int init_RefHash(struct ref_hash *rhash, struct cfile *ref_cfh, 
 	unsigned int seed_len, unsigned long hr_size)
 {

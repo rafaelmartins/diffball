@@ -25,7 +25,7 @@
 #include "cfile.h"
 #include "diff-algs.h"
 //#include "bit-functions.h"
-#include <string.h>
+#include "string-misc.h"
 #include "gdiff.h"
 
 unsigned long convertDec(unsigned char *buff, unsigned int len)
@@ -101,7 +101,7 @@ int main(int argc, char **argv)
     OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh);
     cclose(&ref_cfh);
     printf("outputing patch...\n");
-    offset_type = ENCODING_OFFSET_START;
+    offset_type = ENCODING_OFFSET_DC_POS;
     gdiffEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
     //switchingEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
     printf("exiting\n");

@@ -22,9 +22,7 @@
 //#include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <string.h>
-//#include "delta.h"
-//#include "pdbuff.h"
+#include "string-misc.h"
 #include "cfile.h"
 #include "gdiff.h"
 #include "switching.h"
@@ -73,7 +71,7 @@ int main(int argc, char **argv)
     copen(&delta_cfh, delta_fh, 5, delta_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
     copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
     printf("here goes...\n");
-    offset_type = ENCODING_OFFSET_START;
+    offset_type = ENCODING_OFFSET_DC_POS;
 	DCBufferInit(&dcbuff, 1000000);
 //	switchingReconstructDCBuff(&delta_cfh, &dcbuff, offset_type);
    	gdiffReconstructDCBuff(&delta_cfh, &dcbuff, offset_type, 4);
