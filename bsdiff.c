@@ -23,9 +23,9 @@
 #include "bsdiff.h"
 
 unsigned long
-bsdiff_overlay_read(DCommand *dc, unsigned long pos, unsigned char *buff, unsigned long len)
+bsdiff_overlay_read(DCommand *dc, unsigned long pos, unsigned char *buff, unsigned long len, cfile *out_cfh)
 {
-    return 0;
+    return 0L;
 }
 
 unsigned long 
