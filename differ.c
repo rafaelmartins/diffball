@@ -26,13 +26,10 @@
 #include "diff-algs.h"
 //#include "bit-functions.h"
 #include "string-misc.h"
-#include "gdiff.h"
-#include "bdiff.h"
-#include "bdelta.h"
-#include "primes.h"
+#include "formats.h"
 #include "cfile.h"
 #include "defs.h"
-#include <popt.h>
+#include "options.h"
 
 unsigned int verbosity=0;
 unsigned long sample_rate=0;
@@ -43,10 +40,10 @@ unsigned int patch_to_stdout = 0;
 unsigned int use_md5 = 0;
 char  *patch_format;
 
-enum {OVERSION=100, OVERBOSE,OFORMAT,OSEED,OSAMPLE,OSTDOUT,OBZIP2,OGZIP};
+//enum {OVERSION=100, OVERBOSE,OFORMAT,OSEED,OSAMPLE,OSTDOUT,OBZIP2,OGZIP};
 
     /*lname,sname, info, ptr, val, desc, args */
-struct poptOption options[] = {
+/*struct poptOption options[] = {
     {"version",		'V', POPT_ARG_NONE, 0, OVERSION,0, 0},
     {"verbose",		'v', POPT_ARG_NONE, 0, OVERBOSE,0, 0},
     {"format",		'f', POPT_ARG_STRING, &patch_format,  0,0,  0},
@@ -56,15 +53,15 @@ struct poptOption options[] = {
     {"stdout",		'c', POPT_ARG_NONE, &patch_to_stdout, 0,0, 0},
     {"ignore-md5",	'm', POPT_ARG_NONE, &use_md5, 0,0, 0},
     {"bzip2-compress",	'j', POPT_ARG_NONE, 0, OBZIP2,0, 0},
-    {"gzip-compress",	'z', POPT_ARG_NONE, 0, OGZIP, 0,0},
+    {"gzip-compress",	'z', POPT_ARG_NONE, 0, OGZIP, 0,0},*/
+
+struct poptOption options[] = {
+    STD_OPTIONS(patch_to_stdout),
+    DIFF_OPTIONS(seed_len, sample_rate,hash_size),
+    FORMAT_OPTIONS("patch-format", 'f', patch_format),
+    MD5_OPTION(use_md5),
     POPT_TABLEEND
 };
-
-void usage(poptContext p_opt, int exitcode, char *error) {
-    poptPrintUsage(p_opt, stderr, 0);
-    if(error) fprintf(stderr, "%s\n", error);
-    exit(exitcode);
-}
 
 int main(int argc, char **argv)
 {
@@ -77,13 +74,17 @@ int main(int argc, char **argv)
     unsigned int offset_type;
     poptContext p_opt;
 
-    unsigned long optr;
+    signed long optr;
     char  *src_file;
     char  *trg_file;
     char  *patch_name;
 
     p_opt = poptGetContext("differ", argc, (const char **)argv, options, 0);
     while((optr=poptGetNextOpt(p_opt)) != -1) {
+	if(optr < -1) {
+	    usage(p_opt, 1, poptBadOption(p_opt, POPT_BADOPTION_NOALIAS), 
+		poptStrerror(optr));
+	}
 	switch(optr) {
 	case OVERSION:
 	    // print version.
@@ -105,19 +106,26 @@ int main(int argc, char **argv)
 	    break;
 	}
     }
-    if( ((src_file=(char *)poptGetArg(p_opt))==NULL) || (stat(src_file, &ref_stat))) 
-	usage(p_opt, 1, "Must specify an existing source file.");
-    if( ((trg_file=(char *)poptGetArg(p_opt))==NULL) || (stat(trg_file, &ver_stat)) )
-	usage(p_opt, 1, "Must specify an existing target file.");
+    if( ((src_file=(char *)poptGetArg(p_opt))==NULL) || 
+	(stat(src_file, &ref_stat))) 
+	usage(p_opt, 1, "Must specify an existing source file.",NULL);
+    if( ((trg_file=(char *)poptGetArg(p_opt))==NULL) || 
+	(stat(trg_file, &ver_stat)) )
+	usage(p_opt, 1, "Must specify an existing target file.",NULL);
     if(patch_to_stdout != 0) {
 	out_fh = 0;
     } else {
 	if((patch_name = poptGetArg(p_opt))==NULL)
-	    usage(p_opt, 1, "Must specify a name for the patch file.");
-	if((out_fh = open(argv[3], O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1) {
-	    fprintf(stderr, "error creating patch file (open failed)\n");
+	    usage(p_opt, 1, "Must specify a name for the patch file.",NULL);
+	if((out_fh = open(patch_name, O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1) {
+	    fprintf(stderr, "error creating patch file '%s' (open failed)\n",
+	    patch_name);
 	    exit(1);
 	}
+    }
+    if (NULL!=poptGetArgs(p_opt)) {
+	usage(p_opt, 1, poptBadOption(p_opt, POPT_BADOPTION_NOALIAS),
+	"unknown option");
     }
     poptFreeContext(p_opt);
     if ((ref_fh = open(src_file, O_RDONLY,0)) == -1) {
@@ -139,7 +147,6 @@ int main(int argc, char **argv)
 	/* implement a better assessment based on mem and such */
 	hash_size = ref_stat.st_size;
     }
-v1printf("original seed_len(%lu)\n", seed_len);
     if(seed_len==0) {
 	seed_len = DEFAULT_SEED_LEN;
     }

@@ -21,15 +21,15 @@
 #include <string.h>
 #include "adler32.h"
 #include "diff-algs.h"
-#include "bit-functions.h"
 #include "primes.h"
+#include "defs.h"
+#include "bit-functions.h"
 
 /* this is largely based on the algorithms detailed in randal burn's various papers.
    Obviously credit for the alg's go to him, although I'm the one who gets the dubious
    credit for bugs in the implementation of said algorithms... */
 //#define LOOKBACK_SIZE 100000
-#define MAX(x,y) ((x) > (y) ? (x) : (y))
-#define MIN(x,y) ((x) < (y) ? (x) : (y))
+
 #define hash_it(ads, tbl_size) (get_checksum(&ads) % tbl_size)
 
 signed int 

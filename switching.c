@@ -22,8 +22,6 @@
 #include "switching.h"
 #include "cfile.h"
 #include "bit-functions.h"
-#define MAX(x,y) ((x) > (y) ? (x) : (y))
-#define MIN(x,y) ((x) < (y) ? (x) : (y))
 
 const unsigned long add_len_start[] = {
     0x0,

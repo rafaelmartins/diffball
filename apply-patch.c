@@ -20,9 +20,7 @@
 #include "cfile.h"
 #include "dcbuffer.h"
 #include "apply-patch.h"
-#define MAX(x,y) ((x) > (y) ? (x) : (y))
-#define MIN(x,y) ((x) < (y) ? (x) : (y))
-
+#include "defs.h"
 
 void 
 reconstructFile(CommandBuffer *dcbuff, cfile *src_cfh, cfile *delta_cfh, 

@@ -19,11 +19,10 @@
 #include "defs.h"
 #include <string.h>
 #include "dcbuffer.h"
+#include "defs.h"
 #include "cfile.h"
 #include "bit-functions.h"
 #include "bdelta.h"
-#define MAX(x,y) ((x) > (y) ? (x) : (y))
-#define MIN(x,y) ((x) < (y) ? (x) : (y))
 
 signed int 
 bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *ver_cfh, 

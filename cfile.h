@@ -31,6 +31,7 @@
 #define CFILE_WONLY			(0x2)
 /* note, CFILE_COMPUTE_MD5 is common to both state_flags and access_flags */
 #define CFILE_COMPUTE_MD5		(0x8)
+#define CFILE_OPEN_FH			(0x10)
 
 #define CFILE_MD5_FINALIZED		(0x10)
 #define CFILE_SEEK_NEEDED		(0x4)

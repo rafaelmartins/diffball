@@ -29,20 +29,44 @@
 #include "cfile.h"
 #include "dcbuffer.h"
 #include "diff-algs.h"
-#include "gdiff.h"
-#include "switching.h"
-#include "bdiff.h"
-#include "bdelta.h"
-#include "primes.h"
+#include "formats.h"
 #include "defs.h"
-#define MAX(x,y) ((x) > (y) ? (x) : (y))
-#define MIN(x,y) ((x) < (y) ? (x) : (y))
+#include "options.h"
 
 unsigned int verbosity = 0;
 
 int cmp_tar_entries(const void *te1, const void *te2);
 
-unsigned int src_common_len=0, trg_common_len=0;
+unsigned long sample_rate=0;
+unsigned long seed_len = 0;
+unsigned long hash_size = 0;
+unsigned int patch_compressor = 0;
+unsigned int patch_to_stdout = 0;
+unsigned int use_md5 = 0;
+char  *patch_format;
+
+    /*lname,sname, info, ptr, val, desc, args */
+/*struct poptOption options[] = {
+    {"version",		'V', POPT_ARG_NONE, 0, OVERSION,0, 0},
+    {"verbose",		'v', POPT_ARG_NONE, 0, OVERBOSE,0, 0},
+    {"format",		'f', POPT_ARG_STRING, &patch_format,  0,0,  0},
+    {"seed-len",		'b', POPT_ARG_INT,  &seed_len, 0,0, 0},
+    {"sample-rate",	's', POPT_ARG_LONG,  &sample_rate, 0,0, 0},
+    {"hash-size",		'a', POPT_ARG_LONG,  &hash_size, 0,0, 0},
+    {"stdout",		'c', POPT_ARG_NONE, &patch_to_stdout, 0,0, 0},
+    {"ignore-md5",	'm', POPT_ARG_NONE, &use_md5, 0,0, 0},
+    {"bzip2-compress",	'j', POPT_ARG_NONE, 0, OBZIP2,0, 0},
+    {"gzip-compress",	'z', POPT_ARG_NONE, 0, OGZIP, 0,0},*/
+struct poptOption options[] = {
+    STD_OPTIONS(patch_to_stdout),
+    DIFF_OPTIONS(seed_len, sample_rate, hash_size),
+    FORMAT_OPTIONS("patch-format", 'f', patch_format),
+    MD5_OPTION(use_md5),
+    POPT_TABLEEND
+};
+
+int 
+src_common_len=0, trg_common_len=0;
 
 int main(int argc, char **argv)
 {
@@ -56,49 +80,97 @@ int main(int argc, char **argv)
     char src_common[512], trg_common[512], *p;  /* common dir's... */
     //unsigned int src_common_len=0, trg_common_len=0;
     unsigned long match_count;
-    /*probably should convert these arrays to something more compact, use bit masking. */
+    /*probably should convert these arrays to something more compact, 
+	use bit masking. */
     unsigned char *source_matches, *target_matches;
 	
 	cfile ref_full, ref_window, ver_window, ver_full, out_cfh;
 	struct stat ref_stat, ver_stat;
 	RefHash rhash_full, rhash_win;
 	CommandBuffer dcbuff;
+    poptContext p_opt;
 
+    signed long optr;
+    char  *src_file;
+    char  *trg_file;
+    char  *patch_name;
 
-    /*this will require a rewrite at some point to allow for options*/
-    if (argc<4) {
-		printf("Sorry, need three files here bub.  Source, Target, file-to-save-the-patch-in\n");
-		exit(EXIT_FAILURE);
+    p_opt = poptGetContext("diffball", argc, (const char **)argv, options, 0);
+    while((optr=poptGetNextOpt(p_opt)) != -1) {
+	if(optr < -1) {
+	    usage(p_opt, 1, poptBadOption(p_opt, POPT_BADOPTION_NOALIAS), 
+		poptStrerror(optr));
+	}
+	switch(optr) {
+	case OVERSION:
+	    // print version.
+	    exit(0);
+	case OVERBOSE:
+	    verbosity++;
+	    break;
+	case OBZIP2:
+	    if(patch_compressor) {
+		// bitch at em.
+	    } else
+		patch_compressor = BZIP2_COMPRESSOR;
+	    break;
+	case OGZIP:
+	    if(patch_compressor) {
+		// bitch at em.
+	    } else 
+		patch_compressor = GZIP_COMPRESSOR;
+	    break;
+	}
     }
-    if ((src_fh = open(argv[1], O_RDONLY,0)) == -1) {
-		printf("Couldn't open %s, does it exist?\n", argv[1]);
-		exit(EXIT_FAILURE);
-    } else if(stat(argv[1], &ref_stat)) {
-    	printf("Couldn't stat %s...\n", argv[1]);
-    	exit(EXIT_FAILURE);
+    if( ((src_file=(char *)poptGetArg(p_opt))==NULL) || 
+	(stat(src_file, &ref_stat))) 
+	usage(p_opt, 1, "Must specify an existing source file.", NULL);
+    if( ((trg_file=(char *)poptGetArg(p_opt))==NULL) || 
+	(stat(trg_file, &ver_stat)) )
+	usage(p_opt, 1, "Must specify an existing target file.", NULL);
+    if(patch_to_stdout != 0) {
+	out_fh = 0;
+    } else {
+	if((patch_name = poptGetArg(p_opt))==NULL)
+	    usage(p_opt, 1, "Must specify a name for the patch file.", NULL);
+	if((out_fh = open(patch_name, O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1) {
+	    fprintf(stderr, "error creating patch file (open failed)\n");
+	    exit(1);
+	}
     }
-    if ((trg_fh = open(argv[2], O_RDONLY,0)) == -1) {
-		printf("Couldn't open %s, does it exist?\n", argv[2]);
-		exit(EXIT_FAILURE);
-    } else if(stat(argv[2], &ver_stat)) {
-    	printf("Couldn't stat %s...\n", argv[2]);
-    	exit(EXIT_FAILURE);
+    if(NULL!=poptGetArgs(p_opt)) {
+	usage(p_opt, 1, poptBadOption(p_opt, POPT_BADOPTION_NOALIAS),
+	"unknown option");
     }
-    if ((out_fh = open(argv[3], O_WRONLY | O_TRUNC | O_CREAT, 0644)) == -1) {
-    	printf("couldn't create/truncate patch file %s.\n", argv[3]);
-    	exit(EXIT_FAILURE);
+    poptFreeContext(p_opt);
+    if(sample_rate==0) {
+	/* implement a better assessment based on mem and such */
+	sample_rate = 1;
     }
-    copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
+    if(hash_size==0) {
+	/* implement a better assessment based on mem and such */
+	hash_size = ref_stat.st_size;
+    }
+    if(seed_len==0) {
+	seed_len = DEFAULT_SEED_LEN;
+    }
+    v1printf("using seed_len(%lu), sample_rate(%lu), hash_size(%lu)\n", 
+	seed_len, sample_rate, hash_size);
+    v1printf("verbosity level(%u)\n", verbosity);
+    if((src_fh = open(src_file, O_RDONLY,0)) == -1) {
+	fprintf(stderr, "error opening source file '%s'\n", src_file);
+	exit(1);
+    }
+    if((trg_fh = open(trg_file, O_RDONLY,0)) == -1) {
+	fprintf(stderr, "error opening target file '%s'\n", trg_file);
+	exit(1);
+    }
+    copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY | CFILE_OPEN_FH);
     source = read_fh_to_tar_entry(src_fh, &source_count, source_md5);
     printf("source file md5sum=%.32s, count(%lu)\n", source_md5, source_count);
     target = read_fh_to_tar_entry(trg_fh, &target_count, target_md5);
     printf("target file md5sum=%.32s, count(%lu)\n", target_md5, target_count);
-    /*for(x=0; x < source_count; x++) {
-    	printf("have file %s\n", source[x]->working_name);
-    }
-    printf("count(%lu)\n", source_count);
-    exit(0);
-    */
+    v1printf("count(%lu)\n", source_count);
     /* this next one is moreso for bsearch's, but it's prob useful for the common-prefix alg too */
     
     printf("qsorting\n");
@@ -174,7 +246,8 @@ int main(int argc, char **argv)
     //for(x=0; x < target_count; x++)
 	//	target_matches[x] = '0';
     
-    copen(&ref_full, src_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
+    copen(&ref_full, src_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY |
+	CFILE_OPEN_FH);
     DCBufferInit(&dcbuff, 20000000, (unsigned long)ref_stat.st_size, 
 	(unsigned long)ver_stat.st_size);
     init_RefHash(&rhash_full, &ref_full, 16, 1, cfile_len(&ref_full)/1);

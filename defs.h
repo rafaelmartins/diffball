@@ -18,6 +18,8 @@
 #ifndef _HEADER_DEFS
 #define _HEADER_DEFS 1
 #include "config.h"
+#define MAX(x,y) ((x) > (y) ? (x) : (y))
+#define MIN(x,y) ((x) < (y) ? (x) : (y))
 
 extern unsigned int verbosity;
 

@@ -22,8 +22,7 @@
 #include "dcbuffer.h"
 #include "cfile.h"
 #include "bit-functions.h"
-#define MAX(x,y) ((x) > (y) ? (x) : (y))
-#define MIN(x,y) ((x) < (y) ? (x) : (y))
+#include "defs.h"
 
 unsigned long inline current_command_type(CommandBuffer *buff) {
 	return ((*buff->cb_tail >> buff->cb_tail_bit) & 0x01);
