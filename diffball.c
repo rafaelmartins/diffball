@@ -4,6 +4,7 @@
 #include <search.h>
 #include <fcntl.h>
 #include "tar.h"
+#include "data-structs.h"
 
 int cmp_tar_entries(const void *te1, const void *te2);
 int command_pipes(const char *command, const char *args, int *pipes);
