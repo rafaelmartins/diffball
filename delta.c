@@ -95,7 +95,7 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
     unsigned char *ptr, len;
     unsigned long fh_pos=0;
     unsigned long offset;
-    unsigned long copies=0, adds=0;
+    unsigned long copies=0, adds_in_buff=0, adds_in_file=0;
     int lb, ob;
     unsigned char type, out_buff[256];
     printf("commands in buffer(%lu)\n", buffer->count);
@@ -118,11 +118,13 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
 	{
 	case DC_ADD:
 	    offset=0;
-	    printf("add command, offset(%lu), len(%lu)\n", buffer->lb_tail->offset, buffer->lb_tail->len);
+	    printf("add command, offset(%lu), len(%lu), broken into '%lu' commands\n",
+		buffer->lb_tail->offset, buffer->lb_tail->len, buffer->lb_tail->len/248 + (buffer->lb_tail->len % 248 ? 1 : 0));
+	    adds_in_buff++;
 	    while(buffer->lb_tail->len){
-		adds++;
+		adds_in_file++;
 		len=MIN(buffer->lb_tail->len, 248);
-		printf("    writing add command offset(%lu), len(%lu)\n", buffer->lb_tail->offset + offset, len);
+		//printf("    writing add command offset(%lu), len(%lu)\n", buffer->lb_tail->offset + offset, len);
 		write(fh, &len, 1);
 		write(fh, ptr + offset, len);
 		//fprintf(fh, '%c%*c', (unsigned char)len, len, ptr + offset);
@@ -201,8 +203,10 @@ void DCBufferFlush(struct CommandBuffer *buffer, unsigned char *ver, int fh)
     }
     out_buff[0]=0;
     write(fh, out_buff, 1);
-    printf("wrote out copies(%lu), adds(%lu)\n    copy ratio=(%f), add ratio(%f)\n",
-	copies, adds, ((float)copies)/((float)(copies + adds))*100, ((float)adds)/((float)(copies + adds))*100);
+    printf("Buffer statistics- copies(%lu), adds(%lu)\n    copy ratio=(%f), add ratio(%f)\n",
+	copies, adds_in_buff, ((float)copies)/((float)(copies + adds_in_buff))*100, ((float)adds_in_buff)/((float)(copies + adds_in_buff))*100);
+    printf("adds in file(%lu), average # of commands per add(%f)\n", adds_in_file,
+	((float)adds_in_file)/((float)(adds_in_buff)));
 }
 
 
@@ -346,7 +350,7 @@ char *OneHalfPassCorrecting(unsigned char *ref, unsigned long ref_len,
     printf("good collisions(%f\%)\n", (float)good_collisions/(float)(good_collisions+bad_collisions)*100);
     printf("bad  collisions(%f\%)\n", (float)bad_collisions/(float)(good_collisions+bad_collisions)*100);
     printf("commands in buffer, copies(%lu), adds(%lu), truncations(%lu)\n", copies, adds, truncations);
-    printf("flushing command buffer...\n");
+    printf("\n\nflushing command buffer...\n\n\n");
     DCBufferFlush(&buffer, ver, out_fh);
     return NULL;
 }
