@@ -145,6 +145,10 @@ main(int argc, char **argv)
         recon_val = xdelta1ReconstructDCBuff(&in_cfh, &dcbuff, 1);
     } else if(BDELTA_FORMAT == src_format_id) {
         recon_val = bdeltaReconstructDCBuff(&in_cfh, &dcbuff);
+    } else if(BSDIFF_FORMAT == src_format_id) {
+	v0printf("Sorry, unwilling to do bsdiff conversion in this version.\n");
+	v0printf("Try a newer version.\n");
+//	recon_val = bsdiffReconstructDCBuff(&in_cfh, &dcbuff);
 //    } else if(UDIFF_FORMAT == src_format_id) {
 //      recon_val = udiffReconstructDCBuff(&in_cfh, &src_cfh, NULL, &dcbuff);
     }
@@ -153,15 +157,15 @@ main(int argc, char **argv)
     v1printf("outputing patch...\n");
     v1printf("there were %lu commands\n", dcbuff.DCB.full.buffer_count);
     if(GDIFF4_FORMAT == trg_format_id) {
-        encode_result = gdiff4EncodeDCBuffer(&dcbuff, &in_cfh, &out_cfh);
+        encode_result = gdiff4EncodeDCBuffer(&dcbuff, &out_cfh);
     } else if(GDIFF5_FORMAT == trg_format_id) {
-        encode_result = gdiff5EncodeDCBuffer(&dcbuff, &in_cfh, &out_cfh);
+        encode_result = gdiff5EncodeDCBuffer(&dcbuff, &out_cfh);
     } else if(BDIFF_FORMAT == trg_format_id) {
-        encode_result = bdiffEncodeDCBuffer(&dcbuff, &in_cfh, &out_cfh);
+        encode_result = bdiffEncodeDCBuffer(&dcbuff, &out_cfh);
     } else if(SWITCHING_FORMAT == trg_format_id) {
-        encode_result = switchingEncodeDCBuffer(&dcbuff, &in_cfh, &out_cfh);
+        encode_result = switchingEncodeDCBuffer(&dcbuff, &out_cfh);
     } else if (BDELTA_FORMAT == trg_format_id) {
-        encode_result = bdeltaEncodeDCBuffer(&dcbuff, &in_cfh, &out_cfh);
+        encode_result = bdeltaEncodeDCBuffer(&dcbuff, &out_cfh);
     }
     v1printf("encoding return=%ld\n", encode_result);
     v1printf("finished.\n");
