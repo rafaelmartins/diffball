@@ -121,6 +121,8 @@ bsdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
     ctrl_len = readUBytesLE(buff + 8, 4);
     diff_len = readUBytesLE(buff + 16, 4);
     ver_size = readUBytesLE(buff + 24, 4);
+    v1printf("start=32, ctrl_len=%lu, diff_len=%lu, ver_size=%lu\n", 
+	ctrl_len, diff_len, ver_size);
     if(copen_child_cfh(&ctrl_cfh, patchf, 32, ctrl_len + 32,
 	BZIP2_COMPRESSOR, CFILE_RONLY)) {
 	return MEM_ERROR;
@@ -162,26 +164,33 @@ bsdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 	    if(buff[23] & 0x80) {
 		seek = -seek;
 	    }
+	    v2printf("len1(%lu), len2(%lu), seek(%ld)\n", len1, len2, seek);
 	} else {
 	    seek = readUBytesLE(buff + 8, 4);
 	    if(buff[15] & 0x80) {
 		seek = -seek;
 	    }
+	    v2printf("len1(%lu), seek(%ld)\n", len1, seek);
 	}
 	if(len1) {
 
-/* note, this code is still *useful*.  it's just bypassed since bsdiff requires the ref file for conversion
-   to another format, so it's not useful at the moment. */
+/* 
+   note, this code is still *useful*.  it's just bypassed since bsdiff requires the ref file for conversion
+   to another format, so it's not useful at the moment.
+   EG, once specifying a ref file for convert_delta is allowed, this is useful, and tested, and working.
+*/
+
+
 /*
 	    cfw = expose_page(diff_cfh);
 	    add_start = cfw->pos + cfw->offset;
-	    processing_add =0;
+	    processing_add = 0;
 
 	    assert(diff_offset == cfw->offset + cfw->pos);
 	    while(len1 + diff_offset != cfw->offset + cfw->pos) {
 		if(cfw->pos == cfw->end) {
 		    cfw = next_page(diff_cfh);
-		    if(cfw->end==0) {
+		    if(cfw->end == 0) {
 			return EOF_ERROR;
 		    }
 		}
@@ -214,7 +223,8 @@ bsdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 		DCB_add_copy(dcbuff, add_start - diff_offset + src_pos, 0,//dcbuff->reconstruct_pos, 
 		    diff_offset + len1 - add_start);
 	    }
-	    */
+*/
+
 	    src_offsets[src_offset_count++] = src_pos;
 	    if(src_offset_size == src_offset_count) {
 		src_offset_size += 1000;

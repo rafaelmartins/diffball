@@ -141,6 +141,7 @@ typedef struct _CommandBuffer {
     (buff)->add_src_func[(buff)->add_src_count] = ((func) == NULL ? 	\
 	&default_dcb_add_func : (func));				\
     (buff)->add_src_free |= (((free) & 0x1) << (buff)->add_src_count);	\
+    v0printf("registering %lu add_src\n", (buff)->add_src_count);	\
     (buff)->add_src_count++
 
 #define DCBUFFER_REGISTER_COPY_SRC(buff, handle, func, free)		\

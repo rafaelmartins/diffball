@@ -56,6 +56,7 @@ copen_child_cfh(cfile *cfh, cfile *parent, unsigned long fh_start,
     cfh->state_flags = CFILE_CHILD_CFH;
     cfh->lseek_info.last_ptr = &parent->lseek_info.parent.last;
     parent->lseek_info.parent.handle_count++;
+    v0printf("setting child id=%lu\n", parent->lseek_info.parent.handle_count);
     cfh->cfh_id = parent->lseek_info.parent.handle_count;
     if(parent->compressor_type != NO_COMPRESSOR) {
 	if(compressor_type != NO_COMPRESSOR) {
@@ -155,6 +156,7 @@ internal_copen(cfile *cfh, int fh, unsigned long raw_fh_start, unsigned long raw
 	cfh->data_total_len = (data_fh_end == 0 ? 0 : data_fh_end - data_fh_start);
 	if((cfh->bzs = (bz_stream *)
 	    malloc(sizeof(bz_stream)))==NULL) {
+	    v0printf("mem error\n");
 	    return MEM_ERROR;
 	} else if((cfh->data.buff = (unsigned char *)malloc(cfh->data.size))==NULL) {
 	    return MEM_ERROR;
@@ -169,7 +171,8 @@ internal_copen(cfile *cfh, int fh, unsigned long raw_fh_start, unsigned long raw
 		BZIP2_VERBOSITY_LEVEL, BZIP2_DEFAULT_WORK_LEVEL);
 	    cfh->bzs->next_in = cfh->data.buff;
 	    cfh->bzs->next_out = cfh->raw.buff;
-	else {*/
+	else {
+*/
 	    BZ2_bzDecompressInit(cfh->bzs, BZIP2_VERBOSITY_LEVEL, 0);
             cfh->bzs->next_in = cfh->raw.buff;
             cfh->bzs->next_out = cfh->data.buff;
@@ -295,9 +298,10 @@ cclose(cfile *cfh)
     if(cfh->access_flags & CFILE_WONLY) {
 	cflush(cfh);
     }
-    if(cfh->data.size)
+    v0printf("data_size=%lu, raw_size=%lu, id(%u)\n", cfh->data.size, cfh->raw.size, cfh->cfh_id);
+    if(cfh->data.buff)
 	free(cfh->data.buff);
-    if(cfh->raw.size)
+    if(cfh->raw.buff)
 	free(cfh->raw.buff);
     if(cfh->state_flags & CFILE_COMPUTE_MD5) {
 	free(cfh->data_md5_ctx);

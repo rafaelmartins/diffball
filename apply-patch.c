@@ -44,6 +44,7 @@ reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh)
 	    }
 	}
     }
+    return 0;
 }
 	
 	

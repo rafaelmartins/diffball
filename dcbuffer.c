@@ -312,7 +312,7 @@ DCB_add_add(CommandBuffer *buffer, unsigned long ver_pos,
     unsigned long len, unsigned short src_id)
 {
 #ifdef DEV_VERSION
-    v3printf("add v(%lu), l(%lu), i(%u), rpos(%lu)\n", ver_pos , len, src_id, 
+    v3printf("add v(%lu), l(%lu), id(%u), rpos(%lu)\n", ver_pos , len, src_id, 
 	buffer->reconstruct_pos);
 #endif
     if(DCBUFFER_FULL_TYPE == buffer->DCBtype) {
@@ -489,8 +489,6 @@ void
 DCBufferFree(CommandBuffer *buffer)
 {
     unsigned long x;
-//    if(buffer->flags & ADD_CFH_FREE_FLAG)
-//	free(buffer->add_cfh);
     if(DCBUFFER_FULL_TYPE == buffer->DCBtype) {
 	free(buffer->DCB.full.cb_start);
 	free(buffer->DCB.full.lb_start);
@@ -509,13 +507,18 @@ DCBufferFree(CommandBuffer *buffer)
     }
     for(x=0; x < buffer->add_src_count; x++) {
 	if((buffer->add_src_free >> x ) & 0x1) {
+	    v2printf("cclosing add_src(%lu)\n", x);
 	    cclose(buffer->add_src_cfh[x]);
+	    v2printf("freeing  add_src(%lu)\n", x);
 	    free(buffer->add_src_cfh[x]);
 	}
 	buffer->add_src_cfh[x] = NULL;
     }
+    if(buffer->extra_patch_data)
+	free(buffer->extra_patch_data);
     buffer->add_src_free = 0;
     buffer->add_src_count = 0;
+
     for(x=0; x < buffer->copy_src_count; x++) {
 	if((buffer->copy_src_free >> x ) & 0x1) {
 	    cclose(buffer->copy_src_cfh[x]);
@@ -538,6 +541,7 @@ DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
     buffer->DCBtype = type;
     buffer->add_src_count = buffer->copy_src_count = 0;
     buffer->copy_src_free = buffer->add_src_free = 0;
+    buffer->extra_patch_data = NULL;
 #ifdef DEBUG_DCBUFFER
     buffer->total_copy_len = 0;
 #endif
