@@ -16,11 +16,9 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, US 
 */
 #include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
+#include "defs.h"
 #include <string.h>
 #include "bdiff.h"
-//#include "cfile.h"
 #include "bit-functions.h"
 
 signed int 
@@ -36,7 +34,6 @@ bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh, cfile *out_cfh)
     buff[BDIFF_LEN_MAGIC] = BDIFF_VERSION;
     /* I haven't studied the author of bdiff's alg well enough too know what
     MaxBlockSize is for.  Either way, throwing in the default. */
-//    convertUBytesChar(buff + BDIFF_LEN_MAGIC +1, 
     writeUBytesBE(buff + BDIFF_LEN_MAGIC + 1,
 	(BDIFF_DEFAULT_MAXBLOCKSIZE), 4);
     cwrite(out_cfh, buff, BDIFF_LEN_MAGIC + 5);
@@ -44,7 +41,7 @@ bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh, cfile *out_cfh)
     fh_pos = 0;
     while(count--) {
 	if(DC_COPY==current_command_type(buffer)) {
-	    printf("copy command, out_cfh(%lu), fh_pos(%lu), offset(%lu), len(%lu)\n",
+	    dfprintf("copy command, out_cfh(%lu), fh_pos(%lu), offset(%lu), len(%lu)\n",
 		delta_pos, fh_pos, buffer->lb_tail->offset, 
 		buffer->lb_tail->len);
 	    fh_pos += buffer->lb_tail->len;
@@ -61,7 +58,7 @@ bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh, cfile *out_cfh)
 	    delta_pos += lb;
 	    cwrite(out_cfh, buff, lb);
 	} else {
-	    printf("add  command, out_cfh(%lu), fh_pos(%lu), len(%lu)\n", 
+	    dfprintf("add  command, out_cfh(%lu), fh_pos(%lu), len(%lu)\n", 
 		delta_pos, fh_pos, buffer->lb_tail->len);
 	    fh_pos += buffer->lb_tail->len;
 	    buff[0] = 0x80;
@@ -98,53 +95,47 @@ bdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
     cread(patchf, buff, 4);
     /* what the heck is maxlength used for? */
     maxlength = readUBytesBE(buff, 4);
-//    maxlength = readUnsignedBytes(buff, 4);
     fh_pos = 0;
     while(1 == cread(patchf, buff, 1)) {
-	printf("got command(%u): ", buff[0]);
+	dfprintf("got command(%u): ", buff[0]);
 	if((buff[0] >> 6)==00) {
 	    buff[0] &= 0x3f;
-	    printf("got a copy at %lu, fh_pos(%lu): ", 
+	    dfprintf("got a copy at %lu, fh_pos(%lu): ", 
 		ctell(patchf, CSEEK_FSTART), fh_pos);
 	    if(4 != cread(patchf, buff + 1, 4)) {
 		abort();
 	    }
 	    offset = readUBytesBE(buff + 1, 4);
-//	    offset = readUnsignedBytes(buff + 1, 4);
 	    if(buff[0]) {
 		len = readUBytesBE(buff, 1) + 5;
-//		len = readUnsignedBytes(buff, 1) + 5;
 	    } else {
 		if(4 != cread(patchf, buff, 4)) {
 		    abort();
 		}
 		len = readUBytesBE(buff, 4);
-//		len = readUnsignedBytes(buff, 4);
 	    }
 	    fh_pos += len;
-	    printf(" offset(%lu), len=%lu\n", offset, len);
+	    dfprintf(" offset(%lu), len=%lu\n", offset, len);
 	    DCBufferAddCmd(dcbuff, DC_COPY, offset, len);
 	} else if ((buff[0] >> 6)==2) {
 	    buff[0] &= 0x3f;
-	    printf("got an add at %lu, fh_pos(%lu):", 
+	    dfprintf("got an add at %lu, fh_pos(%lu):", 
 		ctell(patchf, CSEEK_FSTART), fh_pos);
 	    if(buff[0]) {
 		len = readUBytesBE(buff, 1) + 5;
-//		len = readUnsignedBytes(buff, 1) + 5;
 	    } else {
 		if(4 != cread(patchf, buff, 4)) {
 		    abort();
 		}
 		len = readUBytesBE(buff, 4);
-//		len = readUnsignedBytes(buff, 4);
 	    }
 	    fh_pos += len;
-	    printf(" len=%lu\n", len);
+	    dfprintf(" len=%lu\n", len);
 	    DCBufferAddCmd(dcbuff, DC_ADD, ctell(patchf, CSEEK_FSTART), len);
 	    cseek(patchf, len, CSEEK_CUR);
 	} else if((buff[0] >> 6)==1) {
 	    buff[0] &= 0x3f;
-	    printf("got a checksum at %lu\n", ctell(patchf, CSEEK_FSTART));
+	    dfprintf("got a checksum at %lu\n", ctell(patchf, CSEEK_FSTART));
 	    if(buff[0] <= 1) {
 		if(16 != cread(patchf, buff + 1, 16)) 
 		    abort();

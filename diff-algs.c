@@ -16,16 +16,12 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, US 
 */
 #include <stdlib.h>
-//#include <unistd.h>
-#include <assert.h>
-#include <stdio.h>
+#include "defs.h"
 #include <errno.h>
 #include <string.h>
 #include "adler32.h"
 #include "diff-algs.h"
 #include "bit-functions.h"
-//#include "gdiff.h"
-//#include "switching.h"
 #include "primes.h"
 
 /* this is largely based on the algorithms detailed in randal burn's various papers.
@@ -39,7 +35,7 @@
 signed int 
 free_RefHash(RefHash *rhash)
 {
-    printf("free_RefHash\n");
+    ddprintf("free_RefHash\n");
     free(rhash->hash);
     rhash->ref_cfh = NULL;
     rhash->seed_len = rhash->hr_size = rhash->sample_rate = 
@@ -63,7 +59,7 @@ init_RefHash(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len,
     //unsigned long copies=0, adds=0, truncations=0;
     //unsigned long min_offset_dist = 0, max_offset_dist = 0;
     PRIME_CTX pctx;
-    printf("init_RefHash\n");
+    ddprintf("init_RefHash\n");
     init_primes(&pctx);
 	rhash->hr_size = get_nearest_prime(&pctx, hr_size);
 	rhash->ref_cfh = ref_cfh;
@@ -81,7 +77,7 @@ init_RefHash(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len,
     init_adler32_seed(&ads, seed_len, 1);
     rbuff_start = cseek(ref_cfh, 0, CSEEK_FSTART);
     rbuff_end=cread(ref_cfh, rbuff, rbuff_size);
-    //printf("rbuff_end(%lu)\n", rbuff_end);
+    //ddprintf("rbuff_end(%lu)\n", rbuff_end);
 
     update_adler32_seed(&ads, rbuff, seed_len);
     missed=0;
@@ -134,33 +130,30 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
     vbuff_start = cseek(ver_cfh, 0, CSEEK_FSTART);
     //vbuff_start=0;
     vbuff_end=cread(ver_cfh, vbuff, MIN(vbuff_size, ver_len));
-	printf("vbuff_start(%lu), vbuff_end(%lu)\n", vbuff_start, vbuff_end);
-    //printf("vc(%lu), rhash->seed_len(%lu), ver_len(%lu)\n", vc, rhash->seed_len, ver_len);
+	ddprintf("vbuff_start(%lu), vbuff_end(%lu)\n", vbuff_start, vbuff_end);
 	while(vc + rhash->seed_len < ver_len) {
-		//printf("handling vc(%lu)\n", vc);
-		//printf("raw_fh_start=%lu\n", ver_cfh->raw_fh_start);
 		if(vc + rhash->seed_len > vbuff_start + vbuff_end) {
-			printf("full refresh of vbuff at vbuff_start(%lu), vc(%lu), fstart(%lu), abs(%lu)\n", 
+			ddprintf("full refresh of vbuff at vbuff_start(%lu), vc(%lu), fstart(%lu), abs(%lu)\n", 
 				vbuff_start, vc, 
 				ctell(ver_cfh, CSEEK_FSTART),
 				ctell(ver_cfh, CSEEK_ABS));
 			//if(vc > vbuff_start + vbuff_end) {
 				vbuff_start = cseek(ver_cfh, vc, CSEEK_FSTART);
 				vbuff_end = cread(ver_cfh, vbuff, MIN(ver_len - vbuff_start,vbuff_size));
-				printf("setting vbuff_start(%lu), vbuff_end(%lu), fstart(%lu)\n", 
+				ddprintf("setting vbuff_start(%lu), vbuff_end(%lu), fstart(%lu)\n", 
 				vbuff_start, vbuff_end, ctell(ver_cfh, CSEEK_FSTART));
 			/*} else {
 				x = vbuff_size - (vc - vbuff_start);
 				memmove(vbuff, vbuff + vbuff_size -x, x);
 			}*/	
 		} else if (vc < vbuff_start) {
-			printf("partial refresh of vbuff at vbuff_start(%lu), vc(%lu), fstart(%lu), abs(%lu)\n", 
+			ddprintf("partial refresh of vbuff at vbuff_start(%lu), vc(%lu), fstart(%lu), abs(%lu)\n", 
 				vbuff_start, vc,
 				ctell(ver_cfh, CSEEK_FSTART),
 				ctell(ver_cfh, CSEEK_ABS));
 			vbuff_start = cseek(ver_cfh, vc, CSEEK_FSTART);
 			vbuff_end = cread(ver_cfh, vbuff, MIN(ver_len - vbuff_start, vbuff_size));
-			printf("setting vbuff_start(%lu), vbuff_end(%lu), fstart(%lu)\n", 
+			ddprintf("setting vbuff_start(%lu), vbuff_end(%lu), fstart(%lu)\n", 
 				vbuff_start, vbuff_end, ctell(ver_cfh, CSEEK_FSTART));
 		}
 		//assert(ctell(ver_cfh, CSEEK_FSTART)==vbuff_start + vbuff_end);
@@ -174,7 +167,7 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 		if(rhash->hash[index]>0) {	
 			if(rhash->hash[index] != cseek(rhash->ref_cfh, rhash->hash[index], CSEEK_FSTART)) {
 				perror("cseek error for ref\n");
-				printf("ctell(%lu), wanted(%lu)\n", ctell(rhash->ref_cfh, CSEEK_FSTART), 
+				ddprintf("ctell(%lu), wanted(%lu)\n", ctell(rhash->ref_cfh, CSEEK_FSTART), 
 					rhash->hash[index]);
 				abort();
 			} else {
@@ -197,7 +190,7 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 		   			(vbuff_size > vbuff_start ? 0 : vbuff_start - vbuff_size),
 		   			CSEEK_FSTART);
 		   		vbuff_end=cread(ver_cfh, vbuff, vbuff_size);
-		   		printf("back match moved vbuff to start(%lu), end(%lu)\n",
+		   		ddprintf("back match moved vbuff to start(%lu), end(%lu)\n",
 		    			vbuff_start, vbuff_end);
 		   	}
 		   	if(rm-rbuff_start==0) {
@@ -206,7 +199,7 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 		  			(rbuff_size > rbuff_start ? 0 : rbuff_start - rbuff_size),
 		  			CSEEK_FSTART);
 		  		rbuff_end=cread(rhash->ref_cfh, rbuff, rbuff_size);
-		  		printf("back match moved rbuff to start(%lu), end(%lu)\n",
+		  		ddprintf("back match moved rbuff to start(%lu), end(%lu)\n",
 		    			rbuff_start, rbuff_end);
 			}
 		    while(vm > 0 && rm > 0 && 
@@ -218,7 +211,7 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 		    			cseek(ver_cfh, (vbuff_size > vbuff_start ? 0 :
 		    			vbuff_start - vbuff_size), CSEEK_FSTART);
 		    		vbuff_end=cread(ver_cfh, vbuff, vbuff_size);
-		    		printf("back match moved vbuff to start(%lu), end(%lu)\n",
+		    		ddprintf("back match moved vbuff to start(%lu), end(%lu)\n",
 		    			vbuff_start, vbuff_end);
 		    	}
 		    	if(rm-rbuff_start==0) {
@@ -226,7 +219,7 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 		    			cseek(rhash->ref_cfh, (rbuff_size > rbuff_start ? 0 :
 		    			rbuff_start - rbuff_size), CSEEK_FSTART);
 		    		rbuff_end=cread(rhash->ref_cfh, rbuff, rbuff_size);
-		    		printf("back match moved rbuff to start(%lu), end(%lu)\n",
+		    		ddprintf("back match moved rbuff to start(%lu), end(%lu)\n",
 		    			rbuff_start, rbuff_end);
 		    	}
 		    }
@@ -236,14 +229,14 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 		    	vbuff_start=cseek(ver_cfh, vm+len , CSEEK_FSTART);
 		    	vbuff_end=cread(ver_cfh, vbuff,
 		    		MIN(vbuff_size, ver_len - vbuff_start));
-		    	printf("forw match moved vbuff to start(%lu), end(%lu)\n",
+		    	ddprintf("forw match moved vbuff to start(%lu), end(%lu)\n",
 		    		vbuff_start, vbuff_end);
 		    }
 		    if( rm + len >= rbuff_start + rbuff_size) {
 		    	rbuff_start=cseek(rhash->ref_cfh, rm + len, CSEEK_FSTART);
 		    	rbuff_end=cread(rhash->ref_cfh, rbuff,
 		    		MIN(rbuff_size, ref_len - rbuff_start));
-		    		printf("forw match moved rbuff to start(%lu), end(%lu)\n",
+		    		ddprintf("forw match moved rbuff to start(%lu), end(%lu)\n",
 		    			rbuff_start, rbuff_end);
 		    }
 		    while(rm + len < ref_len && vm + len < ver_len &&
@@ -254,33 +247,33 @@ OneHalfPassCorrecting(CommandBuffer *buffer, RefHash *rhash, cfile *ver_cfh)
 		    		vbuff_start += vbuff_end;
 		    		vbuff_end=cread(ver_cfh, vbuff,
 		    			MIN(vbuff_size, ver_len -vbuff_start));
-		    		printf("forw match moved rbuff to start(%lu), end(%lu)\n",
+		    		ddprintf("forw match moved rbuff to start(%lu), end(%lu)\n",
 		    			vbuff_start, vbuff_end);
 		    	}
 		    	if(rm + len -rbuff_start==rbuff_size) {
 		    		rbuff_start += rbuff_end;
 		    		rbuff_end=cread(rhash->ref_cfh, rbuff,
 		    			MIN(rbuff_size, ref_len -rbuff_start));
-		    		printf("forw match moved rbuff to start(%lu), end(%lu)\n",
+		    		ddprintf("forw match moved rbuff to start(%lu), end(%lu)\n",
 		    			rbuff_start, rbuff_end);
 		    	}
 		    }
 
 	    	if (vs <= vm) {
 				if (vs < vm) {
-		    		printf("    adding vstart(%lu), len(%lu), vend(%lu): (vs < vm)\n",
+		    		ddprintf("    adding vstart(%lu), len(%lu), vend(%lu): (vs < vm)\n",
 						cfile_start_offset(ver_cfh) + vs, vm-vs, vm);
 		    		DCBufferAddCmd(buffer, DC_ADD, cfile_start_offset(ver_cfh) + vs, vm - vs);
 				}
-				printf("    copying offset(%lu), len(%lu)\n", 
+				ddprintf("    copying offset(%lu), len(%lu)\n", 
 					cfile_start_offset(ver_cfh) + vm, len);
 				DCBufferAddCmd(buffer, DC_COPY, cfile_start_offset(rhash->ref_cfh) + rm, len);
 		    } else {
-		    		printf("    adding vstart(%lu)\n",
+		    		ddprintf("    adding vstart(%lu)\n",
 			cfile_start_offset(ver_cfh) + vs);
-				printf("    truncating(%lu) bytes: (vm < vs)\n", vs - vm);
+				ddprintf("    truncating(%lu) bytes: (vm < vs)\n", vs - vm);
 				DCBufferTruncate(buffer, vs - vm);
-				printf("    replacement copy: offset(%lu), len(%lu)\n", 
+				ddprintf("    replacement copy: offset(%lu), len(%lu)\n", 
 					cfile_start_offset(rhash->ref_cfh) + rm, len);
 				DCBufferAddCmd(buffer, DC_COPY, cfile_start_offset(rhash->ref_cfh) + rm, len);
 	    	}

@@ -25,5 +25,5 @@ convert_delta_SOURCES = convert_delta.c cfile.c dcbuffer.c gdiff.c \
 include_HEADERS = cfile.h dcbuffer.h diff-algs.h bit-functions.h gdiff.h \
 	apply-patch.h adler32.h switching.h primes.h string-misc.h \
 	data-structs.h tar.h bdiff.h xdelta1.h cfile.h bdelta.h line-util.h \
-	udiff.h
+	udiff.h defs.h
 

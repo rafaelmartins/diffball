@@ -16,11 +16,10 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, US 
 */
 #include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
+#include "defs.h"
+//#include <stdio.h>
+//#include <assert.h>
 #include "gdiff.h"
-//#include "cfile.h"
 #include "bit-functions.h"
 
 signed int gdiffEncodeDCBuffer(CommandBuffer *buffer, 
@@ -48,7 +47,7 @@ signed int gdiffEncodeDCBuffer(CommandBuffer *buffer,
     else if(offset_type==ENCODING_OFFSET_DC_POS)
 	writeUBytesBE(out_buff, GDIFF_VER6, GDIFF_VER_LEN);
     else {
-	printf("wtf, gdiff doesn't know offset_type(%u). bug.\n",offset_type);
+	dfprintf("wtf, gdiff doesn't know offset_type(%u). bug.\n",offset_type);
 	exit(1);
     }
     cwrite(out_cfh, out_buff, GDIFF_VER_LEN);
@@ -59,7 +58,7 @@ signed int gdiffEncodeDCBuffer(CommandBuffer *buffer,
 	    continue;
 	}
 	if(current_command_type(buffer)==DC_ADD) {
-	    printf("add command, delta_pos(%lu), fh_pos(%lu), len(%lu), ",
+	    dfprintf("add command, delta_pos(%lu), fh_pos(%lu), len(%lu)\n",
 		delta_pos, fh_pos, buffer->lb_tail->len);
 	    u_off=buffer->lb_tail->len;
 	    if(buffer->lb_tail->len <= 246) {
@@ -77,7 +76,7 @@ signed int gdiffEncodeDCBuffer(CommandBuffer *buffer,
 		cwrite(out_cfh, out_buff, 5);
 		delta_pos+=5;
 	    } else {
-		printf("wtf, encountered an offset larger then int size.  croaking.\n");
+		dfprintf("wtf, encountered an offset larger then int size.  croaking.\n");
 		exit(1);
 	    }
 	    if(buffer->lb_tail->len != 
@@ -101,11 +100,11 @@ signed int gdiffEncodeDCBuffer(CommandBuffer *buffer,
 	    }
 	    lb=unsignedBytesNeeded(buffer->lb_tail->len);
 	    if(lb> INT_BYTE_COUNT) {
-		printf("wtf, too large of len in gdiff encoding. dieing.\n");
+		dfprintf("wtf, too large of len in gdiff encoding. dieing.\n");
 		exit(1);
 	    }
 	    if(ob > LONG_BYTE_COUNT) {
-		printf("wtf, too large of offset in gdiff encoding. dieing.\n");
+		dfprintf("wtf, too large of offset in gdiff encoding. dieing.\n");
 		exit(1);
 	    }
 	    clen=1;
@@ -142,10 +141,10 @@ signed int gdiffEncodeDCBuffer(CommandBuffer *buffer,
 	    clen+= ob;
 	    writeUBytesBE(out_buff + clen, buffer->lb_tail->len, lb);
 	    clen+=lb;
-	    printf("writing copy delta_pos(%lu), fh_pos(%lu), type(%u), offset(%ld), len(%lu)\n",
+	    dfprintf("copy delta_pos(%lu), fh_pos(%lu), type(%u), offset(%ld), len(%lu)\n",
 		delta_pos, fh_pos, out_buff[0], (off_is_sbytes ? s_off: u_off), buffer->lb_tail->len);
 	    if(cwrite(out_cfh, out_buff, clen)!=clen) {
-		printf("shite, couldn't write copy command. eh?\n");
+		dfprintf("shite, couldn't write copy command. eh?\n");
 		exit(1);
 	    }
 	    fh_pos+=buffer->lb_tail->len;
@@ -175,21 +174,21 @@ signed int gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
     else if(offset_type==ENCODING_OFFSET_START)
 	off_is_sbytes=0;
     else {
-	printf("wtf, unknown offset_type for reconstruction(%u)\n",offset_type);
+	dfprintf("wtf, unknown offset_type for reconstruction(%u)\n",offset_type);
 	exit(1);
     }
     cseek(patchf, 5, CSEEK_CUR);
     while(cread(patchf, buff, 1)==1 && *buff != 0) {
 	if(*buff > 0 && *buff <= 248) {
 	    //add command
-	    printf("add command type(%u) ", *buff);
+	    dfprintf("add command type(%u) ", *buff);
 	    if(*buff >=247 && *buff <= 248){
         	if (*buff==247)
 	            lb=2;
 		else if (*buff==248)
 		    lb=4;
 		if(cread(patchf, buff, lb)!=lb) {
-		    printf("shite, error reading.  \n");
+		    dfprintf("shite, error reading.  \n");
 		    exit(1);
 		}
 	        len= readUBytesBE(buff, lb);
@@ -199,7 +198,7 @@ signed int gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 	    cseek(patchf, len, CSEEK_CUR);
 	} else if(*buff >= 249 ) {
 	    //copy command
-            printf("copy command ccom(%u) ", *buff);
+            dfprintf("copy command ccom(%u) ", *buff);
 	    if(*buff >=249 && *buff <= 251) {
 		ob=2;
 		if(*buff==249)
@@ -221,7 +220,7 @@ signed int gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 		    lb=4;
 	    	}
 		if(cread(patchf, buff + 1, lb + ob)!= lb + ob) {
-		     printf("error reading in lb/ob for copy...\n");
+		     dfprintf("error reading in lb/ob for copy...\n");
 		     exit(1);
 		}
 		if(off_is_sbytes) {
@@ -236,13 +235,13 @@ signed int gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 		    else //ENCODING_DC_POS
 			dc_pos = u_off = dc_pos + s_off;
 		}
-		printf("offset(%lu), len(%lu)\n", u_off, len);
+		dfprintf("offset(%lu), len(%lu)\n", u_off, len);
 		DCBufferAddCmd(dcbuff, DC_COPY, u_off, len);
 		ver_pos+=len;
 	    }
     }
-    printf("closing command was (%u)\n", *buff);
-    printf("cread fh_pos(%lu)\n", ctell(patchf, CSEEK_ABS)); 
-    printf("ver_pos(%lu)\n", ver_pos);
+    dfprintf("closing command was (%u)\n", *buff);
+    dfprintf("cread fh_pos(%lu)\n", ctell(patchf, CSEEK_ABS)); 
+    dfprintf("ver_pos(%lu)\n", ver_pos);
     return 0;
 }

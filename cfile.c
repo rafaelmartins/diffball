@@ -17,11 +17,10 @@
 */
 #include <stdlib.h>
 #include <unistd.h>
-#include <stdio.h>
+#include "defs.h"
 #include <string.h>
-#include <assert.h>
 #include <fcntl.h>
-//#include <openssl/evp.h>
+#include <openssl/evp.h>
 #include "cfile.h"
 
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -86,7 +85,7 @@ copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
     } else
 	cfh->data.buff = NULL;
     if(cfh->raw.size != 0) {
-	printf("cfh->raw.size=%lu\n", cfh->raw.size);
+	dcprintf("cfh->raw.size=%lu\n", cfh->raw.size);
 	if((cfh->raw.buff = (unsigned char *)malloc(cfh->raw.size))==NULL)
 	    abort();
     } else

@@ -375,8 +375,8 @@ int main(int argc, char **argv)
 //    offset_type= ENCODING_OFFSET_START;
 //    rawEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
 //    switchingEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
-//    gdiffEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
-    bdiffEncodeDCBuffer(&dcbuff, &ver_full, &out_cfh);
+    gdiffEncodeDCBuffer(&dcbuff, offset_type, &ver_full, &out_cfh);
+//    bdiffEncodeDCBuffer(&dcbuff, &ver_full, &out_cfh);
 //    bdeltaEncodeDCBuffer(&dcbuff, &ver_full, &out_cfh);
     DCBufferFree(&dcbuff);
     cclose(&ver_full);

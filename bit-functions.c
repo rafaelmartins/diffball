@@ -23,7 +23,6 @@ unsignedBitsNeeded(unsigned long int y)
 {
     unsigned int x=1;
     if (y == 0) {
-	//printf("no bytesneeded\n");
 	return 0;
     }
     while((y = y >>1) > 0)
@@ -42,7 +41,6 @@ unsignedBytesNeeded(unsigned long int y)
 {
     unsigned int x;
     if (y == 0) {
-	//printf("no bytesneeded\n");
 	return 0;
     }
     x=unsignedBitsNeeded(y);

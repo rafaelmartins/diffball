@@ -107,8 +107,8 @@ int main(int argc, char **argv)
     printf("there were %lu commands\n", buffer.buffer_count);
     offset_type = ENCODING_OFFSET_START;
 //    offset_type = ENCODING_OFFSET_DC_POS;
-    bdiffEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
-//    gdiffEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
+//    bdiffEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);
+    gdiffEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
 //    switchingEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
 //    rawEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
 //    bdeltaEncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);

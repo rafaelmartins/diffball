@@ -17,7 +17,7 @@
 */
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
+#include "defs.h"
 #include <errno.h>
 #include "dcbuffer.h"
 #include "cfile.h"
@@ -61,18 +61,18 @@ void DCBufferTruncate(CommandBuffer *buffer, unsigned long len)
 {
     //get the tail to an actual node.
     DCBufferDecr(buffer);
-    //printf("truncation: \n");
+    //ddprintf("truncation: \n");
     while(len) {
 		/* should that be less then or equal? */
 		if (buffer->lb_tail->len <= len) {
 		    len -= buffer->lb_tail->len;
-//		    printf("    whole removal of type(%u), offset(%lu), len(%lu)\n",
+//		    ddprintf("    whole removal of type(%u), offset(%lu), len(%lu)\n",
 //			(*buffer->cb_tail & (1 << buffer->cb_tail_bit)) >> buffer->cb_tail_bit, buffer->lb_tail->offset,
 //			buffer->lb_tail->len);
 		    DCBufferDecr(buffer);
 		    buffer->buffer_count--;
 		} else {
-//		    printf("    partial adjust of type(%u), offset(%lu), len(%lu) is now len(%lu)\n",
+//		    ddprintf("    partial adjust of type(%u), offset(%lu), len(%lu) is now len(%lu)\n",
 //			(*buffer->cb_tail & (1 << buffer->cb_tail_bit))>buffer->cb_tail_bit, buffer->lb_tail->offset,
 //			buffer->lb_tail->len, buffer->lb_tail->len - len);
 		    buffer->lb_tail->len -= len;
@@ -109,7 +109,7 @@ void DCBufferDecr(CommandBuffer *buffer)
 void DCBufferAddCmd(CommandBuffer *buffer, int type, unsigned long offset, unsigned long len)
 {
     if(buffer->buffer_count == buffer->buffer_size) {
-		printf("shite, buffer full.\n");
+		ddprintf("shite, buffer full.\n");
 		exit(EXIT_FAILURE);
     }
     buffer->lb_tail->offset = offset;

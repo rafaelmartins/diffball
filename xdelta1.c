@@ -16,8 +16,7 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, US 
 */
 #include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
+#include "defs.h"
 #include <string.h>
 #include "dcbuffer.h"
 #include "cfile.h"
@@ -74,12 +73,12 @@ xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
     cseek(patchf, 24, CSEEK_CUR);
     /* read the frigging to length, since it's variable */
     x = readXDInt(patchf, buff);
-	printf("to_len(%lu)\n", x);
+	dfprintf("to_len(%lu)\n", x);
     /* two bytes here I don't know about... */
     cseek(patchf, 2, CSEEK_CUR);
     /* get and skip the segment name's len and md5 */
     x = readXDInt(patchf, buff);
-	//printf("seg1_len(%lu)\n", x);
+	//dfprintf("seg1_len(%lu)\n", x);
     cseek(patchf, x + 16, CSEEK_CUR);
     /* read the damned segment patch len. */
     x = readXDInt(patchf, buff);
@@ -87,22 +86,22 @@ xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
     /* handle sequential/has_data info */
     cread(patchf, buff, 2);
     add_is_sequential = buff[1];
-    printf("patch sequential? (%u)\n", add_is_sequential);
+    dfprintf("patch sequential? (%u)\n", add_is_sequential);
     /* get and skip the next segment name len and md5. */
     x = readXDInt(patchf, buff);
-	//printf("seg2_len(%lu)\n", x);
+	//dfprintf("seg2_len(%lu)\n", x);
     cseek(patchf, x + 16, CSEEK_CUR);
     /* read the damned segment patch len. */
     x = readXDInt(patchf, buff);
-	printf("seg2_len(%lu)\n", x);
+	dfprintf("seg2_len(%lu)\n", x);
     /* handle sequential/has_data */
     cread(patchf, buff, 2);
     copy_is_sequential = buff[1];
-    printf("copy is sequential? (%u)\n", copy_is_sequential);
+    dfprintf("copy is sequential? (%u)\n", copy_is_sequential);
     /* next get the number of instructions (eg copy | adds) */
     count = readXDInt(patchf, buff);
     /* so starts the commands... */
-    printf("supposedly %lu commands...\nstarting command processing at %lu\n", 
+    dfprintf("supposedly %lu commands...\nstarting command processing at %lu\n", 
 	count, ctell(patchf, CSEEK_FSTART));
     add_pos = add_start;
     while(count--) {
@@ -121,7 +120,7 @@ xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 	    DCBufferAddCmd(dcbuff, DC_ADD, offset, len);
 	}
     }
-    printf("finishing position was %lu\n", ctell(patchf, CSEEK_FSTART));
+    dfprintf("finishing position was %lu\n", ctell(patchf, CSEEK_FSTART));
     return 0;
 }
 
