@@ -57,6 +57,6 @@ int main(int argc, char **argv)
     OneHalfPassCorrecting(USE_GDIFF_ENCODING, ENCODING_OFFSET_START, src, 
     	(unsigned long)src_stat.st_size,
 	trg, trg_stat.st_size, 16, &out_cfile);
-	cclose(&out_cfile);
+    cclose(&out_cfile);
     return 0;
 }

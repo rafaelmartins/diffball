@@ -93,17 +93,10 @@ unsigned long cwrite(struct cfile *cfile, unsigned char *in_buff, unsigned long 
 {
     unsigned long bytes_wrote = 0, tmp;
     unsigned int /*compr_bytes = 0,*/ uncompr_bytes=0;
-    //printf("asked to write len(%lu)\n", len);
     while(len > bytes_wrote) {
-    	//printf("cwrite: filled(%u), size(%u), bytes_wrote(%u), len(%u)\n", cfile->raw_filled - cfile->raw_buff,
-    	//cfile->raw_size, bytes_wrote, len);
 		if(cfile->raw_filled - cfile->raw_buff >= cfile->raw_size) {
-	    	//printf("flushing write buffer\n");
 	    	if((tmp = write(cfile->raw_fh, cfile->raw_buff, cfile->raw_size))
 	    	   != cfile->raw_size) {
-	    	   //bytes_wrote+=tmp;
-	    	   //printf("danger will robinson, danger.  killed early, wrote(%lu) of wrote(%lu)\n",
-	    		//bytes_wrote, len);
 				/* need better error handling here, this WOULD leave cfile basically fscked */
 				printf("error writing of cwrite, wrote tmp(%lu) of size(%lu)\n", tmp,
 				cfile->raw_size);
@@ -113,22 +106,17 @@ unsigned long cwrite(struct cfile *cfile, unsigned char *in_buff, unsigned long 
 	    	cfile->raw_filled = cfile->raw_pos = cfile->raw_buff;
 	    	/* note this check needs some work/better error returning.  surprise surprise... */
 		}
-		//printf("compressor type=%u\n", cfile->compressor_type);
 		switch(cfile->compressor_type)
 		{
 	    case NO_COMPRESSOR:
 		    uncompr_bytes = MIN(len - uncompr_bytes, (cfile->raw_buff + cfile->raw_size) - 
 		    	cfile->raw_filled);
-		    //printf("minned uncompr_bytes(%u)\n", uncompr_bytes);
 		    memcpy(cfile->raw_filled, in_buff + bytes_wrote, uncompr_bytes);
-		    //memcpy(out_buff + bytes_read, cfile->raw_buff + cfile->raw_buff_pos, uncompr_bytes);
 		    cfile->raw_filled += uncompr_bytes;
 		    break;
 		}
 		bytes_wrote += uncompr_bytes;
-		//printf("finished loop, bytes_wrote(%lu).\n", bytes_wrote);
-    }
-    //printf("exiting, bytes_wrote(%lu)\n", bytes_wrote);
+	}
     return bytes_wrote;
 }
 
