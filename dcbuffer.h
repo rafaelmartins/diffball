@@ -81,10 +81,10 @@ typedef struct _CommandBuffer *DCB_ptr;
 typedef struct {
     // isn't it fun managing arrays, 'ey kiddies? :)
     unsigned long 		*index;
-    struct _DCB_registered_src	*command_srcs;
     unsigned long		index_count;
     unsigned long		index_size;
-
+    unsigned long		index_pos;
+    struct _DCB_registered_src	*command_srcs;
     DCLoc			*commands;
     unsigned long		com_count;
     unsigned long		com_size;
@@ -115,7 +115,7 @@ typedef unsigned long (*dcb_src_copy_func)(DCommand *, cfile *);
 typedef struct _DCB_registered_src {
     u_dcb_src		src_ptr;
     unsigned char	type;
-    overlay_chain	*ov;
+    overlay_chain	ov;
     dcb_src_read_func	read_func;
     dcb_src_copy_func	copy_func;
     unsigned char	flags;
@@ -201,8 +201,7 @@ int internal_DCB_register_dcb_src(CommandBuffer *dcb, CommandBuffer *dcb_src,
     (free), (type))
 
 int DCB_register_overlay_srcs(CommandBuffer *dcb, 
-    int *id1, cfile *src, dcb_src_read_func rf1, dcb_src_copy_func rc1, char free1,
-    int *id2, cfile *add, dcb_src_read_func rf2, dcb_src_copy_func rc2, char free2);
+    cfile *src, dcb_src_read_func rf1, dcb_src_copy_func rc1, char free1);
 
 int internal_DCB_register_cfh_src(CommandBuffer *dcb, cfile *cfh,
     dcb_src_read_func read_func, dcb_src_copy_func copy_func, 
@@ -234,8 +233,8 @@ void internal_DCB_get_next_command(CommandBuffer *buffer, DCommand *dc);
 	
 void DCB_truncate(CommandBuffer *buffer, unsigned long len);
 
-void DCB_add_overlay(CommandBuffer *buffer, off_u32 src_pos, int diff_src_id,
-    unsigned long add_pos, unsigned long len, int add_id);
+int DCB_add_overlay(CommandBuffer *buffer, off_u32 diff_src_pos, off_u32 len, int add_ov_id,
+    off_u32 copy_src_pos, int ov_src_id);
 void DCB_add_add(CommandBuffer *buffer, off_u64 ver_pos, unsigned long len,
     unsigned char src_id);
 void DCB_add_copy(CommandBuffer *buffer, off_u64 src_pos, off_u64 ver_pos,

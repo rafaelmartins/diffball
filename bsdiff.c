@@ -40,7 +40,7 @@ bsdiff_overlay_copy(DCommand *dc,
     unsigned long tmp_len;
     DCLoc *dptr;  DCB_registered_src *dsrc;
     overlay_chain *ov;
-    ov = dc->dcb_src->ov;
+    ov = &dc->dcb_src->ov;
     index = ov->index[dc->ov_index];
     if(dc->ov_index < ov->index_count - 1) {
     	index_end = ov->index[dc->ov_index + 1];
@@ -80,63 +80,12 @@ bsdiff_overlay_copy(DCommand *dc,
 		}
 	    }
 	    cflush(out_cfh);
+	    com_len += tmp_len;
 	    bytes_wrote += tmp_len;
 	}
 	index++;
     }
     return bytes_wrote;
-	    
-    	
-/*    unsigned char buff1[CFILE_DEFAULT_BUFFER_SIZE];
-    unsigned char buff2[CFILE_DEFAULT_BUFFER_SIZE];
-    cfile *src_cfh, *diff_cfh;
-    DCB_ptr dcb;
-    off_u32 len, src_pos;
-    unsigned int x;
-    dcb = dc->src_dcb;
-
-    src_cfh = dcb->srcs[dc->src_id -1].cfh;
-    diff_cfh = dcb->srcs[dc->src_id].cfh;
-    len = dc->data.len;
-
-    assert(src_cfh != NULL);
-    assert(diff_cfh != NULL);
-*/
-/*    src_offsets = (off_u32 *)dcb->extra_patch_data;
-    if(src_offsets[dcb->DCB.full.add_index -1] != 
-	cseek(src_cfh, 	src_offsets[dcb->DCB.full.add_index -1], CSEEK_FSTART)) {
-	    return EOF_ERROR;
-	return 0;
-    } else if(dc->data.src_pos != cseek(diff_cfh, dc->data.src_pos, CSEEK_FSTART)) {
-	return 0;
-    }
-*/
-/*
-    src_pos = dcb->DCB.full.lb_start[dc->cmd_pos -1].offset;
-    if(src_pos != cseek(src_cfh, src_pos, CSEEK_FSTART) ||
-	dc->data.src_pos != cseek(diff_cfh, dc->data.src_pos, CSEEK_FSTART)) {
-	return 0L;
-    }
-    while(len) {
-	x = MIN(CFILE_DEFAULT_BUFFER_SIZE, len);
-	if(x!=cread(src_cfh, buff1, x)) {
-	    return dc->data.len - len;
-	}
-	if(x!=cread(diff_cfh, buff2, x)) {
-	    return dc->data.len - len;
-	}	
-	while(x) {
-	    buff1[x - 1] = ((buff1[x - 1] + buff2[x - 1]) & 0xff);
-	    x--;
-	}
-	x = MIN(CFILE_DEFAULT_BUFFER_SIZE, len);
-	if(x!=cwrite(out_cfh, buff1, x)) {
-	    return dc->data.len - len;
-	}
-	len -= x;
-    }
-    return dc->data.len - len;
-*/
 }
 
 
@@ -163,11 +112,9 @@ bsdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff)
     cfile ctrl_cfh, *diff_cfh, *extra_cfh = NULL;
 //  following variables are related to allowing conversion of bsdiff formats, 
 //  once a reference file option is added to convert_delta (if ever)
-/*    cfile_window *cfw;
-    unsigned char processing_add;
-    off_u32 add_start;
-*/
-    int diff_id, extra_id = -1, ref_id, diff_src_id;
+//  note, this functionality is removed right now.  pull it from cvs when needed
+
+    int diff_id, extra_id = -1, ref_id;
     unsigned char ver;
     unsigned char buff[32];
     off_u32 len1, len2, diff_offset, extra_offset;
@@ -210,9 +157,8 @@ bsdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff)
     }
     
     ref_id = DCB_REGISTER_COPY_SRC(dcbuff, ref_cfh, NULL, 0);
-    DCB_register_overlay_srcs(dcbuff, &diff_src_id, ref_cfh, NULL, NULL, 0,
-	&diff_id, diff_cfh, &bsdiff_overlay_read, &bsdiff_overlay_copy, DCB_FREE_SRC_CFH);
-//    diff_id = DCB_REGISTER_ADD_SRC(dcbuff, diff_cfh, &bsdiff_overlay_add, 1);
+    diff_id = DCB_register_overlay_srcs(dcbuff, diff_cfh, &bsdiff_overlay_read, 
+    	&bsdiff_overlay_copy, DCB_FREE_SRC_CFH);
     if(ver == 4) {
 	extra_id = DCB_REGISTER_ADD_SRC(dcbuff, extra_cfh, NULL, 1);
     }
@@ -238,69 +184,13 @@ bsdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff)
 	    v2printf("len1(%lu), seek(%ld)\n", len1, seek);
 	}
  	if(len1) {
-/*	    cfw = expose_page(diff_cfh);
-	    add_start = cfw->pos + cfw->offset;
-	    processing_add = 0;
-
-	    assert(diff_offset == cfw->offset + cfw->pos);
-	    while(len1 + diff_offset != cfw->offset + cfw->pos) {
-		if(cfw->pos == cfw->end) {
-		    cfw = next_page(diff_cfh);
-		    if(cfw->end == 0) {
-			return EOF_ERROR;
-		    }
-		}
-
-
-		if(cfw->buff[cfw->pos]==0 && processing_add) {
-		    DCB_add_overlay(dcbuff, src_pos, diff_src_id, diff_offset, len1, diff_id);
-		    DCB_add_add(dcbuff, add_start, cfw->offset +
-			cfw->pos - add_start, diff_id);
-		    processing_add = 0;
-		    add_start = cfw->pos + cfw->offset;
-		} else if(cfw->buff[cfw->pos]!=0 && processing_add==0){ 
-		    DCB_add_copy(dcbuff, add_start - diff_offset + src_pos, 0,//dcbuff->reconstruct_pos, 
-			cfw->offset + cfw->pos - add_start, ref_id);
-		    processing_add=1;
-		    add_start = cfw->pos + cfw->offset;
-		    src_offsets[src_offset_count++] = cfw->pos + cfw->offset - diff_offset + src_pos;
-		    if(src_offset_size == src_offset_count) {
-			src_offset_size += 1000;
-			if((src_offsets = (off_u32 *)realloc(src_offsets,
-			    sizeof(off_u32) * src_offset_size))==NULL) {
-			    return MEM_ERROR;
-			}
-		    }
-		}
-//		DCB_add_copy(dcbuff, src_pos, ver_pos, len1, diff_src_id);
-//		DCB_add_overlay(dcbuff, diff_offset, len1, diff_id);
-		DCB_add_overlay(dcbuff, src_pos, diff_src_id, diff_offset, len1, diff_id);
-		cfw->pos++;
-	    }
-	    if(processing_add) {
-		DCB_add_add(dcbuff, add_start, cfw->pos + cfw->offset  - add_start, diff_id);
-	    } else {
-		DCB_add_copy(dcbuff, add_start - diff_offset + src_pos, 0,//dcbuff->reconstruct_pos, 
-		    diff_offset + len1 - add_start, ref_id);
-	    }
-
-*/
-	    DCB_add_overlay(dcbuff, src_pos, diff_src_id, diff_offset, len1, diff_id);
+	    DCB_add_overlay(dcbuff, diff_offset, len1, diff_id, src_pos, ref_id);
  
  	    diff_offset += len1;
  	    src_pos += len1;
  	    ver_pos += len1;
  	}
 	if(len2) {
-/*	    src_offsets[src_offset_count++] = 0;
-	    if(src_offset_size == src_offset_count) {
-		src_offset_size += 1000;
-		if((src_offsets = (off_u32 *)realloc(src_offsets,
-		    sizeof(off_u32) * src_offset_size))==NULL) {\
-		    return MEM_ERROR;
-		}
-	    }
-*/
 	    DCB_add_add(dcbuff, extra_offset, len2, extra_id);
 	    extra_offset+=len2;
 	    ver_pos += len2;
@@ -316,6 +206,7 @@ bsdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, CommandBuffer *dcbuff)
 	printf("error detected, aborting...\n");
 	return PATCH_CORRUPT_ERROR;
     }
+    cclose(&ctrl_cfh);
 //    DCB_REGISTER_EXTRA_PATCH_DATA(dcbuff, src_offsets);
     return 0;
 }
