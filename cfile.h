@@ -18,6 +18,7 @@
 #ifndef _HEADER_CFILE
 #define _HEADER_CFILE
 
+#include "defs.h"
 #include <openssl/evp.h>
 #include <bzlib.h>
 #include <zlib.h>
@@ -31,6 +32,7 @@
 #define BZIP2_COMPRESSOR		(0x2)
 #define CFILE_RONLY			(0x1)
 #define CFILE_WONLY			(0x2)
+
 /* note, CFILE_COMPUTE_MD5 is common to both state_flags and access_flags */
 #define CFILE_COMPUTE_MD5		(0x4)
 #define CFILE_OPEN_FH			(0x8)
@@ -39,6 +41,7 @@
 #define CFILE_BUFFER_ALL		(0x20)
 #define CFILE_MEM_ALIAS			(0x40)
 #define CFILE_SEEK_NEEDED		(0x80)
+#define CFILE_EOF			(0x100)
 
 #define BZIP2_DEFAULT_COMPRESS_LEVEL	9
 #define BZIP2_VERBOSITY_LEVEL		0
@@ -87,7 +90,7 @@ typedef struct {
     bz_stream		*bzs;
     gzFile		gz_handle;
 
-    /* other fun stuff, compression/md5 related. */
+    /* other fun stuff, md5 related. */
     EVP_MD_CTX 		*data_md5_ctx;
     /* used to track where the md5 computation is at */
     unsigned long	data_md5_pos;
@@ -109,6 +112,8 @@ unsigned long ctell(cfile *cfh, unsigned int tell_type);
 unsigned long cseek(cfile *cfh, signed long offset, int offset_type);
 unsigned long copy_cfile_block(cfile *out_cfh, cfile *in_cfh, 
     unsigned long in_offset, unsigned long len);
+off_u64 copy_add_block(cfile *out_cfh, cfile *src_cfh, off_u64 src_offset, 
+    off_u64 len, void *extra);
 unsigned long cfile_len(cfile *cfh);
 unsigned long cfile_start_offset(cfile *cfh);
 unsigned int  cfile_finalize_md5(cfile *cfh);

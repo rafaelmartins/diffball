@@ -85,6 +85,10 @@ copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
     case BZIP2_COMPRESSOR:
         cfh->data.size = CFILE_DEFAULT_BUFFER_SIZE;
 	cfh->raw.size = CFILE_DEFAULT_BUFFER_SIZE;
+	cfh->raw_fh_offset = fh_start;
+	cfh->raw_total_len = fh_end - fh_start;
+	cfh->data_fh_offset = 0;
+	cfh->data_total_len = 0;
 	if((cfh->bzs = (bz_stream *)
 	    malloc(sizeof(bz_stream)))==NULL) {
 	    abort();
@@ -221,33 +225,28 @@ cseek(cfile *cfh, signed long offset, int offset_type)
     signed long data_offset;
     cfh->state_flags &= ~CFILE_SEEK_NEEDED;
     if(CSEEK_ABS==offset_type) 
-	data_offset = abs(offset);
+	data_offset = abs(offset) - cfh->data_fh_offset;
     else if (CSEEK_CUR==offset_type)
-	data_offset = cfh->data_fh_offset + cfh->data.offset + cfh->data.pos +
+	data_offset = cfh->data.offset + cfh->data.pos +
 	    offset;
     else if (CSEEK_END==offset_type)
-	data_offset = cfh->data_fh_offset + cfh->data_total_len + offset;
+	data_offset = cfh->data_total_len + offset;
     else if (CSEEK_FSTART==offset_type)
-	data_offset = cfh->data_fh_offset + offset;
+	data_offset = offset;
     else
 	abort(); /*lovely error handling eh? */
-    data_offset -= cfh->data_fh_offset;
-    assert(data_offset >= 0);
 
-/* not sure on this next assert, probably should be < rather then <= */
-//    assert(data_offset <= cfh->data_total_len);
+    assert(data_offset >= 0);
 
     /* see if the desired location is w/in the data buff */
     if(data_offset >= cfh->data.offset &&
 	data_offset <  cfh->data.offset + cfh->data.size && 
 	cfh->data.end > data_offset - cfh->data.offset) {
-	dcprintf("cseek: buffered data, repositiong pos\n");
+	dcprintf("cseek: buffered data, repositioning pos\n");
 	cfh->data.pos = data_offset - cfh->data.offset;
 	return (CSEEK_ABS==offset_type ? data_offset + cfh->data_fh_offset: 
 	    data_offset);
     }
-    cfh->data.offset = data_offset;
-    cfh->data.pos = cfh->data.end = 0;
     int err;
     switch(cfh->compressor_type) {
     case NO_COMPRESSOR:
@@ -272,7 +271,35 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 	    abort();
 	}
 	break;
+    case BZIP2_COMPRESSOR: 
+	if(data_offset < cfh->data.offset ) {
+	    dcprintf("cseek: bz2: data_offset < cfh->data.offset, resetting\n");
+	    BZ2_bzDecompressEnd(cfh->bzs);
+	    cfh->bzs->bzalloc = NULL;
+	    cfh->bzs->bzfree =  NULL;
+	    cfh->bzs->opaque = NULL;
+	    dcprintf("cseek: bz2: lseeking\n");
+	    if(lseek(cfh->raw_fh, cfh->raw_fh_offset, SEEK_SET)!= cfh->raw_fh_offset) {
+		abort();
+	    }
+	    cfh->state_flags &= ~CFILE_EOF;
+	    BZ2_bzDecompressInit(cfh->bzs, BZIP2_VERBOSITY_LEVEL, 0);
+	    cfh->bzs->next_in = cfh->raw.buff;
+	    cfh->bzs->next_out = cfh->data.buff;
+	    cfh->bzs->avail_in = cfh->bzs->avail_out = 0;
+	    cfh->data.end = cfh->raw.end = cfh->data.pos = cfh->data.offset = cfh->raw.offset = cfh->raw.pos = 0;
+	}
+	dcprintf("cseek: bz2: data_off(%lu), data.offset(%lu)\n", data_offset, cfh->data.offset);
+	while(cfh->data.offset + cfh->data.end < data_offset) {
+	    crefill(cfh);
+	}
+	cfh->data.pos = data_offset - cfh->data.offset;
+
+	/* note bzip2 doens't use the normal return */
+	return (CSEEK_ABS==offset_type ? data_offset + cfh->data_fh_offset : data_offset);
     }
+    cfh->data.offset = data_offset;
+    cfh->data.pos = cfh->data.end = 0;
     return (CSEEK_ABS==offset_type ? data_offset + cfh->data_fh_offset : 
 	data_offset);
 }
@@ -352,23 +379,41 @@ crefill(cfile *cfh)
 	break;
 	
     case BZIP2_COMPRESSOR:
-	if(cfh->bzs->avail_in == 0) {
+	if(0 == cfh->bzs->avail_in && (cfh->raw.offset + 
+	    (cfh->raw.end - cfh->bzs->avail_in) < cfh->raw_total_len)) {
+	    dcprintf("crefill: bz2, refilling raw: ");
 	    x = read(cfh->raw_fh, cfh->raw.buff, cfh->raw.size);
+	    dcprintf("read %lu of possible %lu\n", x, cfh->raw.size);
 	    cfh->raw.offset += cfh->raw.end;
 	    cfh->bzs->avail_in = cfh->raw.end = x;
 	    cfh->raw.pos = 0;
 	    cfh->bzs->next_in = cfh->raw.buff;
 	}
-	if(cfh->bzs->avail_out == 0) {
+	if(cfh->state_flags & CFILE_EOF) {
+	    cfh->data.offset += cfh->data.end;
+	    cfh->data.end = cfh->data.pos = 0;
+	} else {
+	    dcprintf("crefill: bz2, refilling data\n");
+	    cfh->data.offset += cfh->data.end;
 	    cfh->bzs->avail_out = cfh->data.size;
 	    cfh->bzs->next_out = cfh->data.buff;
 	    err = BZ2_bzDecompress(cfh->bzs);
+
 	    /* note, this doesn't handle BZ_DATA_ERROR/BZ_DATA_ERROR_MAGIC , 
 	       which should be handled (rather then aborting) */
 	    if(err != BZ_OK && err != BZ_STREAM_END) {
-		v0printf("hmm, bzip2 didn't return BZ_OK, borking.\n");
+		v0printf("hmm, bzip2 didn't return BZ_OK, borking cause of %i.\n", err);
 		abort();
 	    }
+	    if(err==BZ_STREAM_END) {
+		v0printf("encountered stream_end\n");
+		/* this doesn't handle u64 yet, so make it do so at some point*/
+		cfh->data_total_len = MAX(cfh->bzs->total_out_lo32, 
+		     cfh->data_total_len);
+		cfh->state_flags |= CFILE_EOF;
+	    }
+	    cfh->data.end = cfh->data.size - cfh->bzs->avail_out;
+	    cfh->data.pos = 0;
 	}
 	break;
 
@@ -407,6 +452,7 @@ cfile_start_offset(cfile *cfh)
     return cfh->data_fh_offset;
 }
 
+
 /* while I realize this may not *necessarily* belong in cfile, 
    eh, it's going here.
    deal with it.  */
@@ -429,6 +475,29 @@ copy_cfile_block(cfile *out_cfh, cfile *in_cfh, unsigned long in_offset,
     }
     return bytes_wrote;
 }
+
+off_u64
+copy_add_block(cfile *out_cfh, cfile *src_cfh, off_u64 src_offset, 
+    off_u64 len, void *extra)
+{
+    unsigned char buff[CFILE_DEFAULT_BUFFER_SIZE];
+    unsigned int lb;
+    unsigned long bytes_wrote=0;;
+    if(src_offset!=cseek(src_cfh, src_offset, CSEEK_FSTART))
+	abort();
+    while(len) {
+	lb = MIN(CFILE_DEFAULT_BUFFER_SIZE, len);
+	if( (lb!=cread(src_cfh, buff, lb)) ||
+	    (lb!=cwrite(out_cfh, buff, lb)) )
+	    abort;
+	len -= lb;
+	bytes_wrote+=lb;
+    }
+    return bytes_wrote;
+}
+
+/* it's here for the moment, move it once the necessary changes are finished. */
+
 
 unsigned int
 cfile_finalize_md5(cfile *cfh)
