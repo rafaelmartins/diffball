@@ -1,1 +1,25 @@
-nothing to see here, move along...
+* Reconstruction via multiple patches is now supported for non-overlay patches- I'd suspect a bug or two linger, but not many.
+  No temps files used, each patches command are merged into a single buffer in memory, rather then using intermediate files.
+  multiple patch reconstruction supporting overlay patches isn't far off, just need to fix a few lingering issues.
+  
+* Reading from compressed (gzip and bzip2, currently) patches/files is now supported, and pretty well tested.
+  *NOTE* this is mainly for patcher, and convert_delta.  Using compressed srcs for differ/diffball isn't sane (due to issues 
+  w/ seeking detailed below).
+
+* During reconstruction, it's now possible to reorder commands so that file(s) are read linearly- in general usage, 
+  this isn't needed.
+  
+  When a source is compressed, this makes a world of difference- gzip/bzip2 cseek implementations either decompress their 
+  way forward to the desired location, or destruct the decompressor, re-init it, and read from the beginning of the cfile to the 
+  desired position. 
+  That behaviour sucks, but is something of the norm.  zlib's gzseek is implemented this way for instance.
+  The commands are reordered such that copies from a src are in sequential order- writes to the reconstructed file are random.
+  
+  This isn't as quick as I'd like it to be, but its worst case is *much* saner then for dealing w/ seeking in compressed srcs.
+
+* One Half Pass Correcting alg implementation has been rewrote- basically the same, just minus an extra set of buffers.
+  Quicker overall, and some long standing corner cases accessing beyond the buffers has been fixed.
+  
+* Lots of adjustments to CommandBuffer, and cfile.  Mostly expanding functionality, although there have been optimizations fixes.
+  Introduced a DCB_registered_src struct- this is an abstraction to allow for overlay commands, and standard commands.
+  Basically, things are saner/cleaner.  That, and a package wide reduction of intermediate buffers.

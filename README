@@ -1,4 +1,4 @@
---11/02/2003--
+--05/09/2004--
 
 diffball is a general purpose delta compression/binary differencing 
 suite.  As of 0.4, it currently supports the follow formats
@@ -12,11 +12,11 @@ bsdiff3		yes	no	no-  untested read support.
 bsdiff4		yes	no	no  (2)
 fdtu		yes	no	yes (3)
 gdiff v4	yes	yes	yes
-gdiff v4
-  (tweaked)	yes	yes	yes (4)
+gdiff v4  (tweaked, using relative offset addresses)	
+		yes	yes	yes (4)
 switching	yes	yes	yes
 unified diff	yes*	no	beta, but yes.  Normally disabled.
-				only non-recursive patches.
+				only non-recursive patches.  It needs finishing...
 xdelta-1.1.0	yes	no	yes
 
 (1) bdelta is a subproject of deltup, which has gone the way of the dodo.
@@ -82,7 +82,7 @@ zlib-1.1.*  I've done my testing/compilation against zlib-1.1.4.  That said, I
 	    issue, but don't quote me on that.
 	    Again, if you experience compilation problems, email the author.
 	    I'm more then willing to check into supporting older versions of zlib, 
-	    just need to told that somebody actually wants this. :)
+	    just need to be told that somebody actually wants this. :)
 popt-1.7    I've not tested against anything prior to 1.7.  Contact me if you have 
 	    issues, and I'll see what I can do.
 
@@ -97,8 +97,8 @@ which will create a makefile along w/ a config.h appropriate to your
 configuration choicse, and your system.  
 From there, just type "make".
 
-Any compilation issues that come up, please contact me with the make failure, 
-OS (eg rh 7.3, OSX 10.2), and be willing to answer a few questions so I can fix 
+Any compilation issues that come up, please contact me with the make failure, dependency versions, 
+OS, (eg debian, gentoo, rh, OSX 10.x), and be willing to answer a few questions so I can fix 
 the problem. :)
 
 ---COPYRIGHT----
