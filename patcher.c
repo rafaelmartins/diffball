@@ -23,7 +23,6 @@
 #include <unistd.h>
 #include "string-misc.h"
 #include "cfile.h"
-#include "dcbuffer.h"
 #include "apply-patch.h"
 #include "formats.h"
 #include "defs.h"
@@ -50,13 +49,14 @@ main(int argc, char **argv)
     int patch_fh[256];
     cfile src_cfh, out_cfh;
     cfile patch_cfh[256];
-    CommandBuffer dcbuff[2], *dcb;
+    CommandBuffer dcbuff[2];
     poptContext p_opt;
     unsigned long x, src_id;
     signed long optr;
     char  *src_name;
     char  *out_name;
     unsigned long patch_count;
+    unsigned char reorder_commands = 0;
     char  **patch_name, **p;
     unsigned long int patch_id[256];
     signed long int recon_val=0;
@@ -109,11 +109,6 @@ main(int argc, char **argv)
 	patch_name[patch_count] = NULL;
 	patch_count--;
     }
-/*    if (NULL!=poptGetArgs(p_opt)) {
-	usage(p_opt, 1, poptBadOption(p_opt, POPT_BADOPTION_NOALIAS), 
-	"unknown option");
-    }	
-*/    
 
     for(x=0; x < patch_count; x++) {
         if(stat(patch_name[x], &patch_stat)) {
@@ -127,6 +122,11 @@ main(int argc, char **argv)
         v1printf("patch_fh size=%lu\n", (unsigned long)patch_stat.st_size);
     	copen(&patch_cfh[x], patch_fh[x], 0, patch_stat.st_size, 
 	    AUTODETECT_COMPRESSOR, CFILE_RONLY);
+
+	/* if compression is noticed, reorganize. */
+	if(patch_cfh[x].compressor_type != NO_COMPRESSOR)
+	    reorder_commands = 1;
+
     	if(patch_format==NULL) {
 	    patch_id[x] = identify_format(&patch_cfh[x]);
 	    if(patch_id[x]==0) {
@@ -184,12 +184,30 @@ main(int argc, char **argv)
 	    recon_val = bdiffReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
     	} else if(XDELTA1_FORMAT == patch_id[x]) {
 	    recon_val = xdelta1ReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2], 1);
+
+	    /* this could be adjusted a bit, since with xdelta it's optional to compress the patch
+	       in such a case, the decision for reordering shouldn't be strictly controlled here */
+	    if(patch_count > 1)
+	    	reorder_commands = 1;
+
     	} else if(BDELTA_FORMAT == patch_id[x]) {
 	    recon_val = bdeltaReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
     	} else if(BSDIFF_FORMAT == patch_id[x]) {
 	    recon_val = bsdiffReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
+
+	    /* compressed format- if more then one patch, reorder
+	       besides that, currently multiple bsdiff patches are supported only via 
+	       read_seq_write_rand.  needs fixing later on */
+	    if(patch_count > 1)
+	    	reorder_commands = 1;
+
     	} else if(FDTU_FORMAT == patch_id[x]) {
 	    recon_val = fdtuReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
+
+	    /* wrapped xdelta format, same reasoning applies */
+	    if(patch_count > 1)
+	    	reorder_commands = 1;
+
 //    	} else if(UDIFF_FORMAT == patch_id[x]) {
 //	    recon_val = udiffReconstructDCBuff(src_id, &patch_cfh[x], &src_cfh, NULL, &dcbuff[x % 2]);
     	}
@@ -205,13 +223,7 @@ main(int argc, char **argv)
     	}
     }
     v1printf("applied %lu patches\n", patch_count);
-    v1printf("reconstructing target file based off of dcbuff commands...\n");
-    if(patch_count > 1) {
-    	dcb = &dcbuff[(patch_count-1) % 2];
-	v0printf("using dcbuff = %i\n", dcb - dcbuff);
-    } else {
-    	dcb = dcbuff;
-    }
+
     if((out_fh = open(out_name, O_RDWR | O_TRUNC | O_CREAT, 0644))==-1) {
 	v0printf( "error creating out file (open failed)\n");
     	exit(1);
@@ -220,14 +232,17 @@ main(int argc, char **argv)
 	v0printf("error opening output file, exitting\n");
 	exit(EXIT_FAILURE);
     }
-    if(reconstructFile(dcb, &out_cfh,1)) {
+
+    v1printf("reordering commands? %u\n", reorder_commands);
+    v1printf("reconstructing target file based off of dcbuff commands...\n");
+    if(reconstructFile(&dcbuff[(patch_count - 1) % 2], &out_cfh,reorder_commands)) {
 	v0printf("error detected while reconstructing file, quitting\n");
 	//remove the file here.
     } else {
     	v1printf("reconstruction completed successfully\n");
     }
     poptFreeContext(p_opt);
-    DCBufferFree(dcb);
+    DCBufferFree(&dcbuff[(patch_count - 1) % 2]);
     cclose(&out_cfh);
     cclose(&src_cfh);
     close(src_fh);

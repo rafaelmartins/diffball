@@ -70,7 +70,7 @@ bsdiff_overlay_copy(DCommand *dc,
 //    	index_end = ov->com_count;
 //    }
     // error checking...
-    printf("processing src(%lu), len(%lu), ver(%lu)\n", dc->data.src_pos, dc->data.len, dc->data.ver_pos);
+    v3printf("processing src(%lu), len(%lu), ver(%lu)\n", dc->data.src_pos, dc->data.len, dc->data.ver_pos);
     cflush(out_cfh);
     if(dc->data.src_pos != cseek(dc->dcb_src->src_ptr.cfh, dc->data.src_pos, CSEEK_FSTART)) {
     	return 0L;

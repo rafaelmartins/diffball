@@ -17,6 +17,8 @@
 */
 #ifndef _HEADER_APPLY_PATCH
 #define _HEADER_APPLY_PATCH 1
+#include "dcbuffer.h"
+#include "command_list.h"
 
 int reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh, 
     int reorder_for_seq_access);
