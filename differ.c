@@ -26,6 +26,7 @@
 #include "diff-algs.h"
 //#include "bit-functions.h"
 #include <string.h>
+#include "gdiff.h"
 
 unsigned long convertDec(unsigned char *buff, unsigned int len)
 {
@@ -38,11 +39,14 @@ unsigned long convertDec(unsigned char *buff, unsigned int len)
 int main(int argc, char **argv)
 {
     struct stat ref_stat, ver_stat;
-    struct cfile out_cfile, ref_cfile, ver_cfile;
+    struct cfile out_cfh, ref_cfh, ver_cfh;
     int ref_fh, ver_fh, out_fh;
     //char *src, *trg;
+    struct CommandBuffer buffer;
+    struct ref_hash rhash;
     unsigned char *ref;
     unsigned long seed_len, multi;
+    unsigned int offset_type;
     if(argc <3){
 		printf("pardon, but...\nI need at least 2 args- (source file), (target file), [patch-file]\n");
 		exit(EXIT_FAILURE);
@@ -77,7 +81,7 @@ int main(int argc, char **argv)
     } else {
 		fprintf(stderr,"storing generated delta in '%s'\n", argv[3]);
     }
-    copen(&out_cfile, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
+    copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
     printf("allocing %lu\n", ref_stat.st_size);
 	ref=(unsigned char *)malloc(ref_stat.st_size);
 	printf("alloced\n");
@@ -89,12 +93,10 @@ int main(int argc, char **argv)
 	/*signed int cmemopen(struct cfile *cfile, unsigned char *buff, 
 	unsigned long fh_start, unsigned long fh_end, unsigned int compressor_type)*/
 	printf("cmemopening\n");
-	cmemopen(&ref_cfile, ref, 0, ref_stat.st_size, NO_COMPRESSOR);
+	cmemopen(&ref_cfh, ref, 0, ref_stat.st_size, NO_COMPRESSOR);
 	printf("opened\n");
-	//cmemopen(&trg_cfile, trg, 0, trg_stat.st_size, NO_COMPRESSOR);
-	//copen(&src_cfile, src_fh, 0, src_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
-	printf("copening ver_cfile\n");
-	copen(&ver_cfile, ver_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
+	printf("copening ver_cfh\n");
+	copen(&ver_cfh, ver_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
 	printf("opened\n");
     if(argc < 5) {
 		seed_len = 16;
@@ -108,21 +110,13 @@ int main(int argc, char **argv)
 		}
     }
     printf("using seed_len(%lu), multi(%lu)\n", seed_len, multi);
-    /*OneHalfPassCorrecting(USE_GDIFF_ENCODING, ENCODING_OFFSET_DC_POS, src, 
-    	(unsigned long)src_stat.st_size,
-	trg, trg_stat.st_size, (unsigned int)seed_len, &out_cfile);*/
-	/*signed int OneHalfPassCorrecting(unsigned int encoding_type,
-    unsigned int offset_type, struct cfile *ref_cfh, 
-    struct cfile *ver_cfh, unsigned int seed_len);*/
-    printf("calling one half\n");
-    OneHalfPassCorrecting(USE_GDIFF_ENCODING, 
-//ENCODING_OFFSET_DC_POS, 
-ENCODING_OFFSET_START,
-&ref_cfile,
-    	&ver_cfile, &out_cfile, (unsigned int)seed_len, (unsigned int)multi);
+    init_RefHash(&rhash, &ref_cfh, seed_len, ref_cfh.byte_len);
+    DCBufferInit(&buffer, 1000000);
+    OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh);
     printf("outputing patch...\n");
-    //gdiffEncodeDCBuffer(&buffer, offset_type, ver_cfh, out_cfh)
+    offset_type = ENCODING_OFFSET_START;
+    gdiffEncodeDCBuffer(&buffer, offset_type, &ver_cfh, &out_cfh);
     printf("exiting\n");
-    cclose(&out_cfile);
+    cclose(&out_cfh);
     return 0;
 }

@@ -19,11 +19,26 @@
 #define _HEADER_DIFF_ALGS 1
 #include "cfile.h"
 #include "dcbuffer.h"
+struct ref_hash {
+	unsigned int seed_len;
+	unsigned long hr_size;
+	unsigned long *hash;
+	unsigned int  sample_rate;
+	struct cfile *ref_cfh;
+	unsigned long inserts;
+	unsigned long duplicates;
+};
 
-struct CommandBuffer *OneHalfPassCorrecting(unsigned int encoding_type,
+signed int init_RefHash(struct ref_hash *rhash, struct cfile *ref_cfh, 
+	unsigned int seed_len, unsigned long hr_size);
+	
+signed int OneHalfPassCorrecting(struct CommandBuffer *buffer, 
+	struct ref_hash *rhash, struct cfile *ver_cfh);
+
+/*struct CommandBuffer *OneHalfPassCorrecting(unsigned int encoding_type,
     unsigned int offset_type, struct cfile *ref_cfh, 
     struct cfile *ver_cfh, struct cfile *out_cfh,
     unsigned int seed_len, unsigned long hr_size);
-
+*/
 
 #endif
