@@ -108,7 +108,7 @@ unsigned int writeUBytesLE(unsigned char *buff, unsigned long value, unsigned in
     unsigned int x;
     if((value >> (l * 8)) > 0)
 	return 1;
-    for(; l > 0; l--) 
+    for(x=0; l > 0; l--, x++) 
 	buff[x] = (value >> ((l -1) * 8)) & 0xff;
     return 0;
 }
