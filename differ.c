@@ -31,6 +31,8 @@
 #include "bdelta.h"
 #include "primes.h"
 
+int verbosity;
+
 unsigned long convertDec(unsigned char *buff, unsigned int len)
 {
     unsigned long num=0,x=0;

@@ -73,12 +73,12 @@ xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
     cseek(patchf, 24, CSEEK_CUR);
     /* read the frigging to length, since it's variable */
     x = readXDInt(patchf, buff);
-	dfprintf("to_len(%lu)\n", x);
+	v2printf("to_len(%lu)\n", x);
     /* two bytes here I don't know about... */
     cseek(patchf, 2, CSEEK_CUR);
     /* get and skip the segment name's len and md5 */
     x = readXDInt(patchf, buff);
-	//dfprintf("seg1_len(%lu)\n", x);
+	//v2printf("seg1_len(%lu)\n", x);
     cseek(patchf, x + 16, CSEEK_CUR);
     /* read the damned segment patch len. */
     x = readXDInt(patchf, buff);
@@ -86,22 +86,22 @@ xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
     /* handle sequential/has_data info */
     cread(patchf, buff, 2);
     add_is_sequential = buff[1];
-    dfprintf("patch sequential? (%u)\n", add_is_sequential);
+    v2printf("patch sequential? (%u)\n", add_is_sequential);
     /* get and skip the next segment name len and md5. */
     x = readXDInt(patchf, buff);
-	//dfprintf("seg2_len(%lu)\n", x);
+	//v2printf("seg2_len(%lu)\n", x);
     cseek(patchf, x + 16, CSEEK_CUR);
     /* read the damned segment patch len. */
     x = readXDInt(patchf, buff);
-	dfprintf("seg2_len(%lu)\n", x);
+	v2printf("seg2_len(%lu)\n", x);
     /* handle sequential/has_data */
     cread(patchf, buff, 2);
     copy_is_sequential = buff[1];
-    dfprintf("copy is sequential? (%u)\n", copy_is_sequential);
+    v2printf("copy is sequential? (%u)\n", copy_is_sequential);
     /* next get the number of instructions (eg copy | adds) */
     count = readXDInt(patchf, buff);
     /* so starts the commands... */
-    dfprintf("supposedly %lu commands...\nstarting command processing at %lu\n", 
+    v2printf("supposedly %lu commands...\nstarting command processing at %lu\n", 
 	count, ctell(patchf, CSEEK_FSTART));
     add_pos = add_start;
     while(count--) {
@@ -120,7 +120,7 @@ xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 	    DCBufferAddCmd(dcbuff, DC_ADD, offset, len);
 	}
     }
-    dfprintf("finishing position was %lu\n", ctell(patchf, CSEEK_FSTART));
+    v2printf("finishing position was %lu\n", ctell(patchf, CSEEK_FSTART));
     return 0;
 }
 

@@ -34,6 +34,7 @@
 #include "xdelta1.h"
 #include "bdelta.h"
 
+unsigned int verbosity;
 
 //offset = fh_pos + readSignedBytes(cpy_buff, ctmp);
 //len = readUnsignedBytes(cpy_buff+ctmp, clen);

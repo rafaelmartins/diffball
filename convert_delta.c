@@ -28,6 +28,8 @@
 #include "switching.h"
 #include "bdiff.h"
 
+unsigned int verbosity;
+
 int 
 main(int argc, char **argv)
 {

@@ -6,10 +6,7 @@ AM_CONFIG_HEADER(config.h)
 AC_PROG_CC
 
 # toggling debug support.
-#AC_DEFINE(DEBUG_FORMATS, 1, Toggle on format debug messages.)
-#AC_DEFINE(DEBUG_DIFF_ALGS, 1, Toggle on diff-algs debug messages.)
 #AC_DEFINE(DEBUG_CFILE, 1, Toggle on cfile debug messages.)
-#AC_DEFINE(DEBUG_RECONSTRUCTION, 1, Toggle on reconstruction debug messages.)
 #AC_DEFINE(DEV_VERSION, 1, Toggle on asserts.)
 
 # Checks for libraries.

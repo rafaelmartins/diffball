@@ -32,7 +32,7 @@ reconstructFile(CommandBuffer *dcbuff, cfile *src_cfh, cfile *delta_cfh,
     count = DCBufferReset(dcbuff);
     while(count--) {
 	if(current_command_type(dcbuff)==DC_COPY) {
-	    drprintf("copy command, offset(%lu), len(%lu)\n",
+	    v2printf("copy command, offset(%lu), len(%lu)\n",
 		dcbuff->lb_tail->offset, dcbuff->lb_tail->len);
 		cseek(src_cfh, dcbuff->lb_tail->offset, CSEEK_FSTART);
 	    if(dcbuff->lb_tail->len != 
@@ -40,7 +40,7 @@ reconstructFile(CommandBuffer *dcbuff, cfile *src_cfh, cfile *delta_cfh,
 		dcbuff->lb_tail->len))
 		abort();
 	} else {
-	    drprintf("add command, offset(%lu), len(%lu)\n", 
+	    v2printf("add command, offset(%lu), len(%lu)\n", 
 		dcbuff->lb_tail->offset, dcbuff->lb_tail->len);
 	    if(dcbuff->lb_tail->len !=
 		copy_cfile_block(out_cfh, delta_cfh, dcbuff->lb_tail->offset, 

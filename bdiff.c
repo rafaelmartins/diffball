@@ -41,7 +41,7 @@ bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh, cfile *out_cfh)
     fh_pos = 0;
     while(count--) {
 	if(DC_COPY==current_command_type(buffer)) {
-	    dfprintf("copy command, out_cfh(%lu), fh_pos(%lu), offset(%lu), len(%lu)\n",
+	    v2printf("copy command, out_cfh(%lu), fh_pos(%lu), offset(%lu), len(%lu)\n",
 		delta_pos, fh_pos, buffer->lb_tail->offset, 
 		buffer->lb_tail->len);
 	    fh_pos += buffer->lb_tail->len;
@@ -58,7 +58,7 @@ bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *ver_cfh, cfile *out_cfh)
 	    delta_pos += lb;
 	    cwrite(out_cfh, buff, lb);
 	} else {
-	    dfprintf("add  command, out_cfh(%lu), fh_pos(%lu), len(%lu)\n", 
+	    v2printf("add  command, out_cfh(%lu), fh_pos(%lu), len(%lu)\n", 
 		delta_pos, fh_pos, buffer->lb_tail->len);
 	    fh_pos += buffer->lb_tail->len;
 	    buff[0] = 0x80;
@@ -97,10 +97,10 @@ bdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
     maxlength = readUBytesBE(buff, 4);
     fh_pos = 0;
     while(1 == cread(patchf, buff, 1)) {
-	dfprintf("got command(%u): ", buff[0]);
+	v2printf("got command(%u): ", buff[0]);
 	if((buff[0] >> 6)==00) {
 	    buff[0] &= 0x3f;
-	    dfprintf("got a copy at %lu, fh_pos(%lu): ", 
+	    v2printf("got a copy at %lu, fh_pos(%lu): ", 
 		ctell(patchf, CSEEK_FSTART), fh_pos);
 	    if(4 != cread(patchf, buff + 1, 4)) {
 		abort();
@@ -115,11 +115,11 @@ bdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 		len = readUBytesBE(buff, 4);
 	    }
 	    fh_pos += len;
-	    dfprintf(" offset(%lu), len=%lu\n", offset, len);
+	    v2printf(" offset(%lu), len=%lu\n", offset, len);
 	    DCBufferAddCmd(dcbuff, DC_COPY, offset, len);
 	} else if ((buff[0] >> 6)==2) {
 	    buff[0] &= 0x3f;
-	    dfprintf("got an add at %lu, fh_pos(%lu):", 
+	    v2printf("got an add at %lu, fh_pos(%lu):", 
 		ctell(patchf, CSEEK_FSTART), fh_pos);
 	    if(buff[0]) {
 		len = readUBytesBE(buff, 1) + 5;
@@ -130,12 +130,12 @@ bdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 		len = readUBytesBE(buff, 4);
 	    }
 	    fh_pos += len;
-	    dfprintf(" len=%lu\n", len);
+	    v2printf(" len=%lu\n", len);
 	    DCBufferAddCmd(dcbuff, DC_ADD, ctell(patchf, CSEEK_FSTART), len);
 	    cseek(patchf, len, CSEEK_CUR);
 	} else if((buff[0] >> 6)==1) {
 	    buff[0] &= 0x3f;
-	    dfprintf("got a checksum at %lu\n", ctell(patchf, CSEEK_FSTART));
+	    v2printf("got a checksum at %lu\n", ctell(patchf, CSEEK_FSTART));
 	    if(buff[0] <= 1) {
 		if(16 != cread(patchf, buff + 1, 16)) 
 		    abort();

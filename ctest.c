@@ -8,6 +8,8 @@
 #include <string.h>
 #include "cfile.h"
 
+unsigned int verbosity;
+
 int main(int argc, char **argv){
     struct stat fstat;
     int fh, wfh;

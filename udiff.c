@@ -55,7 +55,7 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
     while(cfile_len(patchf)!= ctell(patchf, CSEEK_FSTART)) {
 	cread(patchf, buff, 4);
 	if('\\'==buff[0]) {
-	    dfprintf("got me a (hopefully) 'No newline...'\n");
+	    v2printf("got me a (hopefully) 'No newline...'\n");
 //	    assert(22==cread(patchf, buff + 4, 22));
 	    if(22!=cread(patchf, buff + 4, 22))
 		goto TRUNCATED_PATCH;
@@ -76,11 +76,11 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 	    goto CORRUPTED_PATCH;
 //	assert(0==memcmp(buff, "@@ -",4));
 	s_line = getUDec(patchf);
-	dfprintf("for segment, s_line(%lu), s_lastline(%lu):", s_line, 
+	v2printf("for segment, s_line(%lu), s_lastline(%lu):", s_line, 
 	    s_lastline);
 	skip_lines_forward(src_cfh, s_line - s_lastline);
 	s_lastline = s_line;
-	dfprintf("at pos(%lu) in src_cfh\n", ctell(src_cfh, CSEEK_FSTART));
+	v2printf("at pos(%lu) in src_cfh\n", ctell(src_cfh, CSEEK_FSTART));
 	cread(patchf, buff, 1);
 	if(buff[0]==',')
 	    s_len = /*s_line -*/ getUDec(patchf);
@@ -107,9 +107,9 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 	    assert(' '==buff[0] || '+'==buff[0] || '-'==buff[0] || 
 		'\\'==buff[0]);
 	    if(' '==buff[0]) {
-		dfprintf("got a common  line( ): ");
+		v2printf("got a common  line( ): ");
 		/* common line */
-		dfprintf("skipping a line in both src and patch\n");
+		v2printf("skipping a line in both src and patch\n");
 		if(add_copy==0) 
 		    s_lastoff = ctell(src_cfh, CSEEK_FSTART);
 		line_count++;
@@ -118,10 +118,10 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 		skip_lines_forward(patchf, 1);
 		add_copy=1;
 	    } else if('+'==buff[0]) {
-		dfprintf("got a version tweak(+): ");
+		v2printf("got a version tweak(+): ");
 		if(add_copy) {
 		    offset = ctell(src_cfh, CSEEK_FSTART);
-		    dfprintf("adding copy for add_copy: ");
+		    v2printf("adding copy for add_copy: ");
 		    DCBufferAddCmd(dcbuff, DC_COPY, s_lastoff, 
 			offset - s_lastoff);
 		    s_lastoff = offset;
@@ -129,27 +129,27 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 		    add_copy=0;
 		}
 		offset = ctell(patchf, CSEEK_FSTART);
-		dfprintf("skipping a line in patch\n");
+		v2printf("skipping a line in patch\n");
 		skip_lines_forward(patchf, 1);
 		len = (ctell(patchf, CSEEK_FSTART)) - offset;
 		DCBufferAddCmd(dcbuff, DC_ADD, offset, len);
 		line_count++;
 	    } else if('-'==buff[0]) {
-		dfprintf("got a source  tweak(-): ");
+		v2printf("got a source  tweak(-): ");
 		if(add_copy) {
 		    offset = ctell(src_cfh, CSEEK_FSTART);
-		    dfprintf("adding copy for add_copy: ");
+		    v2printf("adding copy for add_copy: ");
 		    DCBufferAddCmd(dcbuff, DC_COPY, s_lastoff, 
 			offset - s_lastoff);
 		    add_copy=0;
 		}
-		dfprintf("skipping a line in patch\n");
+		v2printf("skipping a line in patch\n");
 		skip_lines_forward(patchf, 1);
 		s_lastline++;
 		skip_lines_forward(src_cfh, 1);
 		s_lastoff = ctell(src_cfh, CSEEK_FSTART);
 	    } else if('\\'==buff[0]) {
-		dfprintf("got me a (hopefully) 'No newline...'\n");
+		v2printf("got me a (hopefully) 'No newline...'\n");
 		if(26!=cread(patchf, buff + 1, 26))
 		    goto TRUNCATED_PATCH;
 		if(0!=memcmp(buff, "\\ No newline at end of file", 26))
@@ -165,7 +165,7 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 		goto CORRUPTED_PATCH;
 	    }
 	} 
-	dfprintf("so ends that segment\n");
+	v2printf("so ends that segment\n");
     }
     if(ctell(src_cfh, CSEEK_FSTART)!=cfile_len(src_cfh))
 	DCBufferAddCmd(dcbuff, DC_COPY, s_lastoff, cfile_len(src_cfh) - s_lastoff);

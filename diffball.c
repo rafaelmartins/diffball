@@ -36,6 +36,9 @@
 #include "primes.h"
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
+
+unsigned int verbosity;
+
 int cmp_tar_entries(const void *te1, const void *te2);
 
 struct long_dllist *init_long_dllist(unsigned long int value) {

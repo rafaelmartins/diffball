@@ -19,6 +19,8 @@
 #define _HEADER_DEFS 1
 #include "config.h"
 
+extern unsigned int verbosity;
+
 #define PATCH_TRUNCATED	0x1
 #define PATCH_CORRUPT	0x2
 
@@ -28,41 +30,17 @@
 #define assert(expr) ((void)0)
 #endif
 
-#ifdef DEBUG_FORMATS
-#include <stdio.h>
-#define dfprintf(fmt...) \
-    fprintf(stderr, "%s: ",__FILE__);   \
-    fprintf(stderr, fmt);
-#else
-#define dfprintf(expr...) ((void) 0)
-#endif
-
-#ifdef DEBUG_DIFF_ALGS
-#include <stdio.h>
-#define ddprintf(fmt...) \
-    fprintf(stderr, "%s: ",__FILE__);   \
-    fprintf(stderr, fmt);
-#else
-#define ddprintf(expr...) ((void) 0)
-#endif
-
 #ifdef DEBUG_CFILE
 #include <stdio.h>
 #define dcprintf(fmt...) \
     fprintf(stderr, "%s: ",__FILE__);   \
     fprintf(stderr, fmt);
 #else
-#define dcprintf(expr...) ((void) 0)
+#define dcprintf(expr...) v3printf(expr)
 #endif
 
-#ifdef DEBUG_RECONSTRUCTION
-#include <stdio.h>
-#define drprintf(fmt...) \
-    fprintf(stderr, "%s: ",__FILE__);   \
-    fprintf(stderr, fmt);
-#else
-#define drprintf(expr...) ((void) 0)
-#endif
-
+#define v1printf(expr...)  if(verbosity==1){fprintf(stderr,expr);}
+#define v2printf(expr...)  if(verbosity==2){fprintf(stderr,expr);}
+#define v3printf(expr...)  if(verbosity==3){fprintf(stderr,expr);}
 #endif
 
