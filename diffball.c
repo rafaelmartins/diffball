@@ -91,12 +91,108 @@ int main(int argc, char **argv)
         /*perhaps this is a crappy method, but basically for the my sanity, just up the fullname ptr
          to remove the common-prefix.  wonder if string functions behave and don't go past the sp... */
         /* init the fullname_ptr to point to the char after the common-prefix dir.  if no prefix, points
-        to the start of fullname. */
+        to the start of fullname. that and look for common info for each entry. */
         /*note for harring.  deref fullname, add common_len, then assign to ptr after casting */
-    for (x=0; x < source_count; x++)
+    
+    for (x=0; x < source_count; x++) {
         source[x]->fullname_ptr= (char *)source[x]->fullname + src_common_len;
-    for (x=0; x < target_count; x++) 
-        target[x]->fullname_ptr = (char *)target[x]->fullname + trg_common_len;    
+    }
+    
+    struct long_dllist *init_long_dllist(unsigned long int value) {
+	struct long_dllist *em;
+	if((em = (struct long_dllist *)malloc(sizeof(struct str_dllist)))==NULL){
+	    perror("couldn't alloc needed memory...\n");
+	    exit(EXIT_FAILURE);
+	}
+	em->data = value;
+	em->count = 0;
+	em->prev = em->next = NULL;
+	printf("creating new lldl node, value(%lu)\n", value);
+	return em;
+    }
+    struct str_dllist *init_str_dllist(char *string, int len) {
+	struct str_dllist *em;
+	if((em = (struct str_dllist *)malloc(sizeof(struct str_dllist)))==NULL){
+	    perror("couldn't alloc needed memory...\n");
+	    exit(EXIT_FAILURE);
+	} else if((em->data = (char *)malloc(len+1))==NULL) {
+	    perror("couldn't alloc needed memory...\n");
+	    exit(EXIT_FAILURE);
+	}
+	strncpy((char *)em->data, (char *)string, len);
+	em->data[len] = '\0';
+	em->count=0;
+	em->prev = em->next = NULL;
+	return em;
+    }
+
+    printf("initing struct's for checking for common longs...\n");
+    struct long_dllist *trg_mode_ll, trg_uid_ll, trg_gid_ll, trg_devmajor_ll, trg_devminor_ll, *ldll_ptr;
+    trg_mode_ll = init_long_dllist(target[0]->mode);
+    trg_uid_ll = *init_long_dllist(target[0]->uid);
+    trg_gid_ll = *init_long_dllist(target[0]->gid);
+    trg_devmajor_ll = *init_long_dllist(target[0]->devmajor);
+    trg_devminor_ll = *init_long_dllist(target[0]->devminor);
+    printf("initing struct's for checking for common strs...\n");
+    struct str_dllist trg_uname_ll, trg_gname_ll, trg_magic_ll, trg_version_ll, trg_mtime_ll, *sdll_ptr;
+    trg_uname_ll = *init_str_dllist(target[0]->uname, strnlen(target[0]->uname, TAR_UNAME_LEN));
+    printf("finished 1\n");
+    trg_gname_ll = *init_str_dllist(target[0]->gname, strnlen(target[0]->gname, TAR_GNAME_LEN));
+    trg_magic_ll = *init_str_dllist(target[0]->magic, strnlen(target[0]->magic, TAR_MAGIC_LEN));
+    trg_version_ll = *init_str_dllist(target[0]->version, strnlen(target[0]->version, TAR_VERSION_LEN));
+    trg_mtime_ll = *init_str_dllist(target[0]->mtime, strnlen(target[0]->mtime, TAR_MTIME_LEN));
+    printf("inited.\n");
+    
+    void update_long_dllist(struct long_dllist **em, unsigned long int value) {
+	struct long_dllist *ptr, *tmp;
+	int x = 0;
+	printf("\nupdating\n");
+	for (ptr = *em; ptr != NULL; ptr = (struct long_dllist *)ptr->next, x++) {
+	    printf("examining node(%u)\n", x);
+	    if(ptr->data == value) {
+		printf("match ptr(%lu), data(%lu), current count(%lu)\n", ptr, ptr->data, ptr->count);
+		ptr->count += 1;
+		while (ptr->prev != NULL
+		   && ptr->count > ptr->prev->count) {
+		    /* I'm sure this could be wrote better. don't feel like screwing with it though. */
+		    tmp = ptr->prev;
+		    printf("moving node, p.count(%u), c.count(%u)\n",ptr->prev->count, ptr->count);
+		    printf("  p.p(%lu), p.n(%lu); n.p(%lu), n.n(%lu)\n", tmp->prev, tmp->next, ptr->prev, ptr->next);
+		    ptr->prev = tmp->prev;
+		    tmp->next = ptr->next;
+		    if (tmp->prev != NULL)
+			tmp->prev->next = ptr;
+		    tmp->prev = ptr;
+		    if (ptr->next != NULL)
+			ptr->next->prev = tmp;
+		    ptr->next = tmp;
+		}
+		if(ptr->prev == NULL)
+		    *em = ptr;
+		break;
+	    } else if (ptr->next == NULL) {
+		printf("adding llist value(%lu)\n", value);
+		ptr->next = init_long_dllist(value);
+		ptr->next->prev = ptr;
+		ptr->next->count += 1;
+		printf("  c.p(%lu), c(%lu), c.n(%lu), n.p(%lu), n.n(%lu)\n",ptr->prev, ptr, ptr->next, ptr->next->prev, ptr->next->next);
+		break;
+	    }
+	}
+    }
+		    
+    for (x=0; x < target_count; x++) {
+        target[x]->fullname_ptr = (char *)target[x]->fullname + trg_common_len;
+	update_long_dllist(&trg_mode_ll, target[x]->mode);
+	/*update_long_dllist(&trg_uid_ll, target[x]->uid);
+	update_long_dllist(&trg_gid_ll, target[x]->gid);
+	update_long_dllist(&trg_devminor_ll, target[x]->devminor);
+	update_long_dllist(&trg_devmajor_ll, target[x]->devminor);*/
+    }
+    printf("checking ldll\n");
+    for(ldll_ptr = trg_mode_ll; ldll_ptr != NULL; ldll_ptr = ldll_ptr->next) 
+	printf("value=%lu, count=%lu\n", ldll_ptr->data, ldll_ptr->count);
+    printf("qsorting\n");
     /* this next one is moreso for bsearch's, but it's prob useful for the common-prefix alg too */
     qsort((struct tar_entry **)target, target_count, sizeof(struct tar_entry *), cmp_tar_entries);
     printf("qsort done\n");
