@@ -113,8 +113,8 @@ main(int argc, char **argv)
 	usage(p_opt, 1, poptBadOption(p_opt, POPT_BADOPTION_NOALIAS), 
 	"unknown option");
     }	
-    poptFreeContext(p_opt);
-*/
+*/    
+
     for(x=0; x < patch_count; x++) {
         if(stat(patch_name[x], &patch_stat)) {
 	   v0printf("error stat'ing patch file '%s'\n", patch_name[x]);
@@ -232,6 +232,7 @@ main(int argc, char **argv)
     } else {
     	v1printf("reconstruction completed successfully\n");
     }
+    poptFreeContext(p_opt);
     DCBufferFree(dcb);
     cclose(&out_cfh);
     cclose(&src_cfh);
