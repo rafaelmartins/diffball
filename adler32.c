@@ -29,9 +29,11 @@
 
 /* ========================================================================= */
 
-void init_adler32_seed(struct adler32_seed *ads, unsigned int seed_len) {
+void init_adler32_seed(struct adler32_seed *ads, unsigned int seed_len,
+	unsigned int multi) {
 	ads->s1 = ads->s2 = ads->tail = 0;
 	ads->seed_len = seed_len;
+	ads->multi = multi;
 	if((ads->last_seed = (unsigned char *)malloc(seed_len))==NULL) {\
 		//printf("shite, error allocing needed memory\n");
 		abort();
@@ -40,20 +42,21 @@ void init_adler32_seed(struct adler32_seed *ads, unsigned int seed_len) {
 
 void update_adler32_seed(struct adler32_seed *ads, unsigned char *buff, unsigned int len) {
 	unsigned int x;
-	unsigned int m=1;
 	if(len==ads->seed_len) {
 		//printf("computing seed fully\n");
 		ads->s1 = ads->s2 = ads->tail =0;
 		for(x=0; x < ads->seed_len; x++) {
-			ads->s1 += m*buff[x];
+			ads->s1 += ads->multi * buff[x];
 			ads->s2 += ads->s1;
 			ads->last_seed[x] = buff[x];
 		}
 		ads->tail = 0;
 	} else {
 		for(x=0; x < len; x++){
-			ads->s1 = ads->s1 - (m*ads->last_seed[ads->tail]) + (m*buff[x]);
-			ads->s2 = ads->s2 - (m*ads->seed_len * ads->last_seed[ads->tail]) + ads->s1;
+			ads->s1 = ads->s1 - (ads->multi * ads->last_seed[ads->tail]) + 
+				(ads->multi * buff[x]);
+			ads->s2 = ads->s2 - (ads->multi * ads->seed_len * 
+				ads->last_seed[ads->tail]) + ads->s1;
 			//ads->last_seed[ads->tail] = buff[x%4];
 			//if((x%4)==3) {
 				ads->last_seed[ads->tail] = buff[x];

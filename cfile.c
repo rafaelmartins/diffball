@@ -33,10 +33,13 @@ signed int cmemopen(struct cfile *cfile, unsigned char *buff,
 	}
 	cfile->raw_fh_start = fh_start;
 	cfile->raw_fh_end = fh_end;
-	cfile->raw_buff = buff;
+	cfile->byte_len = fh_end - fh_start;
+	cfile->raw_pos = cfile->raw_buff = buff;
 	cfile->trans_fh_pos = cfile->raw_fh_pos = fh_start;
-	cfile->raw_filled = cfile->raw_pos = buff;
+	cfile->raw_filled = buff + fh_end -fh_start;
 	cfile->raw_size = CFILE_RAW_BUFF_SIZE;
+	//printf("mem alias, filled(%lu), pos(%lu)\n", cfile->raw_filled - cfile->raw_buff,
+	//	cfile->raw_pos - cfile->raw_buff);
 }
 
 signed int copen(struct cfile *cfile, int fh, 
@@ -116,7 +119,8 @@ unsigned long cread(struct cfile *cfile, unsigned char *out_buff, unsigned long 
     		exit(1);
     	}
 		if(cfile->raw_pos == cfile->raw_filled) {
-			//printf("cread: refreshing file\n");
+			//printf("cread: refreshing file len(%lu), bytes_read(%lu)\n",
+			//	len, bytes_read);
 			crefresh(cfile);
 	    	/* note this check needs some work/better error returning.  surpris surprise... */
 	    	if(cfile->raw_filled == cfile->raw_buff) {
@@ -129,6 +133,8 @@ unsigned long cread(struct cfile *cfile, unsigned char *out_buff, unsigned long 
 		switch(cfile->compressor_type)
 		{
 	    case NO_COMPRESSOR:
+	    	//printf("opt1(%lu), calced(%lu)\n", len - bytes_read, 
+	    	//	cfile->raw_filled - cfile->raw_pos);
 	    	uncompr_bytes = MIN(len - bytes_read, cfile->raw_filled - cfile->raw_pos);
 	    	memcpy(out_buff + bytes_read, cfile->raw_pos, uncompr_bytes);
 			//printf("uncompr_bytes(%lu), raw_pos prior(%lu)\n", 
@@ -152,16 +158,14 @@ inline void crefresh(struct cfile *cfile)
 {
 	unsigned int bread;
 	//printf("crefresh called pos(%lu)\n", cfile->raw_fh_pos);
-	
+	if (cfile->state_flags & CFILE_MEM_ALIAS) {
+		//printf("crefresh called on mem alias, ignoring and returning\n");
+		return;
+	} else {
+		//printf("crefresh called on fh(%u)\n", cfile->raw_fh);
+	}
 	cfile->raw_fh_pos += cfile->raw_filled - cfile->raw_buff;
 	bread = read(cfile->raw_fh, cfile->raw_buff, cfile->raw_size);
-	//printf("raw_size=(%u)\n", cfile->raw_size);
-	//cfile->raw_buff_filled=read(cfile->fh, cfile->raw_buff, cfile->raw_buff_size);
-	/* note this check needs some work/better error returning.  surpris surprise... */
-	/*if(cfile->raw_buff_filled == 0) {
-		return bytes_read;
-	}*/
-	//printf("crefresh:  bread(%u)\n", bread);
 	cfile->raw_filled = cfile->raw_buff + bread;
 	cfile->raw_pos = cfile ->raw_buff;
 }
@@ -258,6 +262,10 @@ unsigned long cseek(struct cfile *cfile, signed long offset, int offset_type)
 			(cfile->raw_pos - cfile->raw_buff), offset);
 		printf("cseek: offset_type(%u), current_pos(%lu), desired(%lu), calculated(%lu)\n", 
 			offset_type, cfile->raw_fh_pos, offset, raw_offset);*/
+		if(cfile->state_flags & CFILE_MEM_ALIAS) {
+			cfile->raw_pos = cfile->raw_buff + raw_offset;
+			return raw_offset;
+		}
 		uncompr_offset = lseek(cfile->raw_fh, raw_offset, SEEK_SET);
 		cfile->raw_fh_pos = uncompr_offset;
 		cfile->raw_pos = cfile->raw_filled = cfile->raw_buff;

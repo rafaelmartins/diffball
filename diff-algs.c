@@ -38,7 +38,7 @@
 signed int OneHalfPassCorrecting(unsigned int encoding_type,
     unsigned int offset_type, struct cfile *ref_cfh, 
     struct cfile *ver_cfh, struct cfile *out_cfh,
-    unsigned int seed_len)
+    unsigned int seed_len, unsigned int multi)
 {
     unsigned long *hr; //reference hash table.
     unsigned long hr_size;
@@ -63,6 +63,7 @@ signed int OneHalfPassCorrecting(unsigned int encoding_type,
     ref_len = ref_cfh->byte_len;
     ver_len = ver_cfh->byte_len;
     hr_size = ref_len - seed_len;
+    printf("ref(%lu), ver(%lu), hr(%lu)\n", ref_len, ver_len, hr_size);
     if((hr=(unsigned long*)malloc(sizeof(unsigned long)*(hr_size)))==NULL) {
 		perror("Shite.  couldn't allocate needed memory for reference hash table.\n");
 		exit(EXIT_FAILURE);
@@ -75,7 +76,7 @@ signed int OneHalfPassCorrecting(unsigned int encoding_type,
     for(x=0; x < hr_size; x++) {
 		hr[x] = 0;
 	}
-	init_adler32_seed(&ads, seed_len);
+	init_adler32_seed(&ads, seed_len, multi);
 	//s1=s2=0;
     rbuff_end=cread(ref_cfh, rbuff, rbuff_size);
     assert(ctell(ref_cfh,CSEEK_ABS)==rbuff_start+rbuff_size);
@@ -129,13 +130,14 @@ signed int OneHalfPassCorrecting(unsigned int encoding_type,
     printf("duplicates=%f%%\n", ((float)duplicates)/(float)(hr_size)*100);
     printf("version run:\n");
     printf("creating lookback buffer\n");
-    exit(0);
+    //exit(0);
     DCBufferInit(&buffer, 10000000);
     va=vs =vc =0;
     cseek(ver_cfh, 0, CSEEK_ABS);
     vbuff_start=0;
     vbuff_end=vbuff_size;
     cread(ver_cfh, vbuff, vbuff_size);
+    //printf("vc(%lu), seed_len(%lu), ver_len(%lu)\n", vc, seed_len, ver_len);
 	while(vc + seed_len < ver_len) {
 		if(vc + seed_len > vbuff_start + vbuff_size) {
 			//if(vc > vbuff_start + vbuff_size) {
@@ -189,16 +191,16 @@ signed int OneHalfPassCorrecting(unsigned int encoding_type,
 		//printf("vc(%lu) va(%lu), len(%lu): ", vc - vbuff_start, va - vbuff_start, 
 		//	vc - va);
 		if(va -vc >= seed_len) {
-			printf("flushing loc(%lu)\n", vc - vbuff_start);
+			//printf("flushing loc(%lu)\n", vc - vbuff_start);
 			update_adler32_seed(&ads, vbuff + vc - vbuff_start, seed_len);
 		} else {
-			printf("rolling (%u)\n", vc + seed_len -va);
+			//printf("rolling (%u)\n", vc + seed_len -va);
 			update_adler32_seed(&ads, vbuff + (va - vbuff_start), vc + seed_len -va);
 			//seed_len - (va -vc));
 		}
 		va = vc + seed_len;
-		printf("seed: vc(%lu), s1(%lu), s2(%lu), chksum(%lu), off(%lu)\n", vc, ads.s1, ads.s2,
-			hash_it(ads, hr_size), hr[hash_it(ads, hr_size)]);
+		//printf("seed: vc(%lu), s1(%lu), s2(%lu), chksum(%lu), off(%lu)\n", vc, ads.s1, ads.s2,
+		//	hash_it(ads, hr_size), hr[hash_it(ads, hr_size)]);
 		index = hash_it(ads, hr_size);
 		if(hr[index]>0) {	
 			if(hr[index] != cseek(ref_cfh, hr[index], CSEEK_FSTART)) {

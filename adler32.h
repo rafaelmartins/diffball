@@ -20,14 +20,15 @@
 
 struct adler32_seed {
 	unsigned int seed_len;
+	unsigned int multi;
 	unsigned char *last_seed;
 	unsigned int tail;
 	unsigned long s1;
 	unsigned long s2;
 };
 
-void init_adler32_seed(struct adler32_seed *ads, unsigned int seed_len);
-void update_adler32_seed(struct adler32_seed *ads, unsigned char *buff, unsigned int len);
+void init_adler32_seed(struct adler32_seed *ads, unsigned int seed_len, unsigned int multi);
+void update_adler32_seed(struct adler32_seed *ads, unsigned char *buff, unsigned int len); 
 
 #endif
 
