@@ -287,7 +287,14 @@ main(int argc, char **argv)
 		cfile_len(&ref_window));
 	    RHash_cleanse(&rhash_win);
 	    print_RefHash_stats(&rhash_win);
-            OneHalfPassCorrecting2(&dcbuff, &rhash_win, ref_id, &ver_window, ver_id);
+            if(OneHalfPassCorrecting(&dcbuff, &rhash_win, ref_id, &ver_window, ver_id)) {
+            	/* not a graceful exit I realize... */
+            	v0printf("OneHalfPassCorrecting returned an error process file %.255s and %.255s\n", 
+            	    target[x].fullname, tar_ptr->fullname);
+            	v0printf("Quite likely this is a bug in diffball; error's should not occur at this point, exempting out of memory errors\n");
+            	v0printf("please contact the author so this can be resolved.\n");
+            	exit(1);
+            }
 //	    MultiPassAlg(&dcbuff, &ref_window, &ver_window, hash_size);
             free_RefHash(&rhash_win);
 
