@@ -26,6 +26,8 @@ extern unsigned int verbosity;
 #define PATCH_TRUNCATED	0x1
 #define PATCH_CORRUPT	0x2
 
+#define v0printf(expr...) fprintf(stderr, expr);
+
 #ifdef DEV_VERSION
 #include <assert.h>
 #define v1printf(expr...)  fprintf(stderr,expr);
