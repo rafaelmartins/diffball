@@ -46,23 +46,34 @@ cfile_identify_compressor(int fh)
 }
 
 
-unsigned int
+int
 copen_child_cfh(cfile *cfh, cfile *parent, unsigned long fh_start, 
     unsigned long fh_end, unsigned int compressor_type, unsigned int 
     access_flags)
 {
+    int err = 0;
     dcprintf("copen_child_cfh: calling internal_copen\n");
     cfh->state_flags = CFILE_CHILD_CFH;
     cfh->lseek_info.last_ptr = &parent->lseek_info.parent.last;
     parent->lseek_info.parent.handle_count++;
     cfh->cfh_id = parent->lseek_info.parent.handle_count;
-    unsigned int x = internal_copen(cfh, parent->raw_fh, fh_start, fh_end, 
-	compressor_type, access_flags);
-    return x;
+    if(parent->compressor_type != NO_COMPRESSOR) {
+	if(compressor_type != NO_COMPRESSOR) {
+	    /* cfile doesn't handle this. deal. */
+	    v0printf("unable to open a compressor w/in a compressor, crapping out.\n");
+	    abort();
+	}
+	err = internal_copen(cfh, parent->raw_fh, parent->raw_fh_offset, parent->raw_total_len, 
+	    fh_start, fh_end, parent->compressor_type, access_flags);
+    } else {
+	err = internal_copen(cfh, parent->raw_fh, fh_start, fh_end, 0, 0,
+	    compressor_type, access_flags);
+    }
+    return err;
 }
 
 
-unsigned int
+int
 copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end, 
     unsigned int compressor_type, unsigned int access_flags)
 {
@@ -71,14 +82,14 @@ copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
     cfh->lseek_info.parent.last = 0;
     cfh->lseek_info.parent.handle_count =1;
     cfh->cfh_id = 1;
-    unsigned int x = internal_copen(cfh, fh, fh_start, fh_end, 
+    return internal_copen(cfh, fh, fh_start, fh_end, 0,0,
 	compressor_type, access_flags);
-    return x;
 }
 
 
-unsigned int
-internal_copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end, 
+int
+internal_copen(cfile *cfh, int fh, unsigned long raw_fh_start, unsigned long raw_fh_end, 
+    unsigned long data_fh_start, unsigned long data_fh_end, 
     unsigned int compressor_type, unsigned int access_flags)
 {
     const EVP_MD *md;
@@ -86,7 +97,7 @@ internal_copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
     /* this will need adjustment for compressed files */
     cfh->raw_fh = fh;
 
-    assert(fh_start <= fh_end);
+    assert(raw_fh_start <= raw_fh_end);
     cfh->access_flags = (access_flags & ~CFILE_COMPUTE_MD5);
     cfh->data_md5 = NULL;
     cfh->zs = NULL;
@@ -108,7 +119,7 @@ internal_copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
 	if(ret_val < 0) {
 	    return IO_ERROR;
 	}
-	dcprintf("got %i\n", ret_val);
+	dcprintf("got %ld\n", ret_val);
 	cfh->compressor_type = ret_val;
     } else {
 	cfh->compressor_type = compressor_type;
@@ -117,8 +128,8 @@ internal_copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
     switch(cfh->compressor_type) {
     case NO_COMPRESSOR:
 	dcprintf("copen: opening w/ no_compressor\n");
-	cfh->data_fh_offset = fh_start;
-	cfh->data_total_len = fh_end - fh_start;
+	cfh->data_fh_offset = raw_fh_start;
+	cfh->data_total_len = raw_fh_end - raw_fh_start;
 	if(access_flags & CFILE_BUFFER_ALL) {
 	    cfh->data.size = cfh->data_total_len;
 	} else {
@@ -138,10 +149,10 @@ internal_copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
     case BZIP2_COMPRESSOR:
         cfh->data.size = CFILE_DEFAULT_BUFFER_SIZE;
 	cfh->raw.size = CFILE_DEFAULT_BUFFER_SIZE;
-	cfh->raw_fh_offset = fh_start;
-	cfh->raw_total_len = fh_end - fh_start;
-	cfh->data_fh_offset = 0;
-	cfh->data_total_len = 0;
+	cfh->raw_fh_offset = raw_fh_start;
+	cfh->raw_total_len = raw_fh_end - raw_fh_start;
+	cfh->data_fh_offset = data_fh_start;
+	cfh->data_total_len = (data_fh_end == 0 ? 0 : data_fh_end - data_fh_start);
 	if((cfh->bzs = (bz_stream *)
 	    malloc(sizeof(bz_stream)))==NULL) {
 	    return MEM_ERROR;
@@ -166,16 +177,19 @@ internal_copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
 //        }
 	cfh->raw.pos = cfh->raw.offset  = cfh->raw.end = cfh->data.pos = 
 	    cfh->data.offset = cfh->data.end = 0;
-
+	cfh->data.offset = 10;
+	if(0 != cseek(cfh, 0, CSEEK_FSTART)) {
+	    return (cfh->err = IO_ERROR);
+	}
 	break;
 
     case GZIP_COMPRESSOR:
         cfh->data.size = CFILE_DEFAULT_BUFFER_SIZE;
 	cfh->raw.size = CFILE_DEFAULT_BUFFER_SIZE;
-	cfh->raw_fh_offset = fh_start;
-	cfh->raw_total_len = fh_end - fh_start;
-	cfh->data_fh_offset = 0;
-	cfh->data_total_len = 0;
+	cfh->raw_fh_offset = raw_fh_start;
+	cfh->raw_total_len = raw_fh_end - raw_fh_start;
+	cfh->data_fh_offset = data_fh_start;
+	cfh->data_total_len = (data_fh_end == 0 ? 0 : data_fh_end - data_fh_start);
 	if((cfh->zs = (z_stream *)malloc(sizeof(z_stream)))
 	    ==NULL) { 
 	    return MEM_ERROR;
@@ -397,7 +411,8 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 	    inflateEnd(cfh->zs);
 	    cfh->state_flags &= ~CFILE_EOF;
 	    internal_gzopen(cfh);	    
-	    cfh->data.offset = cfh->raw.offset = cfh->raw.pos = 0;
+	    cfh->data.offset = cfh->raw.offset = cfh->raw.pos = cfh->data.pos = 0;
+	    cfh->data.end = 0;
 	} else {
 	    if(ENSURE_LSEEK_POSITION(cfh)) {
 		return IO_ERROR;
@@ -415,6 +430,7 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 	return (CSEEK_ABS==offset_type ? data_offset + cfh->data_fh_offset : data_offset);
 	break;
     case BZIP2_COMPRESSOR: 
+	dcprintf("cseek: bz2: data_off(%lu), data.offset(%lu)\n", data_offset, cfh->data.offset);
 	if(data_offset < cfh->data.offset ) {
 	    /* note this ain't optimal, but the alternative is modifying 
 	       bzlib to support seeking... */
@@ -431,10 +447,21 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 	    cfh->bzs->avail_in = cfh->bzs->avail_out = 0;
 	    cfh->data.end = cfh->raw.end = cfh->data.pos = 
 		cfh->data.offset = cfh->raw.offset = cfh->raw.pos = 0;
-	}
-	dcprintf("cseek: bz2: data_off(%lu), data.offset(%lu)\n", data_offset, cfh->data.offset);
-	if(ENSURE_LSEEK_POSITION(cfh)) {
-	    return IO_ERROR;
+	    if(ENSURE_LSEEK_POSITION(cfh)) {
+		return (cfh->err = IO_ERROR);
+	    }
+	    if(cfh->data_fh_offset) {
+		while(cfh->data.offset + cfh->data.end < cfh->data_fh_offset) {
+		    if(crefill(cfh)==0) {
+			return EOF_ERROR;
+		    }
+		}
+		cfh->data.offset -= cfh->data_fh_offset;
+	    }
+	} else {
+	    if(ENSURE_LSEEK_POSITION(cfh)) {
+		return (cfh->err = IO_ERROR);
+	    }
 	}
 	while(cfh->data.offset + cfh->data.end < data_offset) {
 	    if(crefill(cfh)==0) {
@@ -490,7 +517,7 @@ cflush(cfile *cfh)
 	case NO_COMPRESSOR:
 	    if(cfh->data.pos != 
 		write(cfh->raw_fh, cfh->data.buff, cfh->data.pos))
-		return IO_ERROR;
+		return (cfh->err = IO_ERROR);
 	    cfh->data.offset += cfh->data.pos;
 	    cfh->data.pos=0;
 	    break;
@@ -534,7 +561,7 @@ crefill(cfile *cfh)
     switch(cfh->compressor_type) {
     case NO_COMPRESSOR:
 	if(ENSURE_LSEEK_POSITION(cfh)) {
-	    return IO_ERROR;
+	    return (cfh->err = IO_ERROR);
 	}
 	cfh->data.offset += cfh->data.end;
 	x = read(cfh->raw_fh, cfh->data.buff, MIN(cfh->data.size, 
@@ -557,7 +584,7 @@ crefill(cfile *cfh)
 		    (cfh->raw.end - cfh->bzs->avail_in) < cfh->raw_total_len)) {
 		    dcprintf("crefill: bz2, refilling raw: ");
 		    if(ENSURE_LSEEK_POSITION(cfh)) {
-			return IO_ERROR;
+			return (cfh->err = IO_ERROR);
 		    }
 		    cfh->raw.offset += cfh->raw.end;
 		    x = read(cfh->raw_fh, cfh->raw.buff, MIN(cfh->raw.size, 
@@ -575,7 +602,7 @@ crefill(cfile *cfh)
 		/* note, this doesn't handle BZ_DATA_ERROR/BZ_DATA_ERROR_MAGIC , 
 		which should be handled (rather then aborting) */
 		if(err != BZ_OK && err != BZ_STREAM_END) {
-		    v0printf("hmm, bzip2 didn't return BZ_OK, borking cause of %i.\n", err);
+		    eprintf("hmm, bzip2 didn't return BZ_OK, borking cause of %i.\n", err);
 		    return IO_ERROR;
 		}
 		if(err==BZ_STREAM_END) {

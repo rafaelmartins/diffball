@@ -85,6 +85,7 @@ typedef struct _cfile {
     unsigned int	compressor_type;
     unsigned int	access_flags;
     unsigned long	state_flags;
+    int			err;
     union {
 	struct {
 	    unsigned long	last;
@@ -135,15 +136,16 @@ typedef struct _cfile {
 	(cfh)->lseek_info.parent.last) != (cfh)->cfh_id)
 */
 
-unsigned int internal_copen(cfile *cfh, int fh, unsigned long fh_start,
+int internal_copen(cfile *cfh, int fh, 
+    unsigned long raw_fh_start, unsigned long raw_fh_end,
+    unsigned long data_fh_start, unsigned long data_fh_end,
+    unsigned int compressor_type, unsigned int access_flags);
+
+int copen(cfile *cfh, int fh, unsigned long fh_start,
     unsigned long fh_end, unsigned int compressor_type, 
     unsigned int access_flags);
 
-unsigned int copen(cfile *cfh, int fh, unsigned long fh_start,
-    unsigned long fh_end, unsigned int compressor_type, 
-    unsigned int access_flags);
-
-unsigned int copen_child_cfh(cfile *cfh, cfile *parent, unsigned long fh_start,
+int copen_child_cfh(cfile *cfh, cfile *parent, unsigned long fh_start,
     unsigned long fh_end, unsigned int compressor_type, unsigned int
     access_flags);
 
