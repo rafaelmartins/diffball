@@ -71,38 +71,28 @@ DCB_get_next_gap(CommandBuffer *buff, unsigned long gap_req, DCLoc *dc)
 	    return 1;
 	}
     }
-    if(1==1){
-	while(buff->DCB.llm.main != NULL  && 
-	   buff->DCB.llm.gap_pos > buff->DCB.llm.main->ver_pos) {
-//    v1printf("debug info gap_skew, gap_pos(%lu), main(%u), main->next(%u)\n", 
-//	buff->DCB.llm.gap_pos, buff->DCB.llm.main != NULL, 
-//	buff->DCB.llm.main != NULL ? buff->DCB.llm.main->next != NULL : 0);
-//	v1printf("ver_pos %lu\n", buff->DCB.llm.main->ver_pos);
+    while(buff->DCB.llm.main != NULL  && 
+	buff->DCB.llm.gap_pos > buff->DCB.llm.main->ver_pos) {
 	    DCBufferIncr(buff);
-	}
-	while(buff->DCB.llm.main != NULL && dc->len == 0) {
-//    v1printf("debug info loop, gap_pos(%lu), main(%u), main->next(%u)\n", 
-//	buff->DCB.llm.gap_pos, buff->DCB.llm.main != NULL, 
-//	buff->DCB.llm.main != NULL ? buff->DCB.llm.main->next != NULL : 0);
-//	v1printf("ver_pos %lu\n", buff->DCB.llm.main->ver_pos);
-	    if(buff->DCB.llm.main->next == NULL) {
-		buff->DCB.llm.gap_pos = buff->ver_size;
-		if(buff->ver_size - LLM_VEND(buff->DCB.llm.main)
-		    >= gap_req) {
-		    dc->offset = LLM_VEND(buff->DCB.llm.main);
-		    dc->len = buff->ver_size - LLM_VEND(buff->DCB.llm.main);
-		} else {
-		    DCBufferIncr(buff);
-		    return 0;
-		}
-	    } else if(buff->DCB.llm.main->next->ver_pos - 
-		LLM_VEND(buff->DCB.llm.main) >= gap_req) {
+    }
+    while(buff->DCB.llm.main != NULL && dc->len == 0) {
+	if(buff->DCB.llm.main->next == NULL) {
+	    buff->DCB.llm.gap_pos = buff->ver_size;
+	    if(buff->ver_size - LLM_VEND(buff->DCB.llm.main)
+		>= gap_req) {
 		dc->offset = LLM_VEND(buff->DCB.llm.main);
-		dc->len = buff->DCB.llm.main->next->ver_pos - dc->offset;
-		buff->DCB.llm.gap_pos = buff->DCB.llm.main->next->ver_pos;
-	    } else {
+		dc->len = buff->ver_size - LLM_VEND(buff->DCB.llm.main);
+	     } else {
 		DCBufferIncr(buff);
+		return 0;
 	    }
+	} else if(buff->DCB.llm.main->next->ver_pos - 
+	    LLM_VEND(buff->DCB.llm.main) >= gap_req) {
+	    dc->offset = LLM_VEND(buff->DCB.llm.main);
+	    dc->len = buff->DCB.llm.main->next->ver_pos - dc->offset;
+	    buff->DCB.llm.gap_pos = buff->DCB.llm.main->next->ver_pos;
+	} else {
+	    DCBufferIncr(buff);
 	}
     }
     if(dc->len != 0) {
@@ -117,10 +107,21 @@ DCB_get_next_command(CommandBuffer *buff, DCommand *dc)
 {
     if(DCBUFFER_FULL_TYPE == buff->DCBtype) {
 	dc->type = current_command_type(buff);
+	/* this is a quick fix till a later version where I expand on this 
+	   feature */
+	if(buff->add_src_count > 1  && DC_ADD == dc->type) {
+	    dc->src_id = ((buff->DCB.full.add_src_id[
+		buff->DCB.full.add_index /8] >> 
+		buff->DCB.full.add_index % 8) & 0x1);
+		buff->DCB.full.add_index++;
+	} else {
+	    dc->src_id = 0;
+	}
 	dc->loc.offset = buff->DCB.full.lb_tail->offset;
 	dc->loc.len = buff->DCB.full.lb_tail->len;
 	DCBufferIncr(buff);
     } else if (DCBUFFER_MATCHES_TYPE == buff->DCBtype) {
+	dc->src_id = 0;
 	assert(buff->reconstruct_pos != buff->ver_size);
 	if((buff->DCB.matches.cur - buff->DCB.matches.buff) == 
 	    buff->DCB.matches.buff_count) {
@@ -139,6 +140,7 @@ DCB_get_next_command(CommandBuffer *buff, DCommand *dc)
 	}
 	buff->reconstruct_pos += dc->loc.len;
     } else if(DCBUFFER_LLMATCHES_TYPE == buff->DCBtype) {
+	dc->src_id = 0;
 	assert(buff->flags & DCB_LLM_FINALIZED);
 	if(buff->DCB.llm.main == NULL) {
 	    dc->type = DC_ADD;
@@ -307,11 +309,23 @@ DCBufferDecr(CommandBuffer *buffer)
 
 void 
 DCB_add_add(CommandBuffer *buffer, unsigned long ver_pos, 
-    unsigned long len)
+    unsigned long len, unsigned short src_id)
 {
+#ifdef DEV_VERSION
+    v3printf("add v(%lu), l(%lu), i(%u), rpos(%lu)\n", ver_pos , len, src_id, 
+	buffer->reconstruct_pos);
+#endif
     if(DCBUFFER_FULL_TYPE == buffer->DCBtype) {
 	if(buffer->DCB.full.lb_tail == buffer->DCB.full.lb_end)
 	    DCB_resize_full(buffer);
+	if(src_id==0) {
+	    buffer->DCB.full.add_src_id[buffer->DCB.full.add_index/8] &= 
+		~(1 << (buffer->DCB.full.add_index % 8));
+	} else {
+	    buffer->DCB.full.add_src_id[buffer->DCB.full.add_index/8] |= 
+		(src_id << (buffer->DCB.full.add_index % 8));
+	}
+	buffer->DCB.full.add_index++;
 	buffer->DCB.full.lb_tail->offset = ver_pos;
 	buffer->DCB.full.lb_tail->len = len;
 	*buffer->DCB.full.cb_tail &= ~(1 << buffer->DCB.full.cb_tail_bit);
@@ -327,6 +341,10 @@ DCB_add_copy(CommandBuffer *buffer, unsigned long src_pos,
 {
 #ifdef DEBUG_DCBUFFER
     buffer->total_copy_len += len;
+#endif
+#ifdef DEV_VERSION
+    v3printf("copy s(%lu), v(%lu), l(%lu), rpos(%lu)\n", src_pos, ver_pos ,
+	 len, buffer->reconstruct_pos);
 #endif
 
     if(DCBUFFER_FULL_TYPE == buffer->DCBtype) {
@@ -431,6 +449,7 @@ DCBufferReset(CommandBuffer *buffer)
 	buffer->DCB.full.lb_tail = buffer->DCB.full.lb_start;
 	buffer->DCB.full.cb_tail = buffer->DCB.full.cb_head;
 	buffer->DCB.full.cb_tail_bit = buffer->DCB.full.cb_head_bit;
+	buffer->DCB.full.add_index = 0;
     } else if(DCBUFFER_MATCHES_TYPE == buffer->DCBtype) {
 	buffer->DCB.matches.cur = buffer->DCB.matches.buff;
     } else if(DCBUFFER_LLMATCHES_TYPE == buffer->DCBtype) {
@@ -491,6 +510,7 @@ DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
     buffer->ver_size = ver_size;
     buffer->reconstruct_pos = 0;
     buffer->DCBtype = type;
+    buffer->add_src_count = buffer->copy_src_count = 0;
 #ifdef DEBUG_DCBUFFER
     buffer->total_copy_len = 0;
 #endif
@@ -502,6 +522,11 @@ DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
 	  buffer->DCB.full.buffer_size.  it makes one hell of a difference. */
 	if((buffer->DCB.full.cb_start =
 	    (unsigned char *)malloc(buffer_size))==NULL){
+	    perror("shite, malloc failed\n");
+	    exit(EXIT_FAILURE);
+	}
+	if((buffer->DCB.full.add_src_id = (unsigned char *)malloc(buffer_size)) 
+	    == NULL){
 	    perror("shite, malloc failed\n");
 	    exit(EXIT_FAILURE);
 	}
@@ -518,6 +543,7 @@ DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
 	    buffer->DCB.full.lb_start;
 	buffer->DCB.full.lb_end = buffer->DCB.full.lb_start + 
 	    buffer->DCB.full.buffer_size - 1;
+	buffer->DCB.full.add_index=0;
     } else if(DCBUFFER_MATCHES_TYPE == type) {
 	if((buffer->DCB.matches.buff = (DCLoc_match *)malloc(buffer_size * 
 	    sizeof(DCLoc_match)) )==NULL) {
@@ -569,6 +595,11 @@ DCB_resize_full(CommandBuffer *buffer)
 	buffer->DCB.full.cb_start, buffer->DCB.full.buffer_size /4 ))
 	==NULL) {
 
+	v0printf("resizing command buffer failed, exiting\n");
+	exit(EXIT_FAILURE);
+    } else if((buffer->DCB.full.add_src_id = (char *)realloc(
+	buffer->DCB.full.add_src_id, buffer->DCB.full.buffer_size /4))
+	==NULL) {
 	v0printf("resizing command buffer failed, exiting\n");
 	exit(EXIT_FAILURE);
     } else if((buffer->DCB.full.lb_start = 

@@ -37,6 +37,7 @@ extern unsigned int global_use_md5;
 
 #define ADD_CFH_FREE_FLAG		0x1
 #define DCB_LLM_FINALIZED		0x2
+#define EXTRA_PATCH_DATA_USED		0x4
 
 // internal dcbuffer macros.
 #define LLM_VEND(l)  ((l)->ver_pos + (l)->len)
@@ -84,6 +85,8 @@ typedef struct _CommandBuffer {
 	    unsigned char *cb_start, *cb_end, *cb_head, *cb_tail;
 	    unsigned char cb_tail_bit, cb_head_bit;
 	    DCLoc *lb_start, *lb_end, *lb_head, *lb_tail;
+	    unsigned long add_index;
+	    unsigned char *add_src_id;
 	} full;
 	struct {
 	    off_u64 ver_start;
@@ -102,27 +105,49 @@ typedef struct _CommandBuffer {
     cfile *add_src_cfh[2];
     dcb_src_func add_src_func[2];
     unsigned short add_src_count;
+
+    /* this is a hack, and not a particularly good one either.
+	things need to be expanded to eliminate the need for this- check the 
+	bsdiff format reconstructor if you're curious of it's reason for 
+	existing*/
+    void *extra_patch_data;
     cfile *copy_src_cfh[2];
     dcb_src_func copy_src_func[2];
     unsigned short copy_src_count;
     unsigned long flags;
 } CommandBuffer;
 
+#ifdef DEV_VERSION
+#define DCB_REGISTER_EXTRA_PATCH_DATA(dcbuff, ext_ptr)			\
+    if((dcbuff)->extra_patch_data != NULL){				\
+	abort();							\
+    }									\
+    (dcbuff)->extra_patch_data = (void *)(ext_ptr)
+#else
+#define DCB_REGISTER_EXTRA_PATCH_DATA(dcbuff, ext_ptr)			\
+    (dcbuff)->extra_patch_data = (void *)(ext_ptr)
+#endif
 
-#define DCBUFFER_REGISTER_ADD_CFH(buff, handle, func)			\
+#define copyDCB_add_src(buff, dc, out_cfh)				\
+    (buff)->add_src_func[(dc)->src_id]((buff), (dc), (out_cfh))
+#define copyDCB_copy_src(buff, dc, out_cfh)				\
+    (buff)->copy_src_func[(dc)->src_id]((buff), (dc), (out_cfh))
+
+#define DCBUFFER_REGISTER_ADD_SRC(buff, handle, func)			\
     if((buff)->add_src_count >= 2){abort();};				\
     (buff)->add_src_cfh[(buff)->add_src_count] = (handle);		\
     (buff)->add_src_func[(buff)->add_src_count] = ((func) == NULL ? 	\
 	&default_dcb_add_func : (func));				\
     (buff)->add_src_count++
 
-#define DCBUFFER_REGISTER_COPY_CFH(buff, handle, func)			\
+#define DCBUFFER_REGISTER_COPY_SRC(buff, handle, func)			\
     if((buff)->copy_src_count >= 2) {abort();};				\
     (buff)->copy_src_cfh[(buff)->copy_src_count] = (handle);		\
     (buff)->copy_src_func[(buff)->copy_src_count] = ((func) == NULL ? 	\
-	&default_dcb_copy_func : (func);				\
+	&default_dcb_copy_func : (func));				\
     (buff)->copy_src_count++
 
+/* not used anymore, chuck at some point */
 #define DCB_REGISTER_MATCHES_VER_CFH(buff, cfh)				\
     if((buff)->DCBtype==DCBUFFER_MATCHES_TYPE) {			\
 	(buff)->DCB.matches.ver_start = cfile_start_offset((cfh));	\
@@ -150,7 +175,9 @@ unsigned int DCB_get_next_gap(CommandBuffer *buff, unsigned long gap_req,
 unsigned int DCB_commands_remain(CommandBuffer *buffer);
 void DCB_get_next_command(CommandBuffer *buffer, DCommand *dc);
 void DCB_truncate(CommandBuffer *buffer, unsigned long len);
-void DCB_add_add(CommandBuffer *buffer, off_u64 ver_pos, unsigned long len);
+
+void DCB_add_add(CommandBuffer *buffer, off_u64 ver_pos, unsigned long len,
+    unsigned short src_id);
 void DCB_add_copy(CommandBuffer *buffer, off_u64 src_pos, off_u64 ver_pos,
     unsigned long len);
 
