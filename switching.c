@@ -269,7 +269,7 @@ signed int switchingReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff /*,
     cseek(patchf, com_start, CSEEK_CUR);
     add_off = SWITCHING_MAGIC_LEN + SWITCHING_VERSION_LEN + 4;
     last_com=DC_COPY;
-    DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL);
+    DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL,0);
     v2printf("add data block size(%lu), starting commands at pos(%lu)\n", com_start,
 	ctell(patchf, CSEEK_ABS));
     while(cread(patchf, buff, 1)==1 && end_of_patch==0) {

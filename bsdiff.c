@@ -138,9 +138,9 @@ bsdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
 	return MEM_ERROR;
     }
 
-    DCBUFFER_REGISTER_ADD_SRC(dcbuff, diff_cfh, &bsdiff_overlay_add);
+    DCBUFFER_REGISTER_ADD_SRC(dcbuff, diff_cfh, &bsdiff_overlay_add, 1);
     if(ver == 4) {
-	DCBUFFER_REGISTER_ADD_SRC(dcbuff, extra_cfh, NULL);
+	DCBUFFER_REGISTER_ADD_SRC(dcbuff, extra_cfh, NULL, 1);
     }
     ver = (ver -1) *8;
     src_pos = ver_pos = 0;

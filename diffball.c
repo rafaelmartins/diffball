@@ -308,7 +308,7 @@ main(int argc, char **argv)
 
     v1printf("outputing patch...\n");
     v1printf("there were %lu commands\n", dcbuff.DCB.full.buffer_count);
-    DCBUFFER_REGISTER_ADD_SRC(&dcbuff, &ver_full, NULL);
+    DCBUFFER_REGISTER_ADD_SRC(&dcbuff, &ver_full, NULL, 0);
     if(GDIFF4_FORMAT == patch_format_id) { 
         encode_result = gdiff4EncodeDCBuffer(&dcbuff, &out_cfh);
     } else if(GDIFF5_FORMAT == patch_format_id) {

@@ -51,7 +51,7 @@ udiffReconstructDCBuff(cfile *patchf, cfile *src_cfh,
 	return PATCH_CORRUPT_ERROR;
     s_lastoff = 0;
     s_lastline = 1;
-    DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL);
+    DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL,0);
     while(cfile_len(patchf)!= ctell(patchf, CSEEK_FSTART)) {
 	cread(patchf, buff, 4);
 	if('\\'==buff[0]) {

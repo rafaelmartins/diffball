@@ -205,7 +205,7 @@ gdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 	off_is_sbytes=0;
     assert(DCBUFFER_FULL_TYPE == dcbuff->DCBtype);
     cseek(patchf, 5, CSEEK_CUR);
-    DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL);
+    DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL,0);
     while(cread(patchf, buff, 1)==1 && *buff != 0) {
 	if(*buff > 0 && *buff <= 248) {
 	    //add command

@@ -30,6 +30,7 @@
 #include "cfile.h"
 #include "defs.h"
 #include "options.h"
+#include "errors.h"
 
 unsigned int global_verbosity=0;
 unsigned long sample_rate=0;
@@ -194,7 +195,7 @@ int main(int argc, char **argv)
     DCB_test_total_copy_len(&buffer);
     v1printf("outputing patch...\n");
     copen(&out_cfh, out_fh, 0, 0, patch_compressor, CFILE_WONLY);
-    DCBUFFER_REGISTER_ADD_SRC(&buffer, &ver_cfh, NULL);
+    DCBUFFER_REGISTER_ADD_SRC(&buffer, &ver_cfh, NULL, 0);
     if(GDIFF4_FORMAT == patch_id) {
 	encode_result = gdiff4EncodeDCBuffer(&buffer, &out_cfh);
 //	encode_result = gdiff4EncodeDCBuffer(&buffer, &ver_cfh, &out_cfh);

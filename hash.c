@@ -606,6 +606,7 @@ RHash_find_matches(RefHash *rhash, cfile *ref_cfh)
 	cfw->pos++;
 
     }
+    free_adler32_seed(&ads);
     return 0;
 }
 

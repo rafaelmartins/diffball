@@ -112,7 +112,7 @@ bdiffReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
     /* what the heck is maxlength used for? */
     maxlength = readUBytesBE(buff, 4);
     fh_pos = 0;
-    DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL);
+    DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL, 0);
     while(1 == cread(patchf, buff, 1)) {
 	v2printf("got command(%u): ", buff[0]);
 	if((buff[0] >> 6)==00) {

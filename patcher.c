@@ -163,7 +163,7 @@ main(int argc, char **argv)
     }
     v1printf("reconstruction return=%ld\n", recon_val);
     v1printf("reconstructing target file based off of dcbuff commands...\n");
-    DCBUFFER_REGISTER_COPY_SRC(&dcbuff, &src_cfh, NULL);
+    DCBUFFER_REGISTER_COPY_SRC(&dcbuff, &src_cfh, NULL, 0);
     reconstructFile(&dcbuff, &out_cfh);
     if(BDELTA_FORMAT==patch_id) {
 	if(ctell(&out_cfh, CSEEK_ABS) < dcbuff.ver_size) {

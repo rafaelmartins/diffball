@@ -182,7 +182,7 @@ bdeltaReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff)
     /* add block starts after control data. */
     add_pos += (matches * (3 * int_size));
     add_start = add_pos;
-    DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL);
+    DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL, 0);
     v2printf("add block starts at %lu\nprocessing commands\n", add_pos);
     unsigned long match_orig = matches;
     if(size1==0) {

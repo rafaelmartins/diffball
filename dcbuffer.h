@@ -105,6 +105,7 @@ typedef struct _CommandBuffer {
     cfile *add_src_cfh[2];
     dcb_src_func add_src_func[2];
     unsigned short add_src_count;
+    unsigned long  add_src_free;
 
     /* this is a hack, and not a particularly good one either.
 	things need to be expanded to eliminate the need for this- check the 
@@ -114,6 +115,7 @@ typedef struct _CommandBuffer {
     cfile *copy_src_cfh[2];
     dcb_src_func copy_src_func[2];
     unsigned short copy_src_count;
+    unsigned long  copy_src_free;
     unsigned long flags;
 } CommandBuffer;
 
@@ -133,18 +135,21 @@ typedef struct _CommandBuffer {
 #define copyDCB_copy_src(buff, dc, out_cfh)				\
     (buff)->copy_src_func[(dc)->src_id]((buff), (dc), (out_cfh))
 
-#define DCBUFFER_REGISTER_ADD_SRC(buff, handle, func)			\
+#define DCBUFFER_REGISTER_ADD_SRC(buff, handle, func,free)		\
     if((buff)->add_src_count >= 2){abort();};				\
     (buff)->add_src_cfh[(buff)->add_src_count] = (handle);		\
     (buff)->add_src_func[(buff)->add_src_count] = ((func) == NULL ? 	\
 	&default_dcb_add_func : (func));				\
+    (buff)->add_src_free |= (((free) & 0x1) << (buff)->add_src_count);	\
     (buff)->add_src_count++
 
-#define DCBUFFER_REGISTER_COPY_SRC(buff, handle, func)			\
+#define DCBUFFER_REGISTER_COPY_SRC(buff, handle, func, free)		\
     if((buff)->copy_src_count >= 2) {abort();};				\
     (buff)->copy_src_cfh[(buff)->copy_src_count] = (handle);		\
     (buff)->copy_src_func[(buff)->copy_src_count] = ((func) == NULL ? 	\
 	&default_dcb_copy_func : (func));				\
+    (buff)->copy_src_free |= (((free) & 0x1) << 			\
+	(buff)->copy_src_count);					\
     (buff)->copy_src_count++
 
 /* not used anymore, chuck at some point */

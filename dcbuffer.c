@@ -494,13 +494,37 @@ DCBufferFree(CommandBuffer *buffer)
     if(DCBUFFER_FULL_TYPE == buffer->DCBtype) {
 	free(buffer->DCB.full.cb_start);
 	free(buffer->DCB.full.lb_start);
+	free(buffer->DCB.full.add_src_id);
+	buffer->DCB.full.cb_start = NULL;
+	buffer->DCB.full.lb_start = NULL;
+	buffer->DCB.full.add_src_id = NULL;
     } else if(DCBUFFER_MATCHES_TYPE == buffer->DCBtype) {
 	free(buffer->DCB.matches.buff);
+	buffer->DCB.matches.buff = NULL;
     } else {
 	for(x=0; x< buffer->DCB.llm.free_count; x++)
 	    free(buffer->DCB.llm.free[x]);
 	free(buffer->DCB.llm.free);
+	buffer->DCB.llm.free = NULL;
     }
+    for(x=0; x < buffer->add_src_count; x++) {
+	if((buffer->add_src_free >> x ) & 0x1) {
+	    cclose(buffer->add_src_cfh[x]);
+	    free(buffer->add_src_cfh[x]);
+	}
+	buffer->add_src_cfh[x] = NULL;
+    }
+    buffer->add_src_free = 0;
+    buffer->add_src_count = 0;
+    for(x=0; x < buffer->copy_src_count; x++) {
+	if((buffer->copy_src_free >> x ) & 0x1) {
+	    cclose(buffer->copy_src_cfh[x]);
+	    free(buffer->copy_src_cfh[x]);
+	}
+	buffer->copy_src_cfh[x] = NULL;
+    }
+    buffer->copy_src_free = 0;
+    buffer->copy_src_count = 0;
 }
 
 int 
@@ -513,6 +537,7 @@ DCBufferInit(CommandBuffer *buffer, unsigned long buffer_size,
     buffer->reconstruct_pos = 0;
     buffer->DCBtype = type;
     buffer->add_src_count = buffer->copy_src_count = 0;
+    buffer->copy_src_free = buffer->add_src_free = 0;
 #ifdef DEBUG_DCBUFFER
     buffer->total_copy_len = 0;
 #endif

@@ -155,11 +155,10 @@ xdelta1ReconstructDCBuff(cfile *patchf, CommandBuffer *dcbuff,
 	}
 	copen_child_cfh(add_cfh, patchf, add_start, control_offset, 
 	    GZIP_COMPRESSOR, CFILE_RONLY);
-	DCBUFFER_REGISTER_ADD_SRC(dcbuff, add_cfh, NULL);
-	FREE_CFH_AT_CLOSE(add_cfh);
+	DCBUFFER_REGISTER_ADD_SRC(dcbuff, add_cfh, NULL, 1);
     } else {
 	add_pos = add_start;
-	DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL);
+	DCBUFFER_REGISTER_ADD_SRC(dcbuff, patchf, NULL, 0);
     }
     while(proc_count++ != count) {
 	x = readXDInt(ctrl_cfh, buff);
