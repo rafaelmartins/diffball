@@ -122,6 +122,7 @@ internal_copen(cfile *cfh, int fh, unsigned long raw_fh_start, unsigned long raw
 	}
 	dcprintf("got %ld\n", ret_val);
 	cfh->compressor_type = ret_val;
+	FLAG_LSEEK_NEEDED(cfh);
     } else {
 	cfh->compressor_type = compressor_type;
     }
@@ -202,7 +203,6 @@ internal_copen(cfile *cfh, int fh, unsigned long raw_fh_start, unsigned long raw
 	    return MEM_ERROR;
         }
 	internal_gzopen(cfh);
-	cfh->data.pos = cfh->data.offset = cfh->data.end = 0;
 	break;
     }
     /* no longer in use.  leaving it as a reminder for updating when 
@@ -228,12 +228,15 @@ internal_gzopen(cfile *cfh)
     cfh->raw.offset = 2;
 	
     if(ENSURE_LSEEK_POSITION(cfh)) {
+	dcprintf("internal_gzopen:%u ENSURE_LSEEK_POSITION failed.n", __LINE__);
 	return IO_ERROR;
     }
     x = read(cfh->raw_fh, cfh->raw.buff, MIN(cfh->raw.size, 
 	cfh->raw_total_len -2));
     cfh->raw.end = x;
+
     if(inflateInit2(cfh->zs, -MAX_WBITS) != Z_OK) {
+	dcprintf("internal_gzopen:%u inflateInit2 failed\n", __LINE__);
 	return IO_ERROR;
     }
 
@@ -245,6 +248,7 @@ internal_gzopen(cfile *cfh)
 #define GZ_COMMENT	0x10
 
     if(cfh->raw.buff[0]!= Z_DEFLATED || (cfh->raw.buff[1] & GZ_RESERVED)) {
+	dcprintf("internal_gzopen:%u either !Z_DEFLATED || GZ_RESERVED\n", __LINE__);
 	return IO_ERROR;
     }
     /* save flags, since it's possible the gzip header > cfh->raw.size */
@@ -264,22 +268,26 @@ internal_gzopen(cfile *cfh)
     }
     if(x & GZ_ORIG_NAME)
 	skip++;
-    if(x & GZ_ORIG_NAME)
-	skip++;
     if(x & GZ_COMMENT)
 	skip++;
+    dcprintf("internal_gzopen:%u skip=%u\n", __LINE__, skip);
+    dcprintf("initial off(%lu), pos(%lu)\n", cfh->raw.offset, cfh->raw.pos);
     while(skip) {
-	while(cfh->raw.buff[cfh->raw.pos]==0) {
+	while(cfh->raw.buff[cfh->raw.pos]!=0) {
 	    if(cfh->raw.end == cfh->raw.pos) {
 		cfh->raw.offset += cfh->raw.end;
 		y = read(cfh->raw_fh, cfh->raw.buff, MIN(cfh->raw.size, 
 		    cfh->raw_total_len - cfh->raw.offset));
 		cfh->raw.end = y;
 		cfh->raw.pos = 0;
+	    } else {
+		cfh->raw.pos++;
 	    }
 	}
+	cfh->raw.pos++;
 	skip--;
     }
+    dcprintf("after skip off(%lu), pos(%lu)\n", cfh->raw.offset, cfh->raw.pos);
     if(x & GZ_HEAD_CRC) {
 	cfh->raw.pos +=2;
 	if(cfh->raw.pos >= cfh->raw.end) {
@@ -287,8 +295,10 @@ internal_gzopen(cfile *cfh)
 	    cfh->raw.pos = cfh->raw.end = 0;
 	}
     }
+
     cfh->zs->avail_in = cfh->raw.end - cfh->raw.pos;
     cfh->zs->next_in = cfh->raw.buff + cfh->raw.pos;
+    cfh->data.pos = cfh->data.offset = cfh->data.end = 0;
     return 0L;
 }
 
@@ -447,16 +457,11 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 	    dcprintf("cseek: gz: data_offset < cfh->data.offset, resetting\n");
 	    FLAG_LSEEK_NEEDED(cfh);
 	    inflateEnd(cfh->zs);
-	    cfh->zs->zalloc = NULL;
-	    cfh->zs->zfree =  NULL;
-	    cfh->zs->opaque = NULL;
 	    cfh->state_flags &= ~CFILE_EOF;
 	    internal_gzopen(cfh);
-	    cfh->zs->next_in = cfh->raw.buff;
-	    cfh->zs->next_out = cfh->data.buff;
-	    cfh->zs->avail_in = cfh->zs->avail_out = 0;
-	    cfh->data.end = cfh->raw.end = cfh->data.pos = 
-		cfh->data.offset = cfh->raw.offset = cfh->raw.pos = 0;
+//	    cfh->zs->avail_in = cfh->zs->avail_out = 0;
+//	    cfh->data.end = cfh->raw.end = cfh->data.pos = 
+//		cfh->data.offset = cfh->raw.offset = cfh->raw.pos = 0;
 	    if(ENSURE_LSEEK_POSITION(cfh)) {
 		return (cfh->err = IO_ERROR);
 	    }
@@ -686,6 +691,7 @@ crefill(cfile *cfh)
 		    (cfh->raw.end - cfh->zs->avail_in) < cfh->raw_total_len)) {
 		    dcprintf("crefill: zs, refilling raw: ");
 		    if(ENSURE_LSEEK_POSITION(cfh)) {
+			v1printf("encountered IO_ERROR in gz crefill: %u\n", __LINE__);
 			return IO_ERROR;
 		    }
 		    cfh->raw.offset += cfh->raw.end;
@@ -696,12 +702,13 @@ crefill(cfile *cfh)
 		    cfh->raw.pos = 0;
 		    cfh->zs->next_in = cfh->raw.buff;
 		}
-		dcprintf("crefill: zs, refilling data\n");
+		dcprintf("crefill:%u: zs, refilling data\n", __LINE__);
 		cfh->zs->avail_out = cfh->data.size;
 		cfh->zs->next_out = cfh->data.buff;
 		err = inflate(cfh->zs, Z_NO_FLUSH);
 
 		if(err != Z_OK && err != Z_STREAM_END) {
+		    v1printf("encountered err(%i) in gz crefill:%u\n", err, __LINE__);
 		    return IO_ERROR;
 		}
 		if(err==Z_STREAM_END) {
@@ -711,7 +718,7 @@ crefill(cfile *cfh)
 			cfh->data_total_len);
 		    cfh->state_flags |= CFILE_EOF;
 	 	}
-	    }while((!(cfh->state_flags & CFILE_EOF)) && cfh->zs->avail_in==0 && cfh->zs->avail_out==cfh->raw.size);
+	    } while((!(cfh->state_flags & CFILE_EOF)) && cfh->zs->avail_in==0 && cfh->zs->avail_out==cfh->raw.size);
 	    cfh->data.end = cfh->data.size - cfh->zs->avail_out;
 	    cfh->data.pos = 0;
 	}
