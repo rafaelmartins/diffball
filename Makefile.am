@@ -5,16 +5,10 @@ AM_CFLAGS = -ftest-coverage -fprofile-arcs -pg -ftest-coverage -Wall
 FORMATS = dcbuffer.c cfile.c bit-functions.c gdiff.c switching.c bdiff.c \
     bdelta.c udiff.c line-util.c
 DIFF_FILES = diff-algs.c adler32.c primes.c
-CFILE_LIBS = -lssl -lcrypto
 
 bin_PROGRAMS = differ patcher diffball convert_delta ctest
 
 ctest_SOURCES = ctest.c cfile.c
-ctest_LDADD = $(CFILE_LIBS)
-diffball_LDADD = $(CFILE_LIBS)
-differ_LDADD   = $(CFILE_LIBS)
-convert_delta_LDADD = $(CFILE_LIBS)
-patcher_LDADD = $(CFILE_LIBS)
 patcher_SOURCES = patcher.c apply-patch.c options.c $(FORMATS)
 diffball_SOURCES = diffball.c string-misc.c tar.c options.c \
     $(DIFF_FILES) $(FORMATS) 

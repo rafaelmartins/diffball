@@ -10,7 +10,8 @@ AC_PROG_CC
 #AC_DEFINE(DEV_VERSION, 1, Toggle on asserts.)
 
 # Checks for libraries.
-AC_CHECK_LIB(popt, poptGetContext, ,)
+AC_CHECK_LIB(popt, poptGetContext)
+AC_CHECK_LIB(crypto, EVP_get_digestbyname)
 
 # Checks for header files.
 AC_HEADER_STDC
