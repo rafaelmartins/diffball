@@ -24,7 +24,7 @@
 #include <zlib.h>
 
 #define CFILE_DEFAULT_BUFFER_SIZE 	(4096)
-//#define CFILE_DEFAULT_BUFFER_SIZE 	(512)
+//#define CFILE_DEFAULT_BUFFER_SIZE 	(BUFSIZ)
 #define NO_COMPRESSOR			(0x0)
 #define GZIP_COMPRESSOR			(0x1)
 #define BZIP2_COMPRESSOR		(0x2)

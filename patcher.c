@@ -162,7 +162,7 @@ main(int argc, char **argv)
     	cseek(&patch_cfh[x], 0, CSEEK_FSTART);
     }
 
-    if(patch_count -1) {
+    if(patch_count == 1 || reorder_commands != 0) {
     	bufferless = 0;
     	v1printf("disabling bufferless, patch_count(%lu) != 1\n", patch_count);
     } else {
