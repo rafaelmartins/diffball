@@ -238,7 +238,7 @@ internal_DCB_register_volatile_cfh_src(CommandBuffer *dcb, cfile *cfh,
     EDCB_SRC_ID x;
 
     if(DCBUFFER_BUFFERLESS_TYPE == dcb->DCBtype) {
-	v1printf("registering volatile handle, free(%u)\n", flags);
+	v2printf("registering volatile handle, free(%u)\n", flags);
 	dup = copen_dup_cfh(cfh);
 	if(dup == NULL)
 	    return MEM_ERROR;
@@ -693,7 +693,7 @@ DCB_rec_copy_from_DCB_src(CommandBuffer *tdcb, command_list *tcl,
 
 	    	// we're not working on the same version, so the map must be used, and updated.
 	    	if(translation_map[scl->src_id[com_offset]] == DCB_SRC_NOT_TRANSLATED) {
-		    v1printf("registering %u translated ", scl->src_id[com_offset]);
+		    v2printf("registering %u translated ", scl->src_id[com_offset]);
 		    if(dcb_s->ov) {
 	    	    	x = DCB_register_overlay_src(tdcb, dcb_s->src_ptr.cfh,
 	    	    	    dcb_s->read_func, dcb_s->copy_func, dcb_s->mask_read_func,
