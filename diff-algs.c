@@ -71,9 +71,12 @@ signed int init_RefHash(struct ref_hash *rhash, struct cfile *ref_cfh,
 		rhash->hash[x] = 0;
     }
     init_adler32_seed(&ads, seed_len, 1);
+    //rbuff_start = cseek(ref_cfh, 0, CSEEK_FSTART);
     rbuff_end=cread(ref_cfh, rbuff, rbuff_size);
+    printf("inited hash start(%lu), end(%lu), requested(%u)\n", rbuff_start, rbuff_end,
+    	rbuff_size);
     //printf("rbuff_end(%lu)\n", rbuff_end);
-    rbuff_start = 0;
+
     update_adler32_seed(&ads, rbuff, seed_len);
 
     for(x=seed_len; x < ref_len - seed_len; x++) {
@@ -191,6 +194,8 @@ signed int OneHalfPassCorrecting(struct CommandBuffer *buffer,
 		   			(vbuff_size > vbuff_start ? 0 : vbuff_start - vbuff_size),
 		   			CSEEK_FSTART);
 		   		vbuff_end=cread(ver_cfh, vbuff, vbuff_size);
+		   		printf("back match moved vbuff to start(%lu), end(%lu)\n",
+		    			vbuff_start, vbuff_end);
 		   	}
 		   	if(rm-rbuff_start==0) {
 		   		rbuff_start=
@@ -198,6 +203,8 @@ signed int OneHalfPassCorrecting(struct CommandBuffer *buffer,
 		  			(rbuff_size > rbuff_start ? 0 : rbuff_start - rbuff_size),
 		  			CSEEK_FSTART);
 		  		rbuff_end=cread(rhash->ref_cfh, rbuff, rbuff_size);
+		  		printf("back match moved rbuff to start(%lu), end(%lu)\n",
+		    			rbuff_start, rbuff_end);
 			}
 		    while(vm > 0 && rm > 0 && 
 		    	vbuff[vm -vbuff_start-1]==rbuff[rm -rbuff_start -1]) {
@@ -208,12 +215,16 @@ signed int OneHalfPassCorrecting(struct CommandBuffer *buffer,
 		    			cseek(ver_cfh, (vbuff_size > vbuff_start ? 0 :
 		    			vbuff_start - vbuff_size), CSEEK_FSTART);
 		    		vbuff_end=cread(ver_cfh, vbuff, vbuff_size);
+		    		printf("back match moved vbuff to start(%lu), end(%lu)\n",
+		    			vbuff_start, vbuff_end);
 		    	}
 		    	if(rm-rbuff_start==0) {
 		    		rbuff_start=
 		    			cseek(rhash->ref_cfh, (rbuff_size > rbuff_start ? 0 :
 		    			rbuff_start - rbuff_size), CSEEK_FSTART);
 		    		rbuff_end=cread(rhash->ref_cfh, rbuff, rbuff_size);
+		    		printf("back match moved rbuff to start(%lu), end(%lu)\n",
+		    			rbuff_start, rbuff_end);
 		    	}
 		    }
 		    len=(vc -vm) + rhash->seed_len;
@@ -222,11 +233,15 @@ signed int OneHalfPassCorrecting(struct CommandBuffer *buffer,
 		    	vbuff_start=cseek(ver_cfh, vm+len , CSEEK_FSTART);
 		    	vbuff_end=cread(ver_cfh, vbuff,
 		    		MIN(vbuff_size, ver_len - vbuff_start));
+		    	printf("forw match moved vbuff to start(%lu), end(%lu)\n",
+		    		vbuff_start, vbuff_end);
 		    }
 		    if( rm + len >= rbuff_start + rbuff_size) {
 		    	rbuff_start=cseek(rhash->ref_cfh, rm + len, CSEEK_FSTART);
 		    	rbuff_end=cread(rhash->ref_cfh, rbuff,
 		    		MIN(rbuff_size, ref_len - rbuff_start));
+		    		printf("forw match moved rbuff to start(%lu), end(%lu)\n",
+		    			rbuff_start, rbuff_end);
 		    }
 		    while(rm + len < ref_len && vm + len < ver_len &&
 		    	rbuff[rm + len - rbuff_start]
@@ -236,26 +251,32 @@ signed int OneHalfPassCorrecting(struct CommandBuffer *buffer,
 		    		vbuff_start += vbuff_end;
 		    		vbuff_end=cread(ver_cfh, vbuff,
 		    			MIN(vbuff_size, ver_len -vbuff_start));
+		    		printf("forw match moved rbuff to start(%lu), end(%lu)\n",
+		    			vbuff_start, vbuff_end);
 		    	}
 		    	if(rm + len -rbuff_start==rbuff_size) {
 		    		rbuff_start += rbuff_end;
 		    		rbuff_end=cread(rhash->ref_cfh, rbuff,
 		    			MIN(rbuff_size, ref_len -rbuff_start));
+		    		printf("forw match moved rbuff to start(%lu), end(%lu)\n",
+		    			rbuff_start, rbuff_end);
 		    	}
 		    }
 
 	    	if (vs <= vm) {
 				if (vs < vm) {
-//		    		printf("    adding vstart(%lu), len(%lu), vend(%lu): (vs < vm)\n",
-//						vs, vm-vs, vm);
+		    		printf("    adding vstart(%lu), len(%lu), vend(%lu): (vs < vm)\n",
+						ver_cfh->raw_fh_start + vs, vm-vs, vm);
 		    		DCBufferAddCmd(buffer, DC_ADD, ver_cfh->raw_fh_start + vs, vm - vs);
 				}
-//				printf("    copying offset(%lu), len(%lu)\n", vm, len);
+				printf("    copying offset(%lu), len(%lu)\n", 
+					ver_cfh->raw_fh_start + vm, len);
 				DCBufferAddCmd(buffer, DC_COPY, rhash->ref_cfh->raw_fh_start + rm, len);
 		    } else {
-//				printf("    truncating(%lu) bytes: (vm < vs)\n", vs - vm);
+				printf("    truncating(%lu) bytes: (vm < vs)\n", vs - vm);
 				DCBufferTruncate(buffer, vs - vm);
-//				printf("    replacement copy: offset(%lu), len(%lu)\n", rm, len);
+				printf("    replacement copy: offset(%lu), len(%lu)\n", 
+					rhash->ref_cfh->raw_fh_start + rm, len);
 				DCBufferAddCmd(buffer, DC_COPY, rhash->ref_cfh->raw_fh_start + rm, len);
 	    	}
 	    	vs = vm + len;

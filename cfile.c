@@ -36,7 +36,7 @@ signed int cmemopen(struct cfile *cfile, unsigned char *buff,
 	cfile->byte_len = fh_end - fh_start;
 	cfile->raw_pos = cfile->raw_buff = buff;
 	cfile->trans_fh_pos = cfile->raw_fh_pos = fh_start;
-	cfile->raw_filled = buff + fh_end -fh_start;
+	cfile->raw_filled = buff + fh_end - fh_start;
 	cfile->raw_size = CFILE_RAW_BUFF_SIZE;
 	//printf("mem alias, filled(%lu), pos(%lu)\n", cfile->raw_filled - cfile->raw_buff,
 	//	cfile->raw_pos - cfile->raw_buff);
@@ -110,6 +110,10 @@ unsigned long cread(struct cfile *cfile, unsigned char *out_buff, unsigned long 
     	uncompr_bytes = MIN(len, cfile->raw_filled - cfile->raw_pos);
     	memcpy(out_buff, cfile->raw_pos, uncompr_bytes);
    		cfile->raw_pos += uncompr_bytes;
+   		//printf("mem cread, raw_pos(%lu), uncompr_bytes(%lu), final(%lu), filled(%lu)\n",
+   		//	cfile->raw_pos - cfile->raw_buff - uncompr_bytes, uncompr_bytes, 
+   		//	cfile->raw_pos - cfile->raw_buff,
+   		//	cfile->raw_filled - cfile->raw_buff);
    		return uncompr_bytes;
    	}
     while(len != bytes_read) {
@@ -280,11 +284,12 @@ unsigned long cseek(struct cfile *cfile, signed long offset, int offset_type)
 			printf("raw_fh_start(%lu)\n", cfile->raw_fh_start);
 			printf("raw_pos(%lu)\n", cfile->raw_pos);*/
 			//cfile->raw_pos = cfile->raw_pos + raw_offset;
-			cfile->raw_pos = cfile->raw_buff + raw_offset;
-//			cfile->raw_buff + cfile->raw_fh_start + raw_offset;
+			
+			cfile->raw_pos = cfile->raw_buff + raw_offset - cfile->raw_fh_start;
 			if(offset_type==CSEEK_ABS)
-				return raw_offset;
-			return raw_offset - cfile->raw_fh_start;
+				return cfile->raw_pos - cfile->raw_buff + 
+					cfile->raw_fh_start;
+			return cfile->raw_pos - cfile->raw_buff;
 		}
 		uncompr_offset = lseek(cfile->raw_fh, raw_offset, SEEK_SET);
 		cfile->raw_fh_pos = uncompr_offset;
