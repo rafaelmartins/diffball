@@ -36,8 +36,8 @@ bail_if_called_func()
 
 unsigned long
 process_ovchain(CommandBuffer *dcb, unsigned long ver_pos, 
-    DCommand_abbrev **dptr, DCommand_abbrev **odptr, 
-    unsigned char src_id);
+    DCommand_abbrev **dptr, DCommand_abbrev **odptr, overlay_chain *ov,
+    unsigned long offset, unsigned long len);
     
 /*int
 cmp_DCommand(const void *vd1, const void *vd2)
@@ -58,16 +58,24 @@ DCB_collapse_commands(CommandBuffer *dcb, DCommand_abbrev **dptr_p,
     unsigned long *len1, DCommand_abbrev **odptr_p, unsigned *len2)
 {
 //  ahem. bit hackney.  needs work.
-    unsigned long 	x, count;
-//    unsigned long     com_start, com_end;
-//    unsigned long 	index_end;
+    unsigned long 	x, y, count;
     off_u64		ver_pos;
     DCommand_abbrev *dptr, *odptr, *base;
-//    DCommand dc;
-    count = dcb->DCB.full.buffer_count;
-    for(x=0; x < dcb->src_count; x++) {
-        count += dcb->srcs[x].ov.com_count;
+
+    DCBufferReset(dcb);
+    count=0;
+    for(x=0; x < dcb->DCB.full.buffer_count; x++) {
+    	if(dcb->srcs[dcb->DCB.full.src_id[x]].ov.com_count == 0) {
+    	    count++;
+    	}
     }
+    for(x=0; x < dcb->src_count; x++) {
+	for(y = 0; y < dcb->srcs[x].ov.com_count; y++) {
+	    if(dcb->srcs[x].ov.command_srcs[y]->ov.com_count == 0 || dcb->srcs[x].ov.command_srcs[y] == &dcb->srcs[x])
+	    	count++;
+	}
+    }
+    printf("count=%lu\n", count);
     if((base = (DCommand_abbrev *)malloc(sizeof(DCommand_abbrev) * count)) 
     	== NULL) {
     	return MEM_ERROR;
@@ -77,27 +85,34 @@ DCB_collapse_commands(CommandBuffer *dcb, DCommand_abbrev **dptr_p,
     *len2 = 0;
     ver_pos = 0;
     odptr = base + count -1;
-    DCBufferReset(dcb);
     while(odptr >= dptr) {
-	if(dcb->srcs[dcb->DCB.full.src_id[dcb->DCB.full.command_pos]].ov.index_count) {
-    	    odptr->data.src_pos = dcb->DCB.full.lb_tail->offset;
-            odptr->data.len = dcb->DCB.full.lb_tail->len;
-            odptr->data.ver_pos = ver_pos;
-	    odptr->src_id = dcb->DCB.full.src_id[dcb->DCB.full.command_pos];
-	    odptr--;
-	    process_ovchain(dcb, ver_pos, &dptr, &odptr, odptr[1].src_id);
+    	// check if it's an overlay.
+	if(dcb->srcs[dcb->DCB.full.src_id[dcb->DCB.full.command_pos]].ov.com_count) {
+//    	    odptr->data.src_pos = dcb->DCB.full.lb_tail->offset;
+//	    odptr->data.len = dcb->DCB.full.lb_tail->len;
+//    	    odptr->data.src_pos = dcb->DCB.full.lb_tail->offset;
+//	    odptr->data.len = dcb->DCB.full.lb_tail->len;
+//	    odptr->data.ver_pos = ver_pos;
+//	    odptr->src_id = dcb->DCB.full.src_id[dcb->DCB.full.command_pos];
+//	    odptr--;
+//	    process_ovchain(dcb, ver_pos, &dptr, &odptr, odptr[1].src_id);
+	    ver_pos = process_ovchain(dcb, ver_pos, &dptr, &odptr, 
+		&dcb->srcs[dcb->DCB.full.src_id[dcb->DCB.full.command_pos]].ov,
+		dcb->DCB.full.lb_tail->offset,
+	    	dcb->DCB.full.lb_tail->len);
 	} else {
     	    dptr->data.src_pos = dcb->DCB.full.lb_tail->offset;
             dptr->data.len = dcb->DCB.full.lb_tail->len;
             dptr->data.ver_pos = ver_pos;
 	    dptr->src_id = dcb->DCB.full.src_id[dcb->DCB.full.command_pos];
+	    ver_pos += dcb->DCB.full.lb_tail->len;
 	    dptr++;
         }
-	ver_pos += dcb->DCB.full.lb_tail->len;
+//	ver_pos += dcb->DCB.full.lb_tail->len;
         DCBufferIncr(dcb);
     }
     dptr = base;
-    if(odptr < base || dcb->srcs[odptr->src_id].ov.index_count == 0) {
+    if(odptr < base || dcb->srcs[odptr->src_id].ov.com_count == 0) {
 	// this means either everything was overlays, or last DCLoc processed
 	// was overlay
 	odptr++;
@@ -112,39 +127,36 @@ DCB_collapse_commands(CommandBuffer *dcb, DCommand_abbrev **dptr_p,
 
 unsigned long
 process_ovchain(CommandBuffer *dcb, unsigned long ver_pos, 
-    DCommand_abbrev **dptr, DCommand_abbrev **odptr, 
-    unsigned char src_id)
+    DCommand_abbrev **dptr, DCommand_abbrev **odptr, overlay_chain *ov,
+    unsigned long offset, unsigned long len)
 {
-    unsigned long com_start, com_end;
-    unsigned int tsrc_id;
-    if(dcb->srcs[src_id].ov.index_pos == dcb->srcs[src_id].ov.index_count -1) {
-    	com_end = dcb->srcs[src_id].ov.com_count;
-    } else {
-    	com_end = dcb->srcs[src_id].ov.index[dcb->srcs[src_id].ov.index_pos + 1];
-    }
-    com_start = dcb->srcs[src_id].ov.index_pos;
-    while(com_start < com_end) {
-        tsrc_id = *(dcb->srcs[src_id].ov.command_srcs + com_start) - dcb->srcs;
-	if(dcb->srcs[tsrc_id].ov.com_count) {
-	    (*odptr)->data.ver_pos = ver_pos;
-    	    (*odptr)->data.len = dcb->srcs[src_id].ov.commands[com_start].len;
-    	    (*odptr)->data.src_pos = dcb->srcs[src_id].ov.commands[com_start].offset;
-	    (*odptr)->src_id = tsrc_id;
-	    *odptr -= 1;
-	    process_ovchain(dcb, ver_pos, dptr, odptr, tsrc_id);
+    //first command is *always* the mask command.
+    (*odptr)->data.ver_pos = ver_pos;
+    (*odptr)->data.len = ov->commands[offset].len;
+    (*odptr)->data.src_pos = ov->commands[offset].offset;
+    (*odptr)->src_id = ov->command_srcs[offset] - dcb->srcs;
+    *odptr -= 1;
+    len--;
+    offset++;
+    while(len) {
+    	if(ov->command_srcs[offset]->ov.com_count) {
+	    // tiz an overlay command.
+	    ver_pos = process_ovchain(dcb, ver_pos, dptr, odptr,
+	    	&ov->command_srcs[offset]->ov, 
+	    	ov->commands[offset].offset,
+	    	ov->commands[offset].len);
 	} else {
 	    (*dptr)->data.ver_pos = ver_pos;
-    	    (*dptr)->data.len = dcb->srcs[src_id].ov.commands[com_start].len;
-    	    (*dptr)->data.src_pos = dcb->srcs[src_id].ov.commands[com_start].offset;
-	    (*dptr)->src_id = tsrc_id;
-    	    *dptr +=1;
+	    (*dptr)->data.len = ov->commands[offset].len;
+	    (*dptr)->data.src_pos = ov->commands[offset].offset;
+	    (*dptr)->src_id = ov->command_srcs[offset] - dcb->srcs;
+	    *dptr += 1;
+	    ver_pos += ov->commands[offset].len;
 	}
-	ver_pos += dcb->srcs[src_id].ov.commands[com_start].len;
-    	com_start++;
+	len--;
+	offset++;
     }
-    dcb->srcs[src_id].ov.index_pos++;
-    return com_end - 
-    	dcb->srcs[src_id].ov.index[dcb->srcs[src_id].ov.index_pos -1];
+    return ver_pos;
 }
 
 int
@@ -161,15 +173,12 @@ DCB_register_overlay_src(CommandBuffer *dcb,
     }
     dcb->srcs[id].mask_read_func = (rm1 ? rm1 : default_dcb_src_cfh_read_func);
     dcb->srcs[id].ov.com_size = 4;
-    dcb->srcs[id].ov.index_size = 4;
-    if((dcb->srcs[id].ov.index = (unsigned long *)malloc(sizeof(unsigned long) *
-    	dcb->srcs[id].ov.com_size))==NULL) {
-    	return MEM_ERROR;
-    } else if((dcb->srcs[id].ov.commands = (DCLoc *)malloc(sizeof(DCLoc) *
+    dcb->srcs[id].ov.com_count = 0;
+    if((dcb->srcs[id].ov.commands = (DCLoc *)malloc(sizeof(DCLoc) *
     	dcb->srcs[id].ov.com_size))==NULL) {
     	return MEM_ERROR;
     } else if((dcb->srcs[id].ov.command_srcs = (DCB_registered_src **)malloc(
-    	sizeof(DCB_registered_src *) * dcb->srcs[id].ov.index_size))==NULL) {
+    	sizeof(DCB_registered_src *) * dcb->srcs[id].ov.com_size))==NULL) {
     	return MEM_ERROR;
     }
     return id;
@@ -218,14 +227,10 @@ internal_DCB_register_cfh_src(CommandBuffer *dcb, cfile *cfh,
     dcb->srcs[dcb->src_count].read_func = (read_func == NULL ? default_dcb_src_cfh_read_func : read_func);
     dcb->srcs[dcb->src_count].copy_func = (copy_func == NULL ? default_dcb_src_cfh_copy_func : copy_func);
     dcb->srcs[dcb->src_count].mask_read_func = NULL;
-    dcb->srcs[dcb->src_count].ov.index = NULL;
     dcb->srcs[dcb->src_count].ov.command_srcs = NULL;
     dcb->srcs[dcb->src_count].ov.commands = NULL;
     dcb->srcs[dcb->src_count].ov.com_size = 0;
     dcb->srcs[dcb->src_count].ov.com_count = 0;
-    dcb->srcs[dcb->src_count].ov.index_count = 0;
-    dcb->srcs[dcb->src_count].ov.index_size = 0;
-    dcb->srcs[dcb->src_count].ov.index_pos = 0;
     if(DCBUFFER_FULL_TYPE != dcb->DCBtype) {
 	if(type & DC_COPY) {
 	    dcb->default_copy_src = dcb->srcs + dcb->src_count;
@@ -343,15 +348,20 @@ internal_DCB_get_next_command(CommandBuffer *buff, DCommand *dc)
 {
     if(DCBUFFER_FULL_TYPE == buff->DCBtype) {
 	dc->type = current_command_type(buff);
-	dc->data.src_pos = buff->DCB.full.lb_tail->offset;
+//	dc->data.src_pos = buff->DCB.full.lb_tail->offset;
 	dc->data.ver_pos = buff->reconstruct_pos;
-	dc->data.len = buff->DCB.full.lb_tail->len;
+//	dc->data.len = buff->DCB.full.lb_tail->len;
 	dc->dcb_src = buff->srcs + buff->DCB.full.src_id[buff->DCB.full.command_pos];
-	if(dc->dcb_src->ov.index_count) {
-	    dc->ov_index = dc->dcb_src->ov.index_pos;
-	    dc->dcb_src->ov.index_pos++;
+	if(dc->dcb_src->ov.com_count) {
+	    dc->ov_offset = buff->DCB.full.lb_tail->offset;
+	    dc->ov_len = buff->DCB.full.lb_tail->len;
+	    dc->data.src_pos = dc->dcb_src->ov.commands[dc->ov_offset].offset;
+	    dc->data.len = dc->dcb_src->ov.commands[dc->ov_offset].len;
 	} else {
-	    dc->ov_index = 0;
+	    dc->data.src_pos = buff->DCB.full.lb_tail->offset;
+	    dc->data.len = buff->DCB.full.lb_tail->len;
+	    dc->ov_offset = 0;
+	    dc->ov_len = 0;
 	}
 	DCBufferIncr(buff);
     } else if (DCBUFFER_MATCHES_TYPE == buff->DCBtype) {
@@ -375,7 +385,8 @@ internal_DCB_get_next_command(CommandBuffer *buff, DCommand *dc)
 	    dc->data.src_pos = dc->data.ver_pos = buff->reconstruct_pos;
 	    dc->data.len = buff->DCB.matches.cur->ver_pos - buff->reconstruct_pos;
 	}
-	dc->ov_index = 0;
+	dc->ov_offset = 0;
+	dc->ov_len = 0;
     } else if(DCBUFFER_LLMATCHES_TYPE == buff->DCBtype) {
 	assert(buff->flags & DCB_LLM_FINALIZED);
 	if(buff->DCB.llm.main == NULL) {
@@ -398,7 +409,8 @@ internal_DCB_get_next_command(CommandBuffer *buff, DCommand *dc)
 	    dc->data.ver_pos = buff->reconstruct_pos;
 	    dc->data.len = buff->DCB.llm.main->ver_pos - buff->reconstruct_pos;
 	}
-	dc->ov_index = 0;
+	dc->ov_offset = 0;
+	dc->ov_len = 0;
     }
     dc->src_id = dc->dcb_src - buff->srcs;
     buff->reconstruct_pos += dc->data.len;
@@ -551,19 +563,10 @@ int
 DCB_add_overlay(CommandBuffer *dcb, off_u32 diff_src_pos, off_u32 len, int add_ov_id,
     off_u32 copy_src_pos, int ov_src_id)
 {
-    // error/sanity checks needed.
+    // error and sanity checks needed.
     overlay_chain *ov;
     ov = &dcb->srcs[add_ov_id].ov;
-    if(ov->index_count == ov->index_size) {
-        if((ov->index = (unsigned long*)realloc(
-            ov->index, ov->index_size * 2 *
-            sizeof(unsigned long)))==NULL) {
-            //shit.
-            return MEM_ERROR;
-        }
-        ov->index_size *= 2;
-    }
-    if(ov->com_count == ov->com_size) {
+    if(ov->com_count + 1 >= ov->com_size) {
         if(((ov->commands = (DCLoc *)realloc(
             ov->commands, ov->com_size * 2 * 
             sizeof(DCLoc)))==NULL) ||
@@ -574,13 +577,15 @@ DCB_add_overlay(CommandBuffer *dcb, off_u32 diff_src_pos, off_u32 len, int add_o
         }
         ov->com_size *= 2;
     }
-    DCB_add_add(dcb, diff_src_pos, len, add_ov_id);
-    ov->index[ov->index_count] = ov->com_count;
-    ov->command_srcs[ov->index_count] = &dcb->srcs[ov_src_id];
-    ov->commands[ov->index_count].offset = copy_src_pos;
-    ov->commands[ov->index_count].len = len;
-    ov->index_pos++;
-    ov->index_count++;
+    DCB_add_add(dcb, ov->com_count, 2, add_ov_id);
+    dcb->reconstruct_pos += len - 2;
+    ov->commands[ov->com_count].offset = diff_src_pos;
+    ov->commands[ov->com_count].len = len;
+    ov->command_srcs[ov->com_count] = &dcb->srcs[add_ov_id];
+    ov->com_count++;
+    ov->commands[ov->com_count].offset = copy_src_pos;
+    ov->commands[ov->com_count].len = len;
+    ov->command_srcs[ov->com_count] = &dcb->srcs[ov_src_id];
     ov->com_count++;
     return 0L;
 }
@@ -722,8 +727,6 @@ DCBufferReset(CommandBuffer *buffer)
     if(DCBUFFER_FULL_TYPE == buffer->DCBtype) {
 	buffer->DCB.full.lb_tail = buffer->DCB.full.lb_start;
 	buffer->DCB.full.command_pos = 0;
-	for(x=0; x < buffer->src_count; x++)
-	    buffer->srcs[x].ov.index_pos = 0;
     } else if(DCBUFFER_MATCHES_TYPE == buffer->DCBtype) {
 	buffer->DCB.matches.cur = buffer->DCB.matches.buff;
     } else if(DCBUFFER_LLMATCHES_TYPE == buffer->DCBtype) {
@@ -787,13 +790,8 @@ DCBufferFree(CommandBuffer *buffer)
 	    free(buffer->srcs[x].ov.commands);
 	    free(buffer->srcs[x].ov.command_srcs);
 	}
-	if(buffer->srcs[x].ov.index_size)
-	    free(buffer->srcs[x].ov.index);
 	buffer->srcs[x].ov.com_size = 0;
 	buffer->srcs[x].ov.com_count = 0;
-	buffer->srcs[x].ov.index_size = 0;
-	buffer->srcs[x].ov.index_count = 0;
-	buffer->srcs[x].ov.index = NULL;
 	buffer->srcs[x].ov.commands = NULL;
 	buffer->srcs[x].ov.command_srcs = NULL;
     }

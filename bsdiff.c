@@ -57,29 +57,34 @@ bsdiff_overlay_copy(DCommand *dc,
     cfile_window *cfw;
     cfile_window *ocfw;
     unsigned long bytes_wrote = 0;
-    unsigned long index, index_end, com_len;
+    unsigned long com_len;
     unsigned long tmp_len;
+    unsigned long commands_read = 0;
     DCLoc *dptr;  DCB_registered_src *dsrc;
     overlay_chain *ov;
     ov = &dc->dcb_src->ov;
-    index = ov->index[dc->ov_index];
-    if(dc->ov_index < ov->index_count - 1) {
-    	index_end = ov->index[dc->ov_index + 1];
-    } else {
-    	index_end = ov->com_count;
-    }
+//    index = ov->index[dc->ov_index];
+//    if(dc->ov_index < ov->index_count - 1) {
+//    	index_end = ov->index[dc->ov_index + 1];
+//    } else {
+//    	index_end = ov->com_count;
+//    }
     // error checking...
+    printf("processing src(%lu), len(%lu), ver(%lu)\n", dc->data.src_pos, dc->data.len, dc->data.ver_pos);
     cflush(out_cfh);
     if(dc->data.src_pos != cseek(dc->dcb_src->src_ptr.cfh, dc->data.src_pos, CSEEK_FSTART)) {
     	return 0L;
     }
     cfw = expose_page(dc->dcb_src->src_ptr.cfh);
+//    cseek(out_cfh, dc->data.ver_pos, CSEEK_FSTART);
     ocfw = expose_page(out_cfh);
-    while(index < index_end) {
+//    while(index < index_end) {
+    commands_read = 1;
+    while(dc->ov_len > commands_read) {
     	com_len = 0;
-	dptr = ov->commands + index;
-	dsrc = ov->command_srcs[index];
-	while(ov->commands[index].len > com_len) {
+	dptr = ov->commands + dc->ov_offset + commands_read;
+	dsrc = ov->command_srcs[dc->ov_offset + commands_read];
+	while(dptr->len > com_len) {
 	    tmp_len = MIN(dptr->len - com_len, ocfw->size);
 	    if(tmp_len != dsrc->read_func(dsrc->src_ptr, 
 	    	dptr->offset + com_len, ocfw->buff, tmp_len)) {
@@ -100,11 +105,12 @@ bsdiff_overlay_copy(DCommand *dc,
 		    }
 		}
 	    }
+	    ocfw->write_end = tmp_len;
 	    cflush(out_cfh);
 	    com_len += tmp_len;
 	    bytes_wrote += tmp_len;
 	}
-	index++;
+	commands_read++;
     }
     return bytes_wrote;
 }

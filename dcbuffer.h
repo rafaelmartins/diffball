@@ -79,10 +79,10 @@ typedef struct _CommandBuffer *DCB_ptr;
 
 typedef struct {
     // isn't it fun managing arrays, 'ey kiddies? :)
-    unsigned long 		*index;
-    unsigned long		index_count;
-    unsigned long		index_size;
-    unsigned long		index_pos;
+//    unsigned long 		*index;
+//    unsigned long		index_count;
+//    unsigned long		index_size;
+//    unsigned long		index_pos;
     struct _DCB_registered_src	**command_srcs;
     DCLoc			*commands;
     unsigned long		com_count;
@@ -92,7 +92,9 @@ typedef struct {
 typedef struct {
     DCLoc_match			data;
     struct _DCB_registered_src	*dcb_src;
-    unsigned long		ov_index;
+    unsigned long		ov_offset;
+    unsigned long		ov_len;
+//    unsigned long		ov_index;
     unsigned char		type;
     unsigned short		src_id;
 } DCommand;
@@ -216,8 +218,8 @@ void internal_DCB_get_next_command(CommandBuffer *buffer, DCommand *dc);
 	
 void DCB_truncate(CommandBuffer *buffer, unsigned long len);
 
-int DCB_add_overlay(CommandBuffer *buffer, off_u32 diff_src_pos, off_u32 len, int add_ov_id,
-    off_u32 copy_src_pos, int ov_src_id);
+int DCB_add_overlay(CommandBuffer *buffer, off_u32 diff_src_pos, off_u32 len, 
+    int add_ov_id, off_u32 copy_src_pos, int ov_src_id);
 void DCB_add_add(CommandBuffer *buffer, off_u64 ver_pos, unsigned long len,
     unsigned char src_id);
 void DCB_add_copy(CommandBuffer *buffer, off_u64 src_pos, off_u64 ver_pos,

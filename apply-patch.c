@@ -44,15 +44,14 @@ cmp_DCommand_abbrev(const void *vd1, const void *vd2)
 int 
 reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh, int reorder_for_seq_access)
 {
-    DCommand *dc = NULL, *dc_array = NULL;
-    unsigned long array_size = 0;
+    DCommand *dc = NULL;
     assert(DCBUFFER_FULL_TYPE == dcbuff->DCBtype);
     DCommand_abbrev *d1, *d2;
     unsigned long l1, l2;
     DCBufferReset(dcbuff);
     
     reorder_for_seq_access = 1;
-    reorder_for_seq_access = 0;
+//    reorder_for_seq_access = 0;
 
     assert(reorder_for_seq_access == 0 || CFH_IS_SEEKABLE(out_cfh) || 1);
     if(reorder_for_seq_access) {
@@ -106,7 +105,7 @@ read_seq_write_rand(CommandBuffer *dcb, DCommand_abbrev *dc_array, unsigned long
     #define END_POS(x) ((x).data.src_pos + (x).data.len)
     while(end < array_size) {
     	src_id = dc_array[end].src_id;
-	is_overlay = (dcb->srcs[src_id].ov.index_count ? 1 : 0);
+	is_overlay = (dcb->srcs[src_id].ov.com_count > 0);
 	start = end;
 	pos = dc_array[start].data.src_pos;
 	max_pos = END_POS(dc_array[start]);
@@ -147,9 +146,11 @@ read_seq_write_rand(CommandBuffer *dcb, DCommand_abbrev *dc_array, unsigned long
 		    ap_printf("bailing, io_error 2\n");
 		    return IO_ERROR;
 		}
+		printf("start=%lu, end=%lu\n", start, end);
 		for(x=start; x < end; x++) {
 		    offset = MAX(dc_array[x].data.src_pos, pos);
 		    tmp_len = MIN(END_POS(dc_array[x]), pos + len) - offset;
+		    printf("offset=%lu, tmp_len=%lu\n", offset, tmp_len);
 		    if(tmp_len > 0) { 
 			if(dc_array[x].data.ver_pos + (offset - dc_array[x].data.src_pos) != 
 			    cseek(out_cfh, dc_array[x].data.ver_pos + (offset - dc_array[x].data.src_pos),
