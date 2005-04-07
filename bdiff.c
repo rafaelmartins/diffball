@@ -44,16 +44,21 @@ bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *out_cfh)
 #define BUFFER_SIZE 1024
 //    unsigned char src_md5[16], ver_md5[16];
     unsigned char buff[BUFFER_SIZE];
-    unsigned long count, fh_pos, delta_pos;
-    unsigned int lb;
+    off_u32  count, delta_pos;
+    off_u64  fh_pos;
+    off_u32  lb;
     DCommand dc;
+
     DCBufferReset(buffer);
     memcpy(buff, BDIFF_MAGIC, BDIFF_MAGIC_LEN);
     buff[BDIFF_MAGIC_LEN] = BDIFF_VERSION;
+
     /* I haven't studied the author of bdiff's alg well enough too know what
-    MaxBlockSize is for.  Either way, throwing in the default. */
+       MaxBlockSize is for.  Either way, throwing in the default. */
+
     writeUBytesBE(buff + BDIFF_MAGIC_LEN + 1,
 	(BDIFF_DEFAULT_MAXBLOCKSIZE), 4);
+
     cwrite(out_cfh, buff, BDIFF_MAGIC_LEN + 5);
     delta_pos = 10;
     fh_pos = 0;
@@ -62,8 +67,8 @@ bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *out_cfh)
 //    while(count--) {
 	DCB_get_next_command(buffer, &dc);
 	if(DC_COPY == dc.type) {
-	    v2printf("copy command, out_cfh(%lu), fh_pos(%lu), offset(%lu), len(%lu)\n",
-		delta_pos, fh_pos, dc.data.src_pos, dc.data.len);
+	    v2printf("copy command, out_cfh(%u), fh_pos(%llu), offset(%llu), len(%u)\n",
+		delta_pos, (act_off_u64)fh_pos, (act_off_u64)dc.data.src_pos, dc.data.len);
 	    fh_pos += dc.data.len;
 	    lb = 5;
 	    buff[0] = 0;
@@ -77,8 +82,8 @@ bdiffEncodeDCBuffer(CommandBuffer *buffer, cfile *out_cfh)
 	    delta_pos += lb;
 	    cwrite(out_cfh, buff, lb);
 	} else {
-	    v2printf("add  command, out_cfh(%lu), fh_pos(%lu), len(%lu)\n", 
-		delta_pos, fh_pos, dc.data.len);
+	    v2printf("add  command, out_cfh(%u), fh_pos(%llu), len(%u)\n", 
+		delta_pos, (act_off_u64)fh_pos, dc.data.len);
 	    fh_pos += dc.data.len;
 	    buff[0] = 0x80;
 	    lb = 1;
@@ -102,8 +107,8 @@ signed int
 bdiffReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff)
 {
     unsigned char src_md5[16], ver_md5[16], buff[17];
-    unsigned long len, offset, maxlength;
-    unsigned long fh_pos;
+    off_u32 len, offset, maxlength;
+    off_u64 fh_pos;
     DCB_SRC_ID ref_id, add_id;
 
     dcbuff->ver_size = 0;
@@ -122,8 +127,8 @@ bdiffReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff)
 	v2printf("got command(%u): ", buff[0]);
 	if((buff[0] >> 6)==00) {
 	    buff[0] &= 0x3f;
-	    v2printf("got a copy at %lu, fh_pos(%lu): ", 
-		ctell(patchf, CSEEK_FSTART), fh_pos);
+	    v2printf("got a copy at %u, fh_pos(%llu): ", 
+		(off_u32)ctell(patchf, CSEEK_FSTART), (act_off_u64)fh_pos);
 	    if(4 != cread(patchf, buff + 1, 4)) {
 		return EOF_ERROR;
 	    }
@@ -137,12 +142,13 @@ bdiffReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff)
 		len = readUBytesBE(buff, 4);
 	    }
 	    fh_pos += len;
-	    v2printf(" offset(%lu), len=%lu\n", offset, len);
+	    v2printf(" offset(%llu), len=%u\n", (act_off_u64)offset, len);
 	    DCB_add_copy(dcbuff, offset, 0, len, ref_id);
 	} else if ((buff[0] >> 6)==2) {
 	    buff[0] &= 0x3f;
-	    v2printf("got an add at %lu, fh_pos(%lu):", 
-		ctell(patchf, CSEEK_FSTART), fh_pos);
+	    v2printf("got an add at %u, fh_pos(%llu):", 
+		(off_u32)ctell(patchf, CSEEK_FSTART), (act_off_u64)fh_pos);
+
 	    if(buff[0]) {
 		len = readUBytesBE(buff, 1) + 5;
 	    } else {
@@ -152,12 +158,17 @@ bdiffReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff)
 		len = readUBytesBE(buff, 4);
 	    }
 	    fh_pos += len;
-	    v2printf(" len=%lu\n", len);
+
+	    v2printf(" len=%u\n", len);
+
 	    DCB_add_add(dcbuff, ctell(patchf, CSEEK_FSTART), len, add_id);
 	    cseek(patchf, len, CSEEK_CUR);
+
 	} else if((buff[0] >> 6)==1) {
+
 	    buff[0] &= 0x3f;
-	    v2printf("got a checksum at %lu\n", ctell(patchf, CSEEK_FSTART));
+	    v2printf("got a checksum at %u\n", (off_u32)ctell(patchf, CSEEK_FSTART));
+
 	    if(buff[0] <= 1) {
 		if(16 != cread(patchf, buff + 1, 16)) 
 		    return EOF_ERROR;

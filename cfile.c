@@ -73,7 +73,7 @@ copen_child_cfh(cfile *cfh, cfile *parent, unsigned long fh_start,
     cfh->state_flags = CFILE_CHILD_CFH;
     cfh->lseek_info.last_ptr = &parent->lseek_info.parent.last;
     parent->lseek_info.parent.handle_count++;
-    dcprintf("setting child id=%lu\n", parent->lseek_info.parent.handle_count);
+    dcprintf("setting child id=%u\n", parent->lseek_info.parent.handle_count);
     cfh->cfh_id = parent->lseek_info.parent.handle_count;
     if(parent->compressor_type != NO_COMPRESSOR) {
 	if(compressor_type != NO_COMPRESSOR) {

@@ -40,18 +40,21 @@ check_bdelta_magic(cfile *patchf)
 signed int 
 bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *patchf)
 {
-    unsigned long dc_pos, total_count, count, maxnum, matches;
-    unsigned long add_len, copy_len, copy_offset;
+    off_u32  dc_pos, total_count, count, maxnum, matches;
+    off_u32  add_len, copy_len;
+    off_u64  copy_offset;
     unsigned char prev, current;
     unsigned int intsize;
     unsigned char buff[16];
-    unsigned long match_orig = matches;
+    off_u32  match_orig = matches;
     unsigned long ver_size = 0;
     DCommand dc;
+
     cwrite(patchf, BDELTA_MAGIC, BDELTA_MAGIC_LEN);
     writeUBytesLE(buff, BDELTA_VERSION, BDELTA_VERSION_LEN);
     cwrite(patchf, buff, BDELTA_VERSION_LEN);
     total_count = 0;
+
     DCBufferReset(dcbuff);
     /* since this will be collapsing all adds... */
     current = DC_COPY;
@@ -76,8 +79,9 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *patchf)
     else*/
 	intsize=4;
     
-    v2printf("size1=%lu, size2=%lu, matches=%lu, intsize=%u\n", dcbuff->src_size, 
-	(dcbuff->ver_size ? dcbuff->ver_size : ver_size), matches, intsize);
+    v2printf("size1=%llu, size2=%llu, matches=%u, intsize=%u\n", (act_off_u64)dcbuff->src_size, 
+	(act_off_u64)(dcbuff->ver_size ? dcbuff->ver_size : ver_size), matches, intsize);
+
     buff[0] = intsize;
     cwrite(patchf, buff, 1);
     writeUBytesLE(buff, dcbuff->src_size, intsize);
@@ -91,7 +95,7 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *patchf)
     count = total_count;
     while(matches--) {
 	DCB_get_next_command(dcbuff, &dc);
-	v2printf("handling match(%lu)\n", match_orig - matches);
+	v2printf("handling match(%u)\n", match_orig - matches);
 	add_len=0;
 	if(DC_ADD==dc.type) {
 	    do {
@@ -99,24 +103,24 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *patchf)
 	    	count--;
 		DCB_get_next_command(dcbuff, &dc);
 	    } while(count!=0 && DC_ADD == dc.type);
-	    v2printf("writing add len=%lu\n", add_len);
+	    v2printf("writing add len=%u\n", add_len);
 	}
 	/* basically a fall through to copy, if count!=0 */
 	if(count != 0) {
 	    copy_len = dc.data.len;
 //	    if(dc_pos > dc.loc.offset) {
 	    if(dc_pos > dc.data.src_pos) {
-		v2printf("negative offset, dc_pos(%lu), offset(%lu)\n",
-		    dc_pos, dc.data.src_pos);
+		v2printf("negative offset, dc_pos(%u), offset(%llu)\n",
+		    dc_pos, (act_off_u64)dc.data.src_pos);
 		copy_offset = dc.data.src_pos + (~dc_pos + 1);
 	    } else {
-		v2printf("positive offset, dc_pos(%lu), offset(%lu)\n",
-		    dc_pos, dc.data.src_pos);
+		v2printf("positive offset, dc_pos(%u), offset(%llu)\n",
+		    dc_pos, (act_off_u64)dc.data.src_pos);
 		copy_offset = dc.data.src_pos - dc_pos;
 	    }
 	    dc_pos = dc.data.src_pos + dc.data.len;
-	    v2printf("writing copy_len=%lu, offset=%lu, dc_pos=%lu\n",
-		copy_len, dc.data.src_pos, dc_pos);
+	    v2printf("writing copy_len=%u, offset=%llu, dc_pos=%u\n",
+		copy_len, (act_off_u64)dc.data.src_pos, dc_pos);
 	} else {
 	    copy_len = 0;
 	    copy_offset = 0;
@@ -129,7 +133,7 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *patchf)
     }
     /* control block wrote. */
     DCBufferReset(dcbuff);
-    v2printf("writing add_block at %lu\n", ctell(patchf, CSEEK_FSTART));
+    v2printf("writing add_block at %u\n", (off_u32)ctell(patchf, CSEEK_FSTART));
     while(DCB_commands_remain(dcbuff)) {
 	DCB_get_next_command(dcbuff, &dc);
 	if(DC_ADD == dc.type) {
@@ -149,11 +153,12 @@ bdeltaReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff)
     unsigned int ver;
     EDCB_SRC_ID ref_id, add_id;
     unsigned char buff[BUFF_SIZE];
-    unsigned long matches, add_len, copy_len, copy_offset;
-    unsigned long size1, size2, or_mask=0, neg_mask;
-    unsigned long ver_pos = 0, add_pos;
-    unsigned long processed_size = 0;
-    unsigned long add_start;
+    off_u64  copy_offset;
+    off_u32  matches, add_len, copy_len;
+    off_u32  size1, size2, or_mask=0, neg_mask;
+    off_u64  ver_pos = 0, add_pos;
+    off_u64  processed_size = 0;
+    off_u32  add_start;
 
     dcbuff->ver_size = 0;
     assert(DCBUFFER_FULL_TYPE == dcbuff->DCBtype);
@@ -177,11 +182,11 @@ bdeltaReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff)
     cread(patchf, buff, 3 * int_size);
     size1 = readUBytesLE(buff, int_size);
     size2 = readUBytesLE(buff + int_size, int_size);
-    v1printf("size1=%lu, size2=%lu\n", size1, size2);
+    v1printf("size1=%u, size2=%u\n", size1, size2);
     dcbuff->src_size = size1;
     dcbuff->ver_size = size2;
     matches = readUBytesLE(buff + (2 * int_size), int_size);
-    v2printf("size1=%lu, size2=%lu\nmatches=%lu\n", size1, size2, matches);
+    v2printf("size1=%u, size2=%u\nmatches=%u\n", size1, size2, matches);
     /* add_pos = header info, 3 int_size's (size(1|2), num_match) */
     add_pos = 3 + 2 + 1 + (3 * int_size);
     /* add block starts after control data. */
@@ -190,7 +195,7 @@ bdeltaReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff)
     add_id = DCB_REGISTER_VOLATILE_ADD_SRC(dcbuff, patchf, NULL, 0);
 //    ref_id = DCB_REGISTER_ADD_SRC(dcbuff, ref_cfh, NULL, 0);
     ref_id = src_id;
-    v2printf("add block starts at %lu\nprocessing commands\n", add_pos);
+    v2printf("add block starts at %u\nprocessing commands\n", add_pos);
     unsigned long match_orig = matches;
     if(size1==0) {
 	v0printf("size1 was zero, processing anyways.\n");
@@ -198,13 +203,13 @@ bdeltaReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff)
 	v0printf("although I have no problems reading it.\n");
     }
     while(matches--){
-	v2printf("handling match(%lu)\n", match_orig - matches);
+	v2printf("handling match(%u)\n", match_orig - matches);
 	cread(patchf, buff, 3 * int_size);
 	copy_offset = readUBytesLE(buff, int_size);
 	add_len = readUBytesLE(buff + int_size, int_size);
 	copy_len = readUBytesLE(buff + int_size * 2, int_size);
     	if(add_len) {
-	    v2printf("add  len(%lu)\n", add_len);
+	    v2printf("add  len(%u)\n", add_len);
 	    DCB_add_add(dcbuff, add_pos, add_len, add_id);
 	    add_pos += add_len;
 	}
@@ -214,16 +219,16 @@ bdeltaReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff)
 	if((copy_offset & neg_mask) > 0) {
 	    copy_offset |= or_mask;
 	    ver_pos -= (~copy_offset) +1;
-	    v2printf("ver_pos now(%lu)\n", ver_pos);
+	    v2printf("ver_pos now(%u)\n", (act_off_u64)ver_pos);
 	} else {
-	    v2printf("positive offset(%lu)\n", copy_offset);
+	    v2printf("positive offset(%u)\n", (act_off_u64)copy_offset);
 	    ver_pos += copy_offset;
 	}
 	/* an attempt to ensure things aren't whacky. */
 	assert(size1==0 || ver_pos <= size1);
 	if(copy_len) {
-	    v2printf("copy len(%lu), off(%ld), pos(%lu)\n", 
-		copy_len, (signed long)copy_offset, ver_pos);
+	    v2printf("copy len(%u), off(%lld), pos(%llu)\n", 
+		copy_len, (act_off_s64)copy_offset, (act_off_u64)ver_pos);
 	    DCB_add_copy(dcbuff, ver_pos, 0, copy_len, ref_id);
 	    ver_pos += copy_len;
 	}
@@ -235,8 +240,8 @@ bdeltaReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff)
 	DCB_add_add(dcbuff, add_pos, size2 - processed_size, 0);
     }
     dcbuff->ver_size = dcbuff->reconstruct_pos;
-    v2printf("finished reading.  ver_pos=%lu, add_pos=%lu\n",
-	ver_pos, add_pos);
+    v2printf("finished reading.  ver_pos=%llu, add_pos=%u\n",
+	(act_off_u64)ver_pos, add_pos);
     return 0;
 
     truncated_patch:

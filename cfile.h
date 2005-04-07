@@ -95,10 +95,10 @@ typedef struct _cfile {
     int			err;
     union {
 	struct {
-	    unsigned long	last;
-	    unsigned long	handle_count;
+	    unsigned int	last;
+	    unsigned int	handle_count;
 	} parent;
-	unsigned long *last_ptr;
+	unsigned int *last_ptr;
     } lseek_info;
 
     unsigned long	data_fh_offset;

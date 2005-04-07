@@ -26,15 +26,17 @@
 
 extern unsigned int global_verbosity;
 
-typedef unsigned long off_u32;
-typedef signed  long  off_s32;
+typedef unsigned int off_u32;
+typedef signed   int off_s32;
 #ifdef LARGEFILE_SUPPORT
-typedef unsigned long off_u64;
-typedef signed  long  off_s64;
+typedef unsigned long long off_u64;
+typedef signed   long long off_s64;
 #else
-typedef unsigned long off_u64;
-typedef signed  long  off_s64;
+typedef off_u32 off_u64;
+typedef off_s32 off_s64;
 #endif
+typedef unsigned long long act_off_u64;
+typedef signed   long long act_off_s64;
 
 #define MAX_SEED_LEN	65535
 #define MAX_SAMPLE_RATE	32767

@@ -68,15 +68,15 @@ signed
 int switchingEncodeDCBuffer(CommandBuffer *buffer, 
     cfile *out_cfh)
 {
-    unsigned long fh_pos=0;
-    signed long s_off=0;
-    unsigned long u_off=0;
-    unsigned long delta_pos=0, dc_pos=0;
+    off_u64  fh_pos=0;
+    off_s64  s_off=0;
+    off_u64  u_off=0;
+    off_u32  delta_pos=0, dc_pos=0;
     unsigned int lb, ob;
     unsigned char out_buff[256];
-    unsigned long temp_len;
+    off_u64  temp_len;
     DCommand dc;
-    unsigned long total_add_len=0;
+    off_u32  total_add_len=0;
     unsigned int last_com, temp;
     unsigned int is_neg = 0;
     unsigned const long *copy_off_array;
@@ -110,7 +110,7 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 	    delta_pos += dc.data.len;
     	}
     }
-    v1printf("output add block, len(%lu)\n", delta_pos);
+    v1printf("output add block, len(%u)\n", delta_pos);
     DCBufferReset(buffer);
     last_com = DC_COPY;
     dc_pos=0;
@@ -138,8 +138,7 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 	    writeUBitsBE(out_buff, temp_len, lb);
 	    out_buff[0] |= (temp << 6); 
 	    cwrite(out_cfh, out_buff, temp + 1);
-	    v2printf("writing add, pos(%lu), len(%lu)\n", delta_pos, 
-		dc.data.len);
+	    v2printf("writing add, pos(%u), len(%u)\n", delta_pos, dc.data.len);
 	    delta_pos += temp + 1;
 	    fh_pos += dc.data.len;
 	    last_com = DC_ADD;
@@ -154,8 +153,8 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 	    if(offset_type == ENCODING_OFFSET_DC_POS) {
 		s_off = dc.data.src_pos - dc_pos;
 	    	u_off = abs(s_off);
-	    	v2printf("off(%lu), dc_pos(%lu), u_off(%lu), s_off(%ld): ", 
-		    dc.data.src_pos, dc_pos, u_off, s_off);
+	    	v2printf("off(%llu), dc_pos(%u), u_off(%llu), s_off(%lld): ", 
+		    (act_off_u64)dc.data.src_pos, dc_pos, (act_off_u64)u_off, (act_off_s64)s_off);
 	    } else {
 		u_off = dc.data.src_pos;
 	    }
@@ -199,9 +198,9 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 			s_off -= copy_off_array[temp];
 			is_neg=0;
 		    } else { 
-			v2printf("s_off(%ld): ", s_off);
+			v2printf("s_off(%lld): ", (act_off_s64)s_off);
 			s_off += copy_off_array[temp];
-			v2printf("s_off(%ld): ", s_off);
+			v2printf("s_off(%lld): ", (act_off_s64)s_off);
 			is_neg = 1;
 		    }
 		}
@@ -214,8 +213,8 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 		writeUBytesBE(out_buff + lb, u_off, temp + 1);
 	    } 
 	    cwrite(out_cfh, out_buff, lb + temp + 1);
-	    v2printf("writing copy delta_pos(%lu), fh_pos(%lu), offset(%ld), len(%lu)\n",
-	    	delta_pos, fh_pos, (unsigned long)ENCODING_OFFSET_DC_POS,
+	    v2printf("writing copy delta_pos(%u), fh_pos(%llu), offset(%lld), len(%u)\n",
+	    	delta_pos, (act_off_u64)fh_pos, (act_off_s64)ENCODING_OFFSET_DC_POS,
 		dc.data.len);
 	    fh_pos += dc.data.len;
 	    delta_pos += lb + temp + 1;
@@ -238,12 +237,12 @@ switchingReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbu
     const unsigned int buff_size = 4096;
     unsigned char buff[buff_size];
     EDCB_SRC_ID ref_id, add_id;
-    unsigned long int len;
-    unsigned long dc_pos=0;
-    unsigned long int u_off;
-    signed long int s_off;
-    unsigned int last_com;
-    unsigned long add_off, com_start;
+    off_u32  len;
+    off_u32  dc_pos=0;
+    off_u64  u_off;
+    off_s64  s_off;
+    off_u32  last_com;
+    off_u32  add_off, com_start;
     unsigned int ob, lb;
     unsigned int end_of_patch =0;
     unsigned const long *copy_off_array;
@@ -264,7 +263,7 @@ switchingReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbu
     assert(ctell(patchf, CSEEK_FSTART)==SWITCHING_MAGIC_LEN + 
 	SWITCHING_VERSION_LEN);
     dc_pos=0;
-    v2printf("starting pos=%lu\n", ctell(patchf, CSEEK_ABS));
+    v2printf("starting pos=%llu\n", (act_off_u64)ctell(patchf, CSEEK_ABS));
     cread(patchf, buff, 4);
     com_start = readUBytesBE(buff, 4);
     cseek(patchf, com_start, CSEEK_CUR);
@@ -272,10 +271,11 @@ switchingReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbu
     last_com=DC_COPY;
     add_id = DCB_REGISTER_VOLATILE_ADD_SRC(dcbuff, patchf, NULL, 0);
     ref_id = src_id;
-    v2printf("add data block size(%lu), starting commands at pos(%lu)\n", com_start,
-	ctell(patchf, CSEEK_ABS));
+    v2printf("add data block size(%u), starting commands at pos(%u)\n", com_start,
+	(off_u32)ctell(patchf, CSEEK_ABS));
+
     while(cread(patchf, buff, 1)==1 && end_of_patch==0) {
-    	v2printf("processing(%u) at pos(%lu): ", buff[0], ctell(patchf, CSEEK_ABS) -1);
+    	v2printf("processing(%u) at pos(%u): ", buff[0], (off_u32)ctell(patchf, CSEEK_ABS) -1);
 	    if(last_com != DC_ADD) {
 	    	lb = (buff[0] >> 6) & 0x3;
 	    	len = buff[0] & 0x3f;
@@ -289,7 +289,7 @@ switchingReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbu
 		    add_off += len;
 	    	}
 	    	last_com = DC_ADD;
-	    	v2printf("add len(%lu)\n", len);
+	    	v2printf("add len(%u)\n", len);
 	    } else if(last_com != DC_COPY) {
 	    	lb = (buff[0] >> 6) & 0x3;
 	    	ob = (buff[0] >> 4) & 0x3;
@@ -297,7 +297,7 @@ switchingReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbu
 	    	if(lb) {
 	    	    cread(patchf, buff, lb);
 	    	    len = (len << (lb * 8)) + readUBytesBE(buff, lb);
-	    	    //v2printf("adding(%lu): ", copy_len_start[lb]);
+	    	    //v2printf("adding(%u): ", copy_len_start[lb]);
 	    	    len += copy_len_start[lb];
 	    	}
 	    	v2printf("ob(%u): ", ob);
@@ -312,8 +312,8 @@ switchingReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbu
 	    		s_off += copy_off_array[ob];
 	    	    }
 		    u_off = dc_pos + s_off;
-		    v2printf("u_off(%lu), dc_pos(%lu), s_off(%ld): ", 
-			u_off, dc_pos, s_off);
+		    v2printf("u_off(%llu), dc_pos(%u), s_off(%lld): ", 
+			(act_off_u64)u_off, dc_pos, (act_off_s64)s_off);
 		    dc_pos = u_off;
 		} else {
 	    	    u_off = readUBytesBE(buff, ob + 1);
@@ -328,13 +328,13 @@ switchingReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbu
 		    DCB_add_copy(dcbuff, u_off, 0, len, ref_id);
 		}
 	    	last_com = DC_COPY;
-	    	v2printf("copy off(%ld), len(%lu)\n", u_off, len);
+	    	v2printf("copy off(%llu), len(%u)\n", (act_off_u64)u_off, len);
 	    }
 	}
     dcbuff->ver_size = dcbuff->reconstruct_pos;
     v2printf("closing command was (%u)\n", *buff);
     v2printf("cread fh_pos(%lu)\n", ctell(patchf, CSEEK_ABS)); 
-    v2printf("ver_pos(%lu)\n", dcbuff->reconstruct_pos);
+    v2printf("ver_pos(%llu)\n", (act_off_u64)dcbuff->reconstruct_pos);
 
     return 0;    
 }
