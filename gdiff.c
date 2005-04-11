@@ -206,7 +206,7 @@ gdiffReconstructDCBuff(DCB_SRC_ID  src_id, cfile *patchf, CommandBuffer *dcbuff,
 	off_is_sbytes=1;
     else
 	off_is_sbytes=0;
-    assert(DCBUFFER_FULL_TYPE == dcbuff->DCBtype);
+//    assert(DCBUFFER_FULL_TYPE == dcbuff->DCBtype);
     cseek(patchf, 5, CSEEK_CUR);
 
     add_id = DCB_REGISTER_VOLATILE_ADD_SRC(dcbuff, patchf, NULL, 0);

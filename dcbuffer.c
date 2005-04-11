@@ -227,6 +227,33 @@ DCB_register_dcb_src(CommandBuffer *dcb, CommandBuffer *dcb_src)
     return dcb->src_count - 1;
 }
 
+EDCB_SRC_ID
+DCB_register_fake_src(CommandBuffer *dcb, unsigned char type)
+{
+    dcb->srcs[dcb->src_count].src_ptr.cfh = NULL;
+    dcb->srcs[dcb->src_count].flags = 0;
+    dcb->srcs[dcb->src_count].type = ((type & 0x1) | DCB_NULL_SRC);
+    dcb->srcs[dcb->src_count].read_func = &bail_if_called_func;
+    dcb->srcs[dcb->src_count].copy_func = &bail_if_called_func;
+    dcb->srcs[dcb->src_count].mask_read_func = NULL;
+    dcb->srcs[dcb->src_count].ov = NULL;
+    dcb->src_count++;
+    return dcb->src_count - 1;
+}
+
+EDCB_SRC_ID
+DCB_dumb_clone_src(CommandBuffer *dcb, DCB_registered_src *drs)
+{
+    dcb->srcs[dcb->src_count].src_ptr = drs->src_ptr;
+    dcb->srcs[dcb->src_count].flags = drs->flags;
+    dcb->srcs[dcb->src_count].type = drs->type;
+    dcb->srcs[dcb->src_count].read_func = drs->read_func;
+    dcb->srcs[dcb->src_count].copy_func = drs->copy_func;
+    dcb->srcs[dcb->src_count].mask_read_func = drs->mask_read_func;
+    dcb->srcs[dcb->src_count].ov = drs->ov;
+    dcb->src_count++;
+    return dcb->src_count - 1;
+}
 
 EDCB_SRC_ID
 internal_DCB_register_volatile_cfh_src(CommandBuffer *dcb, cfile *cfh, 
@@ -699,9 +726,11 @@ DCB_rec_copy_from_DCB_src(CommandBuffer *tdcb, command_list *tcl,
 	    	    	    dcb_s->read_func, dcb_s->copy_func, dcb_s->mask_read_func,
 	    	    	    (dcb_s->flags & DCB_FREE_SRC_CFH));
 	    	    } else {
-			x = DCB_register_src(tdcb, dcb_s->src_ptr.cfh, 
+/*			x = DCB_register_src(tdcb, dcb_s->src_ptr.cfh, 
 	    	    	    dcb_s->read_func, dcb_s->copy_func, 
 	    	    	    dcb_s->flags, (dcb_s->type & 0x1));
+*/
+			x = DCB_dumb_clone_src(tdcb, dcb_s);
 	    	    }
 	    	    if(x < 0)
 	    		return x;
@@ -1457,8 +1486,10 @@ create_DCBSearch_index(CommandBuffer *dcb)
     if(dcb->DCBtype != DCBUFFER_FULL_TYPE)
     	return NULL;
 
-    if(! dcb->ver_size) 
+    if(! dcb->ver_size) {
+	assert(dcb->ver_size);
     	return NULL;
+    }
 
     s = malloc(sizeof(DCBSearch));
 

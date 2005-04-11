@@ -28,6 +28,7 @@
 #include "formats.h"
 #include "defs.h"
 #include "options.h"
+#include "errors.h"
 
 unsigned int global_verbosity = 0;
 
@@ -57,14 +58,17 @@ char short_opts[] = STD_SHORT_OPTIONS "s:t:";
 int 
 main(int argc, char **argv)
 {
-    int in_fh, out_fh;
+    int in_fh[256], out_fh;
     struct stat in_stat;
-    CommandBuffer dcbuff;
-    cfile in_cfh, out_cfh;
-    int optr;
-    int src_id;
-    char *src_file, *trg_file;
-    unsigned long int src_format_id, trg_format_id=0;
+    CommandBuffer dcbuff[2];
+    cfile in_cfh[256], out_cfh;
+    char **patch_name;
+    int optr, x;
+    unsigned int patch_count;
+    ECFH_ID src_id;
+    signed int err;
+    char *trg_file;
+    unsigned long int src_format_id[256], trg_format_id=0;
     signed long recon_val=0, encode_result=0;
     unsigned int patch_compressor = 0;
     unsigned int output_to_stdout = 0;
@@ -109,7 +113,7 @@ main(int argc, char **argv)
 */
 	}
     }
-    if( ((src_file=(char *)get_next_arg(argc, argv))==NULL) || 
+/*    if( ((src_file=(char *)get_next_arg(argc, argv))==NULL) || 
 	(stat(src_file, &in_stat))) {
 	if(src_file) {
 	    v0printf("Must specify an existing patch\n");
@@ -117,41 +121,26 @@ main(int argc, char **argv)
 	}
 	DUMP_USAGE(EXIT_USAGE);
     }
+*/
+    patch_count = argc - optind;
+    patch_name = argv + optind;
+
     if(output_to_stdout) {
 	out_fh = 1;
     } else {
-	if((trg_file = (char *)get_next_arg(argc, argv))==NULL)
+	if(patch_count == 1) {
+	    v0printf("you must specify at least a patch\n");
 	    DUMP_USAGE(EXIT_USAGE);
+	}
+	trg_file = patch_name[patch_count - 1];
 	if((out_fh = open(trg_file, O_WRONLY | O_TRUNC | O_CREAT, 0644))==-1){
 	    v0printf( "error creating output file '%s'\n", trg_file);
 	    exit(1);
 	}
+	patch_count--;
     }
-    if(NULL!= get_next_arg(argc,argv)) {
-	DUMP_USAGE(EXIT_USAGE);
-    }
-    if((in_fh = open(src_file, O_RDONLY, 0))==-1) {
-	v0printf( "error opening patch '%s'\n", src_file);
-	exit(EXIT_FAILURE);
-    }
-    copen(&in_cfh, in_fh, 0, in_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
-    if(src_format == NULL) {
-	src_format_id = identify_format(&in_cfh);
-	if(src_format_id==0) {
-	    v0printf("Couldn't identify the patch format, aborting\n");
-	    exit(EXIT_FAILURE);
-	} else if((src_format_id >> 16)==1) {
-	    v0printf( "Unsupported format version\n");
-	    exit(EXIT_FAILURE);
-	}
-	src_format_id >>= 16;
-    } else {
-	src_format_id = check_for_format(src_format, strlen(src_format));
-	if(src_format_id==0) {
-	    v0printf( "Unknown format '%s'\n", src_format);
-	    exit(1);
-	}
-    }
+
+    v0printf("patch_count is %u\n", patch_count);
 
     if(trg_format==NULL) {
 	v0printf("new files format is required\n");
@@ -163,47 +152,112 @@ main(int argc, char **argv)
 	    exit(1);
 	}
     }
-    DCB_full_init(&dcbuff, 4096,0,0);
-    src_id = internal_DCB_register_cfh_src(&dcbuff, NULL, &bail_if_called_func, 
-    	&bail_if_called_func, DC_COPY, 0);
-    if(SWITCHING_FORMAT == src_format_id) {
-        recon_val = switchingReconstructDCBuff(src_id, &in_cfh, &dcbuff);
-    } else if(GDIFF4_FORMAT == src_format_id) {
-        recon_val = gdiff4ReconstructDCBuff(src_id, &in_cfh, &dcbuff);
-    } else if(GDIFF5_FORMAT == src_format_id) {
-        recon_val = gdiff5ReconstructDCBuff(src_id, &in_cfh, &dcbuff);       
-    } else if(BDIFF_FORMAT == src_format_id) {
-        recon_val = bdiffReconstructDCBuff(src_id, &in_cfh, &dcbuff);       
-    } else if(XDELTA1_FORMAT == src_format_id) {
-        recon_val = xdelta1ReconstructDCBuff(src_id, &in_cfh, &dcbuff, 1);
-    } else if(BDELTA_FORMAT == src_format_id) {
-        recon_val = bdeltaReconstructDCBuff(src_id, &in_cfh, &dcbuff);
-    } else if(BSDIFF_FORMAT == src_format_id) {
-	v0printf("Sorry, unwilling to do bsdiff conversion in this version.\n");
-	v0printf("Try a newer version.\n");
-//	recon_val = bsdiffReconstructDCBuff(&in_cfh, &dcbuff);
-//    } else if(UDIFF_FORMAT == src_format_id) {
-//      recon_val = udiffReconstructDCBuff(&in_cfh, &src_cfh, NULL, &dcbuff);
+
+//    if(NULL!= get_next_arg(argc,argv)) {
+//	DUMP_USAGE(EXIT_USAGE);
+//    }
+
+    if(src_format != NULL) {
+	src_format_id[0] = check_for_format(src_format, strlen(src_format));
+	if(src_format_id[0] == 0) {
+	    v0printf("Unknown format '%s'\n", src_format);
+	    exit(EXIT_FAILURE);
+	}
+	for(x=1; x < patch_count; x++) 
+	    src_format_id[x] = src_format_id[0];
     }
+
+    for(x=0; x < patch_count; x++) {
+	v0printf("%u, opening %s\n", x, patch_name[x]);
+	if((stat(patch_name[x], &in_stat)) || (in_fh[x] = open(patch_name[x], O_RDONLY, 0))==-1) {
+	    v0printf( "error opening patch '%s', %d\n", patch_name[x], in_fh[x]);
+	    exit(EXIT_FAILURE);
+	}
+	copen(in_cfh + x, in_fh[x], 0, in_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
+	if(src_format == NULL) {
+	    src_format_id[x] = identify_format(in_cfh + x);
+	    if(src_format_id==0) {
+		v0printf("Couldn't identify the patch format, aborting\n");
+		exit(EXIT_FAILURE);
+	    } else if((src_format_id[x] >> 16)==1) {
+		v0printf( "Unsupported format version\n");
+		exit(EXIT_FAILURE);
+	    }
+	    src_format_id[x] >>= 16;
+	}
+    }
+
+
+//    DCB_full_init(&dcbuff, 4096,0,0);
+    for(x = 0; x < patch_count; x++) {
+	if(x == 0) {
+	    err=DCB_full_init(&dcbuff[0], 4096, 0, 0);
+	    check_return2(err, "DCBufferInit");
+//	    src_id = internal_DCB_register_cfh_src(dcbuff, NULL, &bail_if_called_func, 
+//		&bail_if_called_func, DC_COPY, 0);
+	    src_id = DCB_register_fake_src(dcbuff, DC_COPY);
+	    check_return2(src_id, "internal_DCB_register_cfh_src");
+	} else {
+	    err=DCB_full_init(&dcbuff[x % 2], 4096, 0,0);//dcbuff[(x - 1) % 2].ver_size, 0);
+	    check_return2(err, "DCBufferInit");
+	    src_id = DCB_register_dcb_src(&dcbuff[x % 2], &dcbuff[(x - 1) % 2]);
+	    check_return2(src_id, "DCB_register_dcb_src");
+	}
+
+	if(SWITCHING_FORMAT == src_format_id[x]) {
+	    recon_val = switchingReconstructDCBuff(src_id, &in_cfh[x], &dcbuff[x % 2]);
+	} else if(GDIFF4_FORMAT == src_format_id[x]) {
+            recon_val = gdiff4ReconstructDCBuff(src_id, &in_cfh[x], &dcbuff[x % 2]);
+    	} else if(GDIFF5_FORMAT == src_format_id[x]) {
+            recon_val = gdiff5ReconstructDCBuff(src_id, &in_cfh[x], &dcbuff[x % 2]);       
+    	} else if(BDIFF_FORMAT == src_format_id[x]) {
+            recon_val = bdiffReconstructDCBuff(src_id, &in_cfh[x], &dcbuff[x % 2]);       
+    	} else if(XDELTA1_FORMAT == src_format_id[x]) {
+            recon_val = xdelta1ReconstructDCBuff(src_id, &in_cfh[x], &dcbuff[x % 2], 1);
+    	} else if(BDELTA_FORMAT == src_format_id[x]) {
+            recon_val = bdeltaReconstructDCBuff(src_id, &in_cfh[x], &dcbuff[x % 2]);
+    	} else if(BSDIFF_FORMAT == src_format_id[x]) {
+	    v0printf("Sorry, unwilling to do bsdiff conversion in this version.\n");
+	    v0printf("Try a newer version.\n");
+//	    recon_val = bsdiffReconstructDCBuff(&in_cfh[x], &dcbuff[x % 2]);
+//    	} else if(UDIFF_FORMAT == src_format_id[x]) {
+//          recon_val = udiffReconstructDCBuff(&in_cfh[x], &src_cfh, NULL, &dcbuff[x % 2]);
+	}
+	v0printf("%u: resultant ver_size was %llu\n", x, (act_off_u64)dcbuff[x].ver_size);
+	if(recon_val) {
+	    v0printf("error detected while processing patch-quitting\n");
+	    print_error(recon_val);
+	    exit(EXIT_FAILURE);
+	}
+	if(x) {
+	    DCBufferFree(&dcbuff[(x - 1) % 2]);
+	}
+    }
+
     v1printf("reconstruction return=%ld\n", recon_val);
     copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
     v1printf("outputing patch...\n");
-    v1printf("there were %lu commands\n", ((DCB_full *)dcbuff.DCB)->cl.com_count);
+    if(DCBUFFER_FULL_TYPE == dcbuff[x % 2].DCBtype) {
+	v1printf("there were %lu commands\n", ((DCB_full *)dcbuff[x % 2].DCB)->cl.com_count);
+    }
     if(GDIFF4_FORMAT == trg_format_id) {
-        encode_result = gdiff4EncodeDCBuffer(&dcbuff, &out_cfh);
+        encode_result = gdiff4EncodeDCBuffer(&dcbuff[(patch_count - 1) % 2], &out_cfh);
     } else if(GDIFF5_FORMAT == trg_format_id) {
-        encode_result = gdiff5EncodeDCBuffer(&dcbuff, &out_cfh);
+        encode_result = gdiff5EncodeDCBuffer(&dcbuff[(patch_count - 1) % 2], &out_cfh);
     } else if(BDIFF_FORMAT == trg_format_id) {
-        encode_result = bdiffEncodeDCBuffer(&dcbuff, &out_cfh);
+        encode_result = bdiffEncodeDCBuffer(&dcbuff[(patch_count - 1) % 2], &out_cfh);
     } else if(SWITCHING_FORMAT == trg_format_id) {
-        encode_result = switchingEncodeDCBuffer(&dcbuff, &out_cfh);
+        encode_result = switchingEncodeDCBuffer(&dcbuff[(patch_count - 1) % 2], &out_cfh);
     } else if (BDELTA_FORMAT == trg_format_id) {
-        encode_result = bdeltaEncodeDCBuffer(&dcbuff, &out_cfh);
+        encode_result = bdeltaEncodeDCBuffer(&dcbuff[(patch_count - 1) % 2], &out_cfh);
     }
     v1printf("encoding return=%ld\n", encode_result);
     v1printf("finished.\n");
-    DCBufferFree(&dcbuff);
-    cclose(&in_cfh);
+    DCBufferFree(&dcbuff[(patch_count -1) % 2]);
+    for(x = 0; x < patch_count; x++) {
+	cclose(&in_cfh[x]);
+	close(in_fh[x]);
+    }
     cclose(&out_cfh);
     return 0;
 }

@@ -86,7 +86,7 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *patchf)
     cwrite(patchf, buff, 1);
     writeUBytesLE(buff, dcbuff->src_size, intsize);
     writeUBytesLE(buff + intsize, (dcbuff->ver_size ? dcbuff->ver_size : 
-	ver_size), intsize);
+ver_size), intsize);
     writeUBytesLE(buff + (2 * intsize), matches, intsize);
     cwrite(patchf, buff, (3 * intsize));
     DCBufferReset(dcbuff);
@@ -153,7 +153,7 @@ bdeltaReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff)
     unsigned int ver;
     EDCB_SRC_ID ref_id, add_id;
     unsigned char buff[BUFF_SIZE];
-    off_u64  copy_offset;
+    off_s64  copy_offset;
     off_u32  match_orig, matches, add_len, copy_len;
     off_u32  size1, size2, or_mask=0, neg_mask;
     off_u64  ver_pos = 0, add_pos;
@@ -161,7 +161,7 @@ bdeltaReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff)
     off_u32  add_start;
 
     dcbuff->ver_size = 0;
-    assert(DCBUFFER_FULL_TYPE == dcbuff->DCBtype);
+//    assert(DCBUFFER_FULL_TYPE == dcbuff->DCBtype);
     if(3!=cseek(patchf, 3, CSEEK_FSTART))
 	goto truncated_patch;
     if(2!=cread(patchf, buff, BDELTA_VERSION_LEN))

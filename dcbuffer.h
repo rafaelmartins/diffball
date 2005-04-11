@@ -58,6 +58,7 @@ extern unsigned int global_use_md5;
 /* internal DCB src types */
 #define DCB_CFH_SRC			(char)0x80
 #define DCB_DCB_SRC			(char)0x40
+#define DCB_NULL_SRC			(char)0x20
 
 typedef unsigned char DCB_SRC_ID;
 //able to hold errors
