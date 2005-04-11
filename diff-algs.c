@@ -229,8 +229,8 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, unsigned char ref_id,
 	if(!first_run) {
 	    while(DCB_get_next_gap(buff, gap_req, &dc)) {
 		assert(dc.len <= buff->ver_size);
-		v2printf("gap at %lu:%lu size %lu\n", dc.offset, dc.offset + 
-		    dc.len, dc.len);
+		v2printf("gap at %llu:%llu size %u\n", (act_off_u64)dc.offset, (act_off_u64)(dc.offset + 
+		    dc.len), dc.len);
 		gap_total_len += dc.len;
 	    }
 	    if(gap_total_len == 0) {
@@ -267,8 +267,8 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, unsigned char ref_id,
 	    v1printf("beginning gap processing...\n");
 	    DCBufferReset(buff);
 	    while(DCB_get_next_gap(buff, gap_req, &dc)) {
-		v2printf("handling gap %lu:%lu, size %lu\n", dc.offset, 
-		    dc.offset + dc.len, dc.len);
+		v2printf("handling gap %llu:%llu, size %u\n", (act_off_u64)dc.offset, 
+		    (act_off_u64)(dc.offset + dc.len), dc.len);
 		err=copen(&ver_window, ver_cfh->raw_fh, dc.offset, dc.len + 
 		    dc.offset, NO_COMPRESSOR, CFILE_RONLY);
 		if(err)

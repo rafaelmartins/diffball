@@ -115,7 +115,7 @@ read_entry(cfile *src_cfh, off_u64 start, tar_entry *entry)
 	return IO_ERROR;
     }
     if('L'==block[TAR_TYPEFLAG_LOC]) {
-	v2printf("handling longlink at %lu eg(%lu)\n", start, start * 512);
+	v2printf("handling longlink at %llu eg(%llu)\n", (act_off_u64)start, (act_off_u64)(start * 512));
 	name_len = octal_str2long(block + TAR_SIZE_LOC, TAR_SIZE_LEN);
 	if((read_bytes=cread(src_cfh, block, 512))!=512) {
 	    v0printf("unexpected EOF on tarfile, bailing\n");
@@ -132,7 +132,7 @@ read_entry(cfile *src_cfh, off_u64 start, tar_entry *entry)
 	    return EOF_ERROR;
 	}
 	if(! check_str_chksum((const char *)block)) {
-	    v0printf("tar checksum failed for tar entry at %lu, bailing\n", start);
+	    v0printf("tar checksum failed for tar entry at %llu, bailing\n", (act_off_u64)start);
 	    // IO_ERROR? please.  add data_error.
 	    return IO_ERROR;
 	}

@@ -851,8 +851,8 @@ DCB_add_overlay(CommandBuffer *dcb, off_u64 diff_src_pos, off_u32 len, DCB_SRC_I
 int 
 DCB_add_add(CommandBuffer *buffer, off_u64 src_pos, off_u32 len, DCB_SRC_ID src_id)
 {
-    v3printf("add v(%lu), l(%lu), id(%u), rpos(%lu)\n", src_pos , len, src_id, 
-	buffer->reconstruct_pos);
+    v3printf("add v(%llu), l(%u), id(%u), rpos(%llu)\n", (act_off_u64)src_pos, len, src_id, 
+	(act_off_u64)buffer->reconstruct_pos);
     if(buffer->add_add)
 	return buffer->add_add(buffer, src_pos, len, src_id);
     return 0;
@@ -900,14 +900,12 @@ DCB_full_add_add(CommandBuffer *buffer, off_u64 src_pos, off_u32 len, DCB_SRC_ID
 int
 DCB_add_copy(CommandBuffer *buffer, off_u64 src_pos, off_u64 ver_pos, off_u32 len, DCB_SRC_ID src_id)
 {
-    unsigned long index;
-
 #ifdef DEBUG_DCBUFFER
     buffer->total_copy_len += len;
 #endif
 
-    v3printf("copy s(%lu), v(%lu), l(%lu), rpos(%lu)\n", src_pos, ver_pos ,
-	 len, buffer->reconstruct_pos);
+    v3printf("copy s(%llu), v(%llu), l(%u), rpos(%llu)\n", (act_off_u64)src_pos, (act_off_u64)ver_pos ,
+	 len, (act_off_u64)buffer->reconstruct_pos);
     return buffer->add_copy(buffer, src_pos, ver_pos, len, src_id);
 }
 #endif
@@ -1028,7 +1026,7 @@ internal_DCB_llm_resize(DCB_llm *buff)
 {
     unsigned long x;
     assert(buff->buff_count <= buff->buff_size);
-    v3printf("resizing ll_matches buffer from %lu to %lu\n", buff->buff_size, buff->buff_size * 2);
+    v3printf("resizing ll_matches buffer from %u to %u\n", buff->buff_size, buff->buff_size * 2);
     buff->buff_size *= 2;
     if((buff->buff = (LL_DCLmatch *)realloc(buff->buff, buff->buff_size * sizeof(LL_DCLmatch))) == NULL) {
 	return MEM_ERROR;
@@ -1319,7 +1317,7 @@ DCB_llm_init(CommandBuffer *buffer, unsigned long buffer_size, off_u64 src_size,
 static int
 internal_DCB_matches_resize(DCB_matches *dcb)
 {
-    v1printf("resizing matches buffer from %lu to %lu\n", dcb->buff_size, dcb->buff_size * 2);
+    v1printf("resizing matches buffer from %u to %u\n", dcb->buff_size, dcb->buff_size * 2);
     dcb->buff_size *= 2;
     if((dcb->buff = (DCLoc_match *)realloc(dcb->buff, dcb->buff_size * 	sizeof(DCLoc_match))) == NULL) {
 	return MEM_ERROR;
@@ -1388,8 +1386,8 @@ DCB_llm_finalize(void *d_ptr)
     unsigned long x;
     if(dcb->buff_count > 0 ) {
 	dcb->cur--;
-	v2printf("inserting a segment %lu:%lu, commands(%lu)\n", 
-	    dcb->buff->ver_pos, LLM_VEND(dcb->cur), 
+	v2printf("inserting a segment %llu:%llu, commands(%u)\n", 
+	    (act_off_u64)dcb->buff->ver_pos, (act_off_u64)(LLM_VEND(dcb->cur)), 
 	    dcb->buff_count);
 
 	assert(dcb->main_head==NULL ? dcb->main == NULL : 1);
@@ -1433,7 +1431,7 @@ DCB_llm_finalize(void *d_ptr)
 }
 
 int
-DCB_llm_init_buff(CommandBuffer *buff, unsigned long buff_size)
+DCB_llm_init_buff(CommandBuffer *buff, unsigned int buff_size)
 {
     DCB_llm *dcb = (DCB_llm *)buff->DCB;
     v3printf("llm_init_buff called\n");

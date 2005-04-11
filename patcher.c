@@ -299,7 +299,7 @@ main(int argc, char **argv)
 	    print_error(recon_val);
 	    exit(EXIT_FAILURE);
 	}
-	v1printf("versions size is %lu\n", dcbuff[x % 2].ver_size);
+	v1printf("versions size is %llu\n", (act_off_u64)dcbuff[x % 2].ver_size);
 	if(x) {
 	    DCBufferFree(&dcbuff[(x - 1) % 2]);
     	}

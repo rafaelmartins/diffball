@@ -65,7 +65,7 @@ bsdiff_overlay_copy(DCommand *dc,
     ov = dc->dcb_src->ov;
 
     // error checking...
-    v3printf("processing src(%lu), len(%lu), ver(%lu)\n", dc->data.src_pos, dc->data.len, dc->data.ver_pos);
+    v3printf("processing src(%llu), len(%u), ver(%llu)\n", (act_off_u64)dc->data.src_pos, dc->data.len, (act_off_u64)dc->data.ver_pos);
     cflush(out_cfh);
     if(dc->data.src_pos != cseek(dc->dcb_src->src_ptr.cfh, dc->data.src_pos, CSEEK_FSTART)) {
     	return 0L;
@@ -141,8 +141,8 @@ bsdiffReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff)
     off_u32 len1, len2, diff_offset, extra_offset;
     off_s32 seek;
     off_u32 diff_len, ctrl_len;
-    off_u32 ver_size;
-    off_u32 ver_pos, src_pos;
+    off_u64 ver_size;
+    off_u64 ver_pos, src_pos;
 
     if(cread(patchf, buff, 32)!=32) {
 	return EOF_ERROR;
@@ -164,8 +164,8 @@ bsdiffReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff)
     diff_len = readUBytesLE(buff + 16, 4);
     ver_size = readUBytesLE(buff + 24, 4);
     dcbuff->ver_size = ver_size;
-    v1printf("start=32, ctrl_len=%lu, diff_len=%lu, ver_size=%lu\n", 
-	ctrl_len, diff_len, ver_size);
+    v1printf("start=32, ctrl_len=%u, diff_len=%u, ver_size=%llu\n", 
+	ctrl_len, diff_len, (act_off_u64)ver_size);
     if(copen_child_cfh(&ctrl_cfh, patchf, 32, ctrl_len + 32,
 	BZIP2_COMPRESSOR, CFILE_RONLY)) {
 	return MEM_ERROR;
@@ -198,13 +198,13 @@ bsdiffReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff)
 	    if(buff[23] & 0x80) {
 		seek = -seek;
 	    }
-	    v2printf("len1(%lu), len2(%lu), seek(%ld)\n", len1, len2, seek);
+	    v2printf("len1(%u), len2(%u), seek(%u)\n", len1, len2, seek);
 	} else {
 	    seek = readUBytesLE(buff + 8, 4);
 	    if(buff[15] & 0x80) {
 		seek = -seek;
 	    }
-	    v2printf("len1(%lu), seek(%ld)\n", len1, seek);
+	    v2printf("len1(%u), seek(%d)\n", len1, seek);
 	}
  	if(len1) {
 	    DCB_add_overlay(dcbuff, diff_offset, len1, diff_id, src_pos, ref_id);
@@ -222,9 +222,9 @@ bsdiffReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff)
 	assert(ver_pos == dcbuff->reconstruct_pos);
 	assert(ver_pos <= ver_size);
     }
-    v1printf("ver_pos=%lu, size=%lu, extra_pos=%lu, diff_pos=%lu, ctrl_pos=%lu, recon=%lu\n", ver_pos, ver_size, 
-	extra_offset, diff_offset, ctrl_cfh.data.pos + ctrl_cfh.data.offset, 
-	dcbuff->reconstruct_pos);
+    v1printf("ver_pos=%llu, size=%llu, extra_pos=%u, diff_pos=%u, ctrl_pos=%llu, recon=%llu\n", (act_off_u64)ver_pos, (act_off_u64)ver_size, 
+	extra_offset, diff_offset, (act_off_u64)ctrl_cfh.data.pos + ctrl_cfh.data.offset, 
+	(act_off_u64)dcbuff->reconstruct_pos);
     if(ver_pos != ver_size) {
 	printf("error detected, aborting...\n");
 	return PATCH_CORRUPT_ERROR;

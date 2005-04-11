@@ -154,7 +154,7 @@ bdeltaReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff)
     EDCB_SRC_ID ref_id, add_id;
     unsigned char buff[BUFF_SIZE];
     off_u64  copy_offset;
-    off_u32  matches, add_len, copy_len;
+    off_u32  match_orig, matches, add_len, copy_len;
     off_u32  size1, size2, or_mask=0, neg_mask;
     off_u64  ver_pos = 0, add_pos;
     off_u64  processed_size = 0;
@@ -196,7 +196,7 @@ bdeltaReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff)
 //    ref_id = DCB_REGISTER_ADD_SRC(dcbuff, ref_cfh, NULL, 0);
     ref_id = src_id;
     v2printf("add block starts at %u\nprocessing commands\n", add_pos);
-    unsigned long match_orig = matches;
+    match_orig = matches;
     if(size1==0) {
 	v0printf("size1 was zero, processing anyways.\n");
 	v0printf("this patch should be incompatible w/ bdelta,\n");
@@ -219,9 +219,9 @@ bdeltaReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff)
 	if((copy_offset & neg_mask) > 0) {
 	    copy_offset |= or_mask;
 	    ver_pos -= (~copy_offset) +1;
-	    v2printf("ver_pos now(%u)\n", (act_off_u64)ver_pos);
+	    v2printf("ver_pos now(%llu)\n", (act_off_u64)ver_pos);
 	} else {
-	    v2printf("positive offset(%u)\n", (act_off_u64)copy_offset);
+	    v2printf("positive offset(%llu)\n", (act_off_u64)copy_offset);
 	    ver_pos += copy_offset;
 	}
 	/* an attempt to ensure things aren't whacky. */

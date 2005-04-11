@@ -63,11 +63,8 @@ typedef struct {
 //    unsigned long	file_loc;
     off_u64		start;
     off_u64		end;
-    unsigned long       entry_num;
-//    unsigned long	size;
-    //concattenation of prefix and name, +1 extra for null, +1 for slash if prefix is not null 
+    unsigned int        entry_num;
     unsigned char       *fullname;
-//    unsigned short int  fullname_len;
 } tar_entry;
 
 

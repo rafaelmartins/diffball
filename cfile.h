@@ -84,9 +84,11 @@ typedef struct {
 } cfile_window;
 
 typedef struct _cfile **cfile_ptr_array;
+typedef unsigned short 	CFH_ID;
+typedef signed int	ECFH_ID;
 
 typedef struct _cfile {
-    unsigned short cfh_id;
+    CFH_ID		cfh_id;
     int			raw_fh;
     unsigned long	raw_fh_len;
     unsigned int	compressor_type;

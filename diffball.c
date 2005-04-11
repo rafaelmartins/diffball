@@ -319,8 +319,9 @@ main(int argc, char **argv)
             tar_ptr = (tar_entry *)*((tar_entry **)vptr);
             v1printf("found match between %.255s and %.255s\n", target[x].fullname,
 		tar_ptr->fullname);
-	    v2printf("differencing src(%lu:%lu) against trg(%lu:%lu)\n",
-		tar_ptr->start, tar_ptr->end, target[x].start, target[x].end);
+	    v2printf("differencing src(%llu:%llu) against trg(%llu:%llu)\n",
+		(act_off_u64)tar_ptr->start, (act_off_u64)tar_ptr->end, 
+		(act_off_u64)target[x].start, (act_off_u64)target[x].end);
 
 	    copen_child_cfh(&ver_window, &ver_full, target[x].start, target[x].end,
             	NO_COMPRESSOR, CFILE_RONLY | CFILE_BUFFER_ALL);

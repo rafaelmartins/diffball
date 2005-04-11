@@ -146,7 +146,7 @@ typedef struct _DCB_full {
 
 typedef struct _DCB_matches {
     off_u64 ver_start;
-    unsigned long buff_count, buff_size;
+    unsigned int buff_count, buff_size;
     DCLoc_match *buff, *cur;
     u_dcb_src		*gap_src;
 } DCB_matches;
@@ -154,7 +154,7 @@ typedef struct _DCB_matches {
 typedef struct _DCB_llm {
     off_u64 ver_start, gap_pos;
     LL_DCLmatch *main_head, *main;
-    unsigned long buff_count, buff_size, main_count;
+    unsigned int buff_count, buff_size, main_count;
     LL_DCLmatch *buff, *cur;
     void **free;
     unsigned long free_size, free_count;
@@ -310,7 +310,7 @@ process_ovchain(CommandBuffer *dcb, off_u64 ver_pos, command_list *cl,
 command_list *
 DCB_collapse_commands(CommandBuffer *dcb);
 
-int DCB_llm_init_buff(CommandBuffer *buff, unsigned long buff_size);
+int DCB_llm_init_buff(CommandBuffer *buff, unsigned int buff_size);
 unsigned int DCB_test_llm_main(CommandBuffer *buff);
 void DCB_test_total_copy_len(CommandBuffer *buff);
 
