@@ -213,19 +213,6 @@ main(int argc, char **argv)
     }
     for(x=0; x < patch_count; x++) {
         if(x == patch_count - 1 && reorder_commands == 0 && bufferless) {
-            v1printf("not reordering, and bufferless is %u, going bufferless\n", bufferless);
-	    if(x==0) {
-	        err=DCB_no_buff_init(&dcbuff[0], 0, src_stat.st_size, 0);
-		check_return2(err, "DCBufferInit");
-            	src_id = internal_DCB_register_cfh_src(&dcbuff[0], &src_cfh, NULL, NULL, DC_COPY, 0);
-            	check_return(src_id, "internal_DCB_register_src", "unable to continue");
-	    } else {
-	    	err=DCB_no_buff_init(&dcbuff[x % 2], 0, dcbuff[(x - 1) % 2].ver_size, 0);
-		check_return2(err, "DCBufferInit");
-    	    	src_id = DCB_register_dcb_src(dcbuff + ( x % 2), dcbuff + ((x -1) % 2));
-            	check_return(src_id, "internal_DCB_register_src", "unable to continue");
-	    }
-
     	    if((out_fh = open(out_name, O_RDWR | O_TRUNC | O_CREAT, 0644))==-1) {
 		v0printf( "error creating out file (open failed)\n");
     		exit(1);
@@ -234,7 +221,19 @@ main(int argc, char **argv)
 		v0printf("error opening output file, exitting\n");
 		exit(EXIT_FAILURE);
     	    }
-	    DCB_no_buff_register_out_cfh(&dcbuff[x % 2], &out_cfh);
+            v1printf("not reordering, and bufferless is %u, going bufferless\n", bufferless);
+	    if(x==0) {
+	        err=DCB_no_buff_init(&dcbuff[0], 0, src_stat.st_size, 0, &out_cfh);
+		check_return2(err, "DCBufferInit");
+            	src_id = internal_DCB_register_cfh_src(&dcbuff[0], &src_cfh, NULL, NULL, DC_COPY, 0);
+            	check_return(src_id, "internal_DCB_register_src", "unable to continue");
+	    } else {
+	    	err=DCB_no_buff_init(&dcbuff[x % 2], 0, dcbuff[(x - 1) % 2].ver_size, 0, &out_cfh);
+		check_return2(err, "DCBufferInit");
+    	    	src_id = DCB_register_dcb_src(dcbuff + ( x % 2), dcbuff + ((x -1) % 2));
+            	check_return(src_id, "internal_DCB_register_src", "unable to continue");
+	    }
+
 	} else {
             if(x==0) {
     	    	err=DCB_full_init(&dcbuff[0], 4096, src_stat.st_size, 0);

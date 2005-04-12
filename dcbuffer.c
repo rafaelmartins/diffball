@@ -43,12 +43,6 @@ bail_if_called_func()
     abort();
 }
         
-void
-DCB_no_buff_register_out_cfh(CommandBuffer *dcb, cfile *out_cfh)
-{
-    assert(DCBUFFER_BUFFERLESS_TYPE == dcb->DCBtype);
-    ((DCB_no_buff *)dcb->DCB)->out_cfh = out_cfh;
-}
 
 void
 DCB_free_commands(CommandBuffer *dcb)
@@ -78,6 +72,59 @@ DCB_free_commands(CommandBuffer *dcb)
 	}
     }
 }
+
+
+signed int
+init_DCommand_collapsed(DCommand_collapsed *dcc) {
+    dcc->size = dcc->count = dcc->pos = 0;
+    dcc->commands = malloc(4 * sizeof(DCommand));
+    if(dcc->commands == NULL)
+	return MEM_ERROR;
+    dcc->size = 4;
+    return 0;
+}
+
+
+signed int
+DCB_get_next_collapsed_command(CommandBuffer *dcb, DCommand_collapsed *dcc)
+{
+    if(dcc->count && dcc->pos) {
+	dcc->commands[0] = dcc->commands[dcc->pos];
+    } else {
+	if(! DCB_commands_remain(dcb))
+	     return 0;
+	DCB_get_next_command(dcb, dcc->commands);
+    }
+    dcc->count = 0;
+    dcc->pos = 0;
+    dcc->len = 0;
+    do {
+	dcc->len += dcc->commands[dcc->pos].data.len;
+	dcc->pos++;
+	if(! DCB_commands_remain(dcb)) {
+	    break;
+	}
+	if(dcc->pos == dcc->size) {
+	    // resize it.
+	    DCommand *dcc2 = realloc(dcc->commands, 2 * sizeof(DCommand) * dcc->size);
+	    if(dcc2 == NULL)
+		return MEM_ERROR;
+	    dcc->commands = dcc2;
+	    dcc->size *= 2;
+	}
+	DCB_get_next_command(dcb, dcc->commands + dcc->pos);
+    } while (dcc->commands[dcc->count].type == dcc->commands[dcc->pos -1].type);
+    dcc->count = dcc->pos + 1;;
+    return dcc->pos;    
+}
+
+
+void
+free_DCommand_collapsed(DCommand_collapsed *dcc)
+{
+    free(dcc->commands);
+}
+
 
 command_list *
 DCB_collapse_commands(CommandBuffer *dcb)
@@ -1219,7 +1266,7 @@ DCB_common_init(CommandBuffer *buffer, unsigned long buffer_size,
     return 0;
 }
 int 
-DCB_no_buff_init(CommandBuffer *buffer, unsigned long buffer_size, off_u64 src_size, off_u64 ver_size)
+DCB_no_buff_init(CommandBuffer *buffer, unsigned long buffer_size, off_u64 src_size, off_u64 ver_size, cfile *out_cfh)
 {
     DCB_no_buff *dcb;
     if(DCB_common_init(buffer, buffer_size, src_size, ver_size, DCBUFFER_BUFFERLESS_TYPE))
@@ -1229,7 +1276,8 @@ DCB_no_buff_init(CommandBuffer *buffer, unsigned long buffer_size, off_u64 src_s
 	buffer->srcs = NULL;
 	return MEM_ERROR;
     }
-    dcb->out_cfh = NULL;
+    dcb->out_cfh = out_cfh;
+
     buffer->DCB = (void *)dcb;
 
     buffer->add_add = DCB_no_buff_add_add;

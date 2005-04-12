@@ -82,11 +82,19 @@ typedef struct {
     DCLoc_match			data;
     struct _DCB_registered_src	*dcb_src;
     DCB_ptr			dcb_ptr;
-    unsigned long		ov_offset;
-    unsigned long		ov_len;
+    off_u64			ov_offset;
+    off_u32			ov_len;
     unsigned char		type;
     DCB_SRC_ID			src_id;
 } DCommand;
+
+typedef struct {
+    DCommand			*commands;
+    unsigned int		size;
+    unsigned int		count;
+    unsigned int		pos;
+    off_u32			len;
+} DCommand_collapsed;
 
 typedef struct {
     DCLoc_match			data;
@@ -232,6 +240,8 @@ int internal_DCB_register_volatile_cfh_src(CommandBuffer *dcb, cfile *cfh,
 
 unsigned long inline current_command_type(CommandBuffer *buff);
 
+EDCB_SRC_ID DCB_register_fake_src(CommandBuffer *dcb, unsigned char type);
+EDCB_SRC_ID DCB_dumb_clone_src(CommandBuffer *dcb, DCB_registered_src *drs);
 void DCB_register_out_cfh(CommandBuffer *dcb, cfile *out_cfh);
 void DCB_free_commands(CommandBuffer *dcb);
 DCBSearch * create_DCBSearch_index(CommandBuffer *dcb);
@@ -257,7 +267,7 @@ int DCB_common_init(CommandBuffer *, unsigned long, off_u64, off_u64, unsigned c
 int DCB_full_init(CommandBuffer *, unsigned long, off_u64, off_u64);
 int DCB_matches_init(CommandBuffer *, unsigned long, off_u64, off_u64);
 int DCB_llm_init(CommandBuffer *, unsigned long, off_u64, off_u64);
-int DCB_no_buff_init(CommandBuffer *, unsigned long, off_u64, off_u64);
+int DCB_no_buff_init(CommandBuffer *, unsigned long, off_u64, off_u64, cfile *);
 
 #define DCBufferReset(buff)	\
 (buff)->reconstruct_pos = 0;	\
