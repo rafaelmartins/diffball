@@ -3,11 +3,11 @@
 convert_delta
 .SH "SYNOPSIS"
 .PP
-convert_delta -t FORMAT patch new-patch
+convert_delta -t FORMAT patch [other-patches] new-patch
 .PP
 .SH "DESCRIPTION"
 convert_delta is a program for conversion of patch's from one format to 
-another\&.
+another\&.  Also able to collapse multiple patches down to a single patch\&.
 .SH "OPTIONS"
 .PP
 .nf
@@ -15,8 +15,6 @@ another\&.
 -V, --version                   output version, and exit
 -v, --verbose                   increase verbosity
 -c, --to-stdout                 output to-file to stdout
--j, --bzip2-compress            compress the to-file w/ bzip2
--z, --gzip-compress             compress the to-file w/ gzip
 -s, --src-format FORMAT         used to override the auto
                                 identification of a patch's format\&.
                                 Valid formats are-
@@ -33,10 +31,6 @@ another\&.
                                 bdelta, gdiff4, gdiff5 (a nonstandard 
                                 modification to gdiff4), bdiff, and
                                 switching\&.
--m, --ignore-md5                if the patch's format supports md5's,
-                                disables their use\&.  If the desired 
-                                format doesn't support md5, this option
-                                is ignored\&.
 .fi
 .PP
 .SH "SEE ALSO"
@@ -50,7 +44,7 @@ none known
 .PP
 .SH "VERSION"
 .PP
-This man page is current for version 0\&.4 of convert_delta
+This man page is current for version 0\&.6\&.5 of convert_delta
 .PP
 .SH "CREDITS"
 convert_delta, and by extension the diffball suite, is distributed under the GNU 

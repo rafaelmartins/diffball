@@ -3,11 +3,11 @@
 patcher
 .SH "SYNOPSIS"
 .PP
-patcher from-file [-f format] patch to-file
+patcher from-file [-f format] patch [extra patches] to-file
 .PP
 .SH "DESCRIPTION"
 patcher is a program for reconstructing a file based off of a reference file 
-and a patch\&.
+and at least one patch\&.
 .SH "OPTIONS"
 .PP
 .nf
@@ -15,8 +15,6 @@ and a patch\&.
 -V, --version                   output version, and exit
 -v, --verbose                   increase verbosity
 -c, --to-stdout                 output to-file to stdout
--j, --bzip2-compress            compress the to-file w/ bzip2
--z, --gzip-compress             compress the to-file w/ gzip
 -f, --patch-format FORMAT       used to override the auto
                                 identification of a patch's format\&.
                                 Valid formats are-
@@ -27,10 +25,6 @@ and a patch\&.
                                 since patcher can identify a patch's
                                 format automatically if it is 
                                 supported\&.
--m, --ignore-md5                if the patch's format supports md5's,
-                                disables their use\&.  If the desired 
-                                format doesn't support md5, this option
-                                is ignored\&.
 .fi
 .PP
 .SH "SEE ALSO"
@@ -44,7 +38,7 @@ none known
 .PP
 .SH "VERSION"
 .PP
-This man page is current for version 0\&.4 of patcher
+This man page is current for version 0\&.6\&.5 of patcher
 .PP
 .SH "CREDITS"
 patcher, and by extension the diffball suite, is distributed under the GNU 

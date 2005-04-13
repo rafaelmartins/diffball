@@ -16,8 +16,6 @@ For tarball's, diffball performs better then differ typically\&.
 -V, --version                   output version, and exit
 -v, --verbose                   increase verbosity
 -c, --to-stdout                 output patch to stdout
--j, --bzip2-compress            compress the patch w/ bzip2
--z, --gzip-compress             compress the patch w/ gzip
 -b, --seed-len SIZE             set the starting seed size to look for\&. 
                                 For example, -b 32 would only be able to 
                                 find matches 32 bytes or larger
@@ -38,10 +36,6 @@ For tarball's, diffball performs better then differ typically\&.
                                 modification to gdiff4), bdiff, and
                                 switching\&.
                                 Default is switching\&.
--m, --ignore-md5                if the desired format supports md5's,
-                                disables their use\&.  If the desired 
-                                format doesn't support md5, this option
-                                is ignored\&.
 .fi
 .PP
 .SH "SEE ALSO"
@@ -55,7 +49,7 @@ none known
 .PP
 .SH "VERSION"
 .PP
-This man page is current for version 0\&.4 of diffball
+This man page is current for version 0\&.6\&.5\&.2 of diffball
 .PP
 .SH "CREDITS"
 diffball, and by extension the entire diffball suite, is distributed under the GNU 
