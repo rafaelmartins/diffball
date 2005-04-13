@@ -329,4 +329,8 @@ unsigned long bail_if_called_func();
 
 #define tfree(f) ((void *)f) != NULL && free((f))
 
+
+signed int init_DCommand_collapsed(DCommand_collapsed *);
+signed int DCB_get_next_collapsed_command(CommandBuffer *, DCommand_collapsed *);
+void free_DCommand_collapsed(DCommand_collapsed *);
 #endif

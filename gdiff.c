@@ -62,7 +62,7 @@ gdiffEncodeDCBuffer(CommandBuffer *buffer,
     unsigned long fh_pos=0;
     signed long s_off=0;
     unsigned long u_off=0;
-    off_u32 delta_pos, dc_pos=0;
+    off_u32 delta_pos=0, dc_pos=0;
     unsigned int lb=0, ob=0;
     unsigned char off_is_sbytes=0;
     unsigned char out_buff[5];
