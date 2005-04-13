@@ -167,8 +167,9 @@ main(int argc, char **argv)
 	    AUTODETECT_COMPRESSOR, CFILE_RONLY);
 	check_return2(err,"copen of patch")
 	/* if compression is noticed, reorganize. */
-	if(patch_cfh[x].compressor_type != NO_COMPRESSOR)
+	if(patch_cfh[x].compressor_type != NO_COMPRESSOR) {
 	    reorder_commands = 1;
+	}
 
     	if(patch_format==NULL) {
 	    patch_id[x] = identify_format(&patch_cfh[x]);
@@ -191,14 +192,6 @@ main(int argc, char **argv)
     	cseek(&patch_cfh[x], 0, CSEEK_FSTART);
     }
 
-    if(patch_count != 1 || reorder_commands != 0) {
-    	bufferless = 0;
-    	v1printf("disabling bufferless, patch_count(%lu) != 1\n", patch_count);
-    } else {
-    	v1printf("enabling bufferless, patch_count(%lu) != 1\n", patch_count);
-    	bufferless = 1;
-    }
-
     v1printf("verbosity level(%u)\n", global_verbosity);
     if ((src_fh = open(src_name, O_RDONLY,0)) == -1) {
 	v0printf("error opening source file '%s'\n", src_name);
@@ -211,16 +204,27 @@ main(int argc, char **argv)
     if(src_cfh.compressor_type != NO_COMPRESSOR) {
     	reorder_commands = 1;
     }
+
+    if(patch_count == 1 && reorder_commands == 0) {
+    	bufferless = 1;
+    	v1printf("enabling bufferless, patch_count(%lu) == 1\n", patch_count);
+    } else {
+    	bufferless = 0;
+    	v1printf("disabling bufferless, patch_count(%lu) == 1 || forced_reorder(%u)\n", patch_count, reorder_commands);
+    }
+
+
+    if((out_fh = open(out_name, O_RDWR | O_TRUNC | O_CREAT, 0644))==-1) {
+	v0printf( "error creating out file (open failed)\n");
+	exit(1);
+    }
+    if(copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WR)) {
+	v0printf("error opening output file, exitting\n");
+	exit(EXIT_FAILURE);
+    }
+
     for(x=0; x < patch_count; x++) {
         if(x == patch_count - 1 && reorder_commands == 0 && bufferless) {
-    	    if((out_fh = open(out_name, O_RDWR | O_TRUNC | O_CREAT, 0644))==-1) {
-		v0printf( "error creating out file (open failed)\n");
-    		exit(1);
-    	    }
-    	    if(copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WR)) {
-		v0printf("error opening output file, exitting\n");
-		exit(EXIT_FAILURE);
-    	    }
             v1printf("not reordering, and bufferless is %u, going bufferless\n", bufferless);
 	    if(x==0) {
 	        err=DCB_no_buff_init(&dcbuff[0], 0, src_stat.st_size, 0, &out_cfh);
@@ -306,7 +310,7 @@ main(int argc, char **argv)
     v1printf("applied %lu patches\n", patch_count);
 
     if(! bufferless) {
-	if((out_fh = open(out_name, O_RDWR | O_TRUNC | O_CREAT, 0644))==-1) {
+/*	if((out_fh = open(out_name, O_RDWR | O_TRUNC | O_CREAT, 0644))==-1) {
 	    v0printf( "error creating out file (open failed)\n");
     	    exit(1);
     	}
@@ -314,16 +318,17 @@ main(int argc, char **argv)
 	    v0printf("error opening output file, exitting\n");
 	    exit(EXIT_FAILURE);
     	}
-
+*/
     	v1printf("reordering commands? %u\n", reorder_commands);
     	v1printf("reconstructing target file based off of dcbuff commands...\n");
-    	err = reconstructFile(&dcbuff[(patch_count - 1) % 2], &out_cfh,reorder_commands, reconst_size);
+    	err = reconstructFile(&dcbuff[(patch_count - 1) % 2], &out_cfh, reorder_commands, reconst_size);
 	check_return(err, "reconstructFile", "error detected while reconstructing file, quitting");
     	
     	v1printf("reconstruction completed successfully\n");
     } else {
     	v1printf("reconstruction completed successfully\n");
     }
+
     DCBufferFree(&dcbuff[(patch_count - 1) % 2]);
     cclose(&out_cfh);
     cclose(&src_cfh);

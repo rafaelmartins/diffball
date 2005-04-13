@@ -241,7 +241,7 @@ int internal_DCB_register_volatile_cfh_src(CommandBuffer *dcb, cfile *cfh,
 unsigned long inline current_command_type(CommandBuffer *buff);
 
 EDCB_SRC_ID DCB_register_fake_src(CommandBuffer *dcb, unsigned char type);
-EDCB_SRC_ID DCB_dumb_clone_src(CommandBuffer *dcb, DCB_registered_src *drs);
+EDCB_SRC_ID DCB_dumb_clone_src(CommandBuffer *dcb, DCB_registered_src *drs, unsigned char type);
 void DCB_register_out_cfh(CommandBuffer *dcb, cfile *out_cfh);
 void DCB_free_commands(CommandBuffer *dcb);
 DCBSearch * create_DCBSearch_index(CommandBuffer *dcb);

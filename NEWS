@@ -1,3 +1,11 @@
+0.6.5
+* Bug fixes.  bufferless reconstruction should work without issue now.
+* Further code cleanup in preparation for attempting largefile (>2gb) support.
+* convert_delta got a new feature; no longer limited to specifying only one patch for conversion.  You can now specify
+  < 255 patches, and the patches are collapsed down into a single patch.  Doesn't do any optimization, but at this point 
+  there really isn't any optimization done on the command lists.  Expect that sometime prior to 0.7
+
+0.6.2 and under
 * Reconstruction via multiple patches is now supported for all supported patch formats- no limitations on mixing formats also.
   I'd suspect a bug or two linger, but not many (been threw a fair amount of testing).
   

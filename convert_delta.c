@@ -140,7 +140,7 @@ main(int argc, char **argv)
 	patch_count--;
     }
 
-    v0printf("patch_count is %u\n", patch_count);
+    v1printf("patch_count is %u\n", patch_count);
 
     if(trg_format==NULL) {
 	v0printf("new files format is required\n");
@@ -168,7 +168,7 @@ main(int argc, char **argv)
     }
 
     for(x=0; x < patch_count; x++) {
-	v0printf("%u, opening %s\n", x, patch_name[x]);
+	v1printf("%u, opening %s\n", x, patch_name[x]);
 	if((stat(patch_name[x], &in_stat)) || (in_fh[x] = open(patch_name[x], O_RDONLY, 0))==-1) {
 	    v0printf( "error opening patch '%s', %d\n", patch_name[x], in_fh[x]);
 	    exit(EXIT_FAILURE);
@@ -219,11 +219,12 @@ main(int argc, char **argv)
     	} else if(BSDIFF_FORMAT == src_format_id[x]) {
 	    v0printf("Sorry, unwilling to do bsdiff conversion in this version.\n");
 	    v0printf("Try a newer version.\n");
+	    exit(2);
 //	    recon_val = bsdiffReconstructDCBuff(&in_cfh[x], &dcbuff[x % 2]);
 //    	} else if(UDIFF_FORMAT == src_format_id[x]) {
 //          recon_val = udiffReconstructDCBuff(&in_cfh[x], &src_cfh, NULL, &dcbuff[x % 2]);
 	}
-	v0printf("%u: resultant ver_size was %llu\n", x, (act_off_u64)dcbuff[x].ver_size);
+	v1printf("%u: resultant ver_size was %llu\n", x, (act_off_u64)dcbuff[x].ver_size);
 	if(recon_val) {
 	    v0printf("error detected while processing patch-quitting\n");
 	    print_error(recon_val);

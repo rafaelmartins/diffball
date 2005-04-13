@@ -1,5 +1,5 @@
 # Process this file with autoconf to produce a configure script.
-AC_INIT(diffball, 0.6.2, ferringb@gentoo.org)
+AC_INIT(diffball, 0.6.5, ferringb@gentoo.org)
 AM_INIT_AUTOMAKE
 AC_PROG_LIBTOOL
 AM_CONFIG_HEADER(config.h)

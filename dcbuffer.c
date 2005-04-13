@@ -77,9 +77,10 @@ DCB_free_commands(CommandBuffer *dcb)
 signed int
 init_DCommand_collapsed(DCommand_collapsed *dcc) {
     dcc->size = dcc->count = dcc->pos = 0;
-    dcc->commands = malloc(4 * sizeof(DCommand));
-    if(dcc->commands == NULL)
+    dcc->commands = (DCommand *)malloc(4 * sizeof(DCommand));
+    if(dcc->commands == NULL) {
 	return MEM_ERROR;
+    }
     dcc->size = 4;
     return 0;
 }
@@ -90,10 +91,22 @@ DCB_get_next_collapsed_command(CommandBuffer *dcb, DCommand_collapsed *dcc)
 {
     if(dcc->count && dcc->pos) {
 	dcc->commands[0] = dcc->commands[dcc->pos];
+	if(! DCB_commands_remain(dcb)) {
+	    if(dcc->pos == dcc->count) {
+		return dcc->pos = dcc->count = 0;
+	    }
+	    dcc->pos = dcc->count = 0;
+	    return 1;
+	}
     } else {
 	if(! DCB_commands_remain(dcb))
 	     return 0;
 	DCB_get_next_command(dcb, dcc->commands);
+	while(DCB_commands_remain(dcb) && 0 == dcc->commands[0].data.len)
+	    DCB_get_next_command(dcb, dcc->commands);
+	if(dcc->commands[0].data.len == 0) {
+	    return 0;
+	}
     }
     dcc->count = 0;
     dcc->pos = 0;
@@ -102,9 +115,10 @@ DCB_get_next_collapsed_command(CommandBuffer *dcb, DCommand_collapsed *dcc)
 	dcc->len += dcc->commands[dcc->pos].data.len;
 	dcc->pos++;
 	if(! DCB_commands_remain(dcb)) {
-	    break;
+	    dcc->count = dcc->pos;
+	    return dcc->pos;
 	}
-	if(dcc->pos == dcc->size) {
+	if(dcc->pos >= dcc->size) {
 	    // resize it.
 	    DCommand *dcc2 = realloc(dcc->commands, 2 * sizeof(DCommand) * dcc->size);
 	    if(dcc2 == NULL)
@@ -113,8 +127,10 @@ DCB_get_next_collapsed_command(CommandBuffer *dcb, DCommand_collapsed *dcc)
 	    dcc->size *= 2;
 	}
 	DCB_get_next_command(dcb, dcc->commands + dcc->pos);
-    } while (dcc->commands[dcc->count].type == dcc->commands[dcc->pos -1].type);
-    dcc->count = dcc->pos + 1;;
+	if(dcc->commands[dcc->pos].data.len == 0)
+	    dcc->pos--;
+    } while (dcc->commands[dcc->pos].type == dcc->commands[dcc->pos -1].type);
+    dcc->count = dcc->pos + 1;
     return dcc->pos;    
 }
 
@@ -289,15 +305,29 @@ DCB_register_fake_src(CommandBuffer *dcb, unsigned char type)
 }
 
 EDCB_SRC_ID
-DCB_dumb_clone_src(CommandBuffer *dcb, DCB_registered_src *drs)
+DCB_dumb_clone_src(CommandBuffer *dcb, DCB_registered_src *drs, unsigned char type)
 {
+    v3printf("registering cloned src as buffer id(%u)\n", dcb->src_count);
+
+    if(dcb->src_count == dcb->src_array_size && internal_DCB_resize_srcs(dcb)) {
+	return MEM_ERROR;
+    }
+
     dcb->srcs[dcb->src_count].src_ptr = drs->src_ptr;
     dcb->srcs[dcb->src_count].flags = drs->flags;
-    dcb->srcs[dcb->src_count].type = drs->type;
+    dcb->srcs[dcb->src_count].type = type;
     dcb->srcs[dcb->src_count].read_func = drs->read_func;
     dcb->srcs[dcb->src_count].copy_func = drs->copy_func;
     dcb->srcs[dcb->src_count].mask_read_func = drs->mask_read_func;
     dcb->srcs[dcb->src_count].ov = drs->ov;
+
+    if(DCBUFFER_FULL_TYPE != dcb->DCBtype) {
+        if(type & DC_COPY) {
+            dcb->default_copy_src = dcb->srcs + dcb->src_count;
+        } else {
+            dcb->default_add_src = dcb->srcs + dcb->src_count;
+        }
+    }
     dcb->src_count++;
     return dcb->src_count - 1;
 }
@@ -773,11 +803,11 @@ DCB_rec_copy_from_DCB_src(CommandBuffer *tdcb, command_list *tcl,
 	    	    	    dcb_s->read_func, dcb_s->copy_func, dcb_s->mask_read_func,
 	    	    	    (dcb_s->flags & DCB_FREE_SRC_CFH));
 	    	    } else {
-/*			x = DCB_register_src(tdcb, dcb_s->src_ptr.cfh, 
-	    	    	    dcb_s->read_func, dcb_s->copy_func, 
-	    	    	    dcb_s->flags, (dcb_s->type & 0x1));
-*/
-			x = DCB_dumb_clone_src(tdcb, dcb_s);
+//			x = DCB_register_src(tdcb, dcb_s->src_ptr.cfh, 
+//	    	    	    dcb_s->read_func, dcb_s->copy_func, 
+//	    	    	    dcb_s->flags, (dcb_s->type & 0x1));
+
+			x = DCB_dumb_clone_src(tdcb, dcb_s, (dcb_s->type & DC_COPY));
 	    	    }
 	    	    if(x < 0)
 	    		return x;
