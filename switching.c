@@ -275,62 +275,61 @@ switchingReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbu
 	(off_u32)ctell(patchf, CSEEK_ABS));
 
     while(cread(patchf, buff, 1)==1 && end_of_patch==0) {
-    	v2printf("processing(%u) at pos(%u): ", buff[0], (off_u32)ctell(patchf, CSEEK_ABS) -1);
-	    if(last_com != DC_ADD) {
-	    	lb = (buff[0] >> 6) & 0x3;
-	    	len = buff[0] & 0x3f;
-	    	if(lb) {
-		    cread(patchf, buff, lb);
-		    len = (len << (lb * 8)) + readUBytesBE(buff, lb);
-		    len += add_len_start[lb];
-	    	}
-	    	if(len) {
-		    DCB_add_add(dcbuff, add_off, len, add_id);
-		    add_off += len;
-	    	}
-	    	last_com = DC_ADD;
-	    	v2printf("add len(%u)\n", len);
-	    } else if(last_com != DC_COPY) {
-	    	lb = (buff[0] >> 6) & 0x3;
-	    	ob = (buff[0] >> 4) & 0x3;
-	    	len = buff[0] & 0x0f;
-	    	if(lb) {
-	    	    cread(patchf, buff, lb);
-	    	    len = (len << (lb * 8)) + readUBytesBE(buff, lb);
-	    	    //v2printf("adding(%u): ", copy_len_start[lb]);
-	    	    len += copy_len_start[lb];
-	    	}
-	    	v2printf("ob(%u): ", ob);
-	    	cread(patchf, buff, ob + 1);
-		if (offset_type == ENCODING_OFFSET_DC_POS) {
-	    	    s_off = readSBytesBE(buff, ob + 1);
-
-   		    // positive or negative 0?  Yes, for this, there is a difference... 
-	    	    if(buff[0] & 0x80) {
-	    		s_off -= copy_off_array[ob];
-	    	    } else {
-	    		s_off += copy_off_array[ob];
-	    	    }
-		    u_off = dc_pos + s_off;
-		    v2printf("u_off(%llu), dc_pos(%u), s_off(%lld): ", 
-			(act_off_u64)u_off, dc_pos, (act_off_s64)s_off);
-		    dc_pos = u_off;
-		} else {
-	    	    u_off = readUBytesBE(buff, ob + 1);
-	    	    u_off += copy_off_start[ob];
-	    	}
-	    	if(lb==0 && ob==0 && len==0 && u_off==0) {
-	    	    v2printf("zero length, zero offset copy found.\n");
-	    	    end_of_patch=1;
-	    	    continue;
-	    	}
-	    	if(len) {
-		    DCB_add_copy(dcbuff, u_off, 0, len, ref_id);
-		}
-	    	last_com = DC_COPY;
-	    	v2printf("copy off(%llu), len(%u)\n", (act_off_u64)u_off, len);
+   	v2printf("processing(%u) at pos(%u): ", buff[0], (off_u32)ctell(patchf, CSEEK_ABS) -1);
+	if(last_com != DC_ADD) {
+	    lb = (buff[0] >> 6) & 0x3;
+	    len = buff[0] & 0x3f;
+	    if(lb) {
+		cread(patchf, buff, lb);
+		len = (len << (lb * 8)) + readUBytesBE(buff, lb);
+		len += add_len_start[lb];
 	    }
+	    if(len) {
+		DCB_add_add(dcbuff, add_off, len, add_id);
+		add_off += len;
+	    }
+	    last_com = DC_ADD;
+	    v2printf("add len(%u)\n", len);
+	} else if(last_com != DC_COPY) {
+	    lb = (buff[0] >> 6) & 0x3;
+	    ob = (buff[0] >> 4) & 0x3;
+	    len = buff[0] & 0x0f;
+	    if(lb) {
+	    	cread(patchf, buff, lb);
+	    	len = (len << (lb * 8)) + readUBytesBE(buff, lb);
+	    	//v2printf("adding(%u): ", copy_len_start[lb]);
+	    	len += copy_len_start[lb];
+	    }
+	    v2printf("ob(%u): ", ob);
+	    cread(patchf, buff, ob + 1);
+	    if (offset_type == ENCODING_OFFSET_DC_POS) {
+	        s_off = readSBytesBE(buff, ob + 1);
+
+   		// positive or negative 0?  Yes, for this, there is a difference... 
+	    	if(buff[0] & 0x80) {
+	    	    s_off -= copy_off_array[ob];
+	    	} else {
+	    	    s_off += copy_off_array[ob];
+	    	}
+		u_off = dc_pos + s_off;
+		v2printf("u_off(%llu), dc_pos(%u), s_off(%lld): ", (act_off_u64)u_off, dc_pos, (act_off_s64)s_off);
+		dc_pos = u_off;
+	    } else {
+	    	u_off = readUBytesBE(buff, ob + 1);
+	    	u_off += copy_off_start[ob];
+	    }
+	    if(lb==0 && ob==0 && len==0 && u_off==0) {
+	    	v2printf("zero length, zero offset copy found.\n");
+	    	end_of_patch=1;
+	    	continue;
+	    }
+	    if(len) {
+		DCB_add_copy(dcbuff, u_off, 0, len, ref_id);
+	    }
+	    last_com = DC_COPY;
+	    v2printf("copy off(%llu), len(%u)\n", (act_off_u64)u_off, len);
 	}
+    }
     dcbuff->ver_size = dcbuff->reconstruct_pos;
     v2printf("closing command was (%u)\n", *buff);
     v2printf("cread fh_pos(%lu)\n", ctell(patchf, CSEEK_ABS)); 
