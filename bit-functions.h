@@ -38,18 +38,18 @@ signed long readSBytesBE(const unsigned char *buff, unsigned int l);
 //signed long readSBytesLE(const unsigned char *buff, unsigned int l);
 
 unsigned int writeUBytesBE(unsigned char *buff, unsigned long value, 
-    unsigned int l);
+	unsigned int l);
 unsigned int writeUBytesLE(unsigned char *buff, unsigned long value,
-    unsigned int l);
+	unsigned int l);
 unsigned int writeSBytesBE(unsigned char *buff, signed long value,
-    unsigned int l);
+	unsigned int l);
 unsigned int writeSBytesLE(unsigned char *buff, signed long value,
-    unsigned int l);
+	unsigned int l);
 
 unsigned int writeSBitsBE(unsigned char *out_buff, signed long value,
-    unsigned int bit_count);
+	unsigned int bit_count);
 unsigned int writeUBitsBE(unsigned char *out_buff, unsigned long value, 
-    unsigned int bit_count);
+	unsigned int bit_count);
 
 #endif
 

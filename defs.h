@@ -38,17 +38,17 @@ typedef off_s32 off_s64;
 typedef unsigned long long act_off_u64;
 typedef signed   long long act_off_s64;
 
-#define MAX_SEED_LEN	65535
-#define MAX_SAMPLE_RATE	32767
-#define MAX_HASH_SIZE	2147483647	//if you have 2gb for a hash size... yeah, feel free to donate hardware/memory to me :)
+#define MAX_SEED_LEN		65535
+#define MAX_SAMPLE_RATE		32767
+#define MAX_HASH_SIZE		2147483647		//if you have 2gb for a hash size... yeah, feel free to donate hardware/memory to me :)
 
-#define PATCH_TRUNCATED		(-1)
-#define PATCH_CORRUPT_ERROR 	(-2)
-#define IO_ERROR		(-3)
-#define EOF_ERROR		(-4)
-#define MEM_ERROR		(-5)
-#define FORMAT_ERROR		(-6)
-#define DATA_ERROR		(-7)
+#define PATCH_TRUNCATED				(-1)
+#define PATCH_CORRUPT_ERROR		 (-2)
+#define IO_ERROR				(-3)
+#define EOF_ERROR				(-4)
+#define MEM_ERROR				(-5)
+#define FORMAT_ERROR				(-6)
+#define DATA_ERROR				(-7)
 
 #define v0printf(expr...) fprintf(stderr, expr);
 
@@ -73,8 +73,8 @@ typedef signed   long long act_off_s64;
 #ifdef DEBUG_CFILE
 #include <stdio.h>
 #define dcprintf(fmt...) \
-    fprintf(stderr, "%s: ",__FILE__);   \
-    fprintf(stderr, fmt);
+	fprintf(stderr, "%s: ",__FILE__);   \
+	fprintf(stderr, fmt);
 #else
 #define dcprintf(expr...) ((void) 0);
 #endif

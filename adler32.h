@@ -19,22 +19,22 @@
 #define _HEADER_ADLER32 1
 
 typedef struct _ADLER32_SEED_CTX {
-	unsigned int seed_len;
-	unsigned int multi;
-	unsigned long last_multi;
-	unsigned int *last_seed;
-	unsigned char *seed_chars;
-	unsigned char *last_parity_bits;
-	unsigned int parity;
-	unsigned int tail;
-	unsigned long s1;
-	unsigned long s2;
+		unsigned int seed_len;
+		unsigned int multi;
+		unsigned long last_multi;
+		unsigned int *last_seed;
+		unsigned char *seed_chars;
+		unsigned char *last_parity_bits;
+		unsigned int parity;
+		unsigned int tail;
+		unsigned long s1;
+		unsigned long s2;
 } ADLER32_SEED_CTX;
 
 int init_adler32_seed(ADLER32_SEED_CTX *ads, unsigned int seed_len, 
-    unsigned int multi);
+	unsigned int multi);
 void update_adler32_seed(ADLER32_SEED_CTX *ads, unsigned char *buff, 
-    unsigned int len); 
+	unsigned int len); 
 unsigned long get_checksum(ADLER32_SEED_CTX *ads);
 unsigned int free_adler32_seed(ADLER32_SEED_CTX *ads) ;
 

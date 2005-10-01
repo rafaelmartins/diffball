@@ -23,5 +23,5 @@
 #include "dcbuffer.h"
 
 signed int UdiffReconstructDCBuff(cfile *ref_cfh, cfile *patchf, tar_entry **tarball,
-    CommandBuffer *dcbuff);
+	CommandBuffer *dcbuff);
 #endif

@@ -19,11 +19,11 @@
 #define _HEADER_FDTU 1
 #include "cfile.h"
 
-#define FDTU_MAGIC_LEN		3
-#define FDTU_MAGIC		"DTU"
-#define FDTU_VERSION_LEN	2
-#define FDTU_MAGIC_V4		0x04
-#define FDTU_MAGIC_V3		0x03
+#define FDTU_MAGIC_LEN				3
+#define FDTU_MAGIC				"DTU"
+#define FDTU_VERSION_LEN		2
+#define FDTU_MAGIC_V4				0x04
+#define FDTU_MAGIC_V3				0x03
 
 unsigned int check_fdtu_magic(cfile *patchf);
 signed int fdtuEncodeDCBuffer(CommandBuffer *buffer, cfile *out_cfh);

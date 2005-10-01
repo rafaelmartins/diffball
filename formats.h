@@ -26,20 +26,20 @@
 #include "fdtu.h"
 #include "bsdiff.h"
 
-#define GDIFF4_FORMAT		0x1
-#define GDIFF5_FORMAT		0x2
-#define BDIFF_FORMAT		0x3
-#define BSDIFF3_FORMAT		0x4
-#define BSDIFF4_FORMAT		0x5
-#define XDELTA1_FORMAT		0x6
-#define SWITCHING_FORMAT 	0x7
-#define BDELTA_FORMAT		0x8
-#define GNUDIFF_FORMAT		0x9
-#define BSDIFF_FORMAT		0xa
-#define FDTU_FORMAT		0xb
-#define DEFAULT_PATCH_ID	SWITCHING_FORMAT
+#define GDIFF4_FORMAT				0x1
+#define GDIFF5_FORMAT				0x2
+#define BDIFF_FORMAT				0x3
+#define BSDIFF3_FORMAT				0x4
+#define BSDIFF4_FORMAT				0x5
+#define XDELTA1_FORMAT				0x6
+#define SWITCHING_FORMAT		 0x7
+#define BDELTA_FORMAT				0x8
+#define GNUDIFF_FORMAT				0x9
+#define BSDIFF_FORMAT				0xa
+#define FDTU_FORMAT				0xb
+#define DEFAULT_PATCH_ID		SWITCHING_FORMAT
 
-#define UNDETECTED_COMPRESSOR	NO_COMPRESSOR
+#define UNDETECTED_COMPRESSOR		NO_COMPRESSOR
 
 
 

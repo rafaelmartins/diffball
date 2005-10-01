@@ -83,106 +83,106 @@ static unsigned int PRIMES[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 1
 
 int 
 init_adler32_seed(ADLER32_SEED_CTX *ads, unsigned int seed_len, 
-    unsigned int multi) 
+	unsigned int multi) 
 {
-	unsigned int x;
-	ads->s1 = ads->s2 = ads->tail = 0;
-	ads->seed_len = seed_len;
-	ads->multi = 181;//multi;
-	ads->parity=0;
-	//printf("init_adler32_seed\n");
-	if((ads->last_seed = (unsigned int *)
-	    malloc(seed_len*sizeof(int)))==NULL) {
-		//printf("shite, error allocing needed memory\n");
-		return MEM_ERROR;
-	}
-	for(x=0; x < seed_len; x++) {
-		ads->last_seed[x] = 0;
-	}
-	if((ads->seed_chars = (unsigned char *)malloc(seed_len))==NULL) {
-		return MEM_ERROR;
-	}
-	for(x=0; x < seed_len; x++) {
-		ads->seed_chars[x] = x;
-	}
-	if((ads->last_parity_bits = (unsigned char *)malloc(seed_len))==NULL) {
-		return MEM_ERROR;
-	}
-	for(x=0; x < seed_len; x++) {
-		ads->last_parity_bits[x]=0;
-	}
-	ads->last_multi = 1;
-	for(x=1; x < seed_len; x++) {
-	    ads->last_multi *= ads->multi;
-	    ads->last_multi++;
-	}
-    return 0;
+		unsigned int x;
+		ads->s1 = ads->s2 = ads->tail = 0;
+		ads->seed_len = seed_len;
+		ads->multi = 181;//multi;
+		ads->parity=0;
+		//printf("init_adler32_seed\n");
+		if((ads->last_seed = (unsigned int *)
+			malloc(seed_len*sizeof(int)))==NULL) {
+				//printf("shite, error allocing needed memory\n");
+				return MEM_ERROR;
+		}
+		for(x=0; x < seed_len; x++) {
+				ads->last_seed[x] = 0;
+		}
+		if((ads->seed_chars = (unsigned char *)malloc(seed_len))==NULL) {
+				return MEM_ERROR;
+		}
+		for(x=0; x < seed_len; x++) {
+				ads->seed_chars[x] = x;
+		}
+		if((ads->last_parity_bits = (unsigned char *)malloc(seed_len))==NULL) {
+				return MEM_ERROR;
+		}
+		for(x=0; x < seed_len; x++) {
+				ads->last_parity_bits[x]=0;
+		}
+		ads->last_multi = 1;
+		for(x=1; x < seed_len; x++) {
+			ads->last_multi *= ads->multi;
+			ads->last_multi++;
+		}
+	return 0;
 }
 
 void 
 update_adler32_seed(ADLER32_SEED_CTX *ads, unsigned char *buff, 
-    unsigned int len) 
-{	
-    unsigned int x;
-    signed long parity;
-    if(len==ads->seed_len) {
-	//printf("computing seed fully\n");
-	ads->s1 = ads->s2 = ads->tail =0;
-	for(x=0; x < ads->seed_len; x++) {
-	    ads->s1 += PRIMES[buff[x]];
-	    ads->s2 *= ads->multi;
-	    ads->s2 += ads->s1;
-	    ads->last_seed[x] = PRIMES[buff[x]];
-	    ads->seed_chars[x] = buff[x];
-	    ads->last_parity_bits[x] = ads->last_seed[x] & 0x1;
-	    ads->parity += ads->last_parity_bits[x];
-	}
-	ads->parity &= 0x1;
-	ads->tail = 0;		
-    } else {
-	parity = ads->parity;
-	for(x=0; x < len; x++){
-	ads->s1 = ads->s1 - ads->last_seed[ads->tail] + PRIMES[buff[x]];
+	unsigned int len) 
+{		
+	unsigned int x;
+	signed long parity;
+	if(len==ads->seed_len) {
+		//printf("computing seed fully\n");
+		ads->s1 = ads->s2 = ads->tail =0;
+		for(x=0; x < ads->seed_len; x++) {
+			ads->s1 += PRIMES[buff[x]];
+			ads->s2 *= ads->multi;
+			ads->s2 += ads->s1;
+			ads->last_seed[x] = PRIMES[buff[x]];
+			ads->seed_chars[x] = buff[x];
+			ads->last_parity_bits[x] = ads->last_seed[x] & 0x1;
+			ads->parity += ads->last_parity_bits[x];
+		}
+		ads->parity &= 0x1;
+		ads->tail = 0;				
+	} else {
+		parity = ads->parity;
+		for(x=0; x < len; x++){
+		ads->s1 = ads->s1 - ads->last_seed[ads->tail] + PRIMES[buff[x]];
 
-	ads->s2 -= (ads->last_multi * ads->last_seed[ads->tail]);
-	ads->s2 *= ads->multi;
-	ads->s2 += ads->s1;
+		ads->s2 -= (ads->last_multi * ads->last_seed[ads->tail]);
+		ads->s2 *= ads->multi;
+		ads->s2 += ads->s1;
 
-//	ads->s1 = ads->s1 - 
-//	    (ads->multi * ads->last_seed[ads->tail]) + 
-//	    (ads->multi * PRIMES[buff[x]]);
-//	ads->s2 = ads->s2 - (ads->multi * ads->seed_len * 
-//	    ads->last_seed[ads->tail]) + ads->s1;
-	ads->seed_chars[ads->tail] = buff[x];
-	ads->last_seed[ads->tail] = PRIMES[buff[x]];
-	ads->tail = (ads->tail + 1) % ads->seed_len;
-//	parity -= ads->last_parity_bits[ads->tail];
-//	ads->last_parity_bits[ads->tail] = 
-//	    ads->last_seed[ads->tail]  & 0x1;
-//	parity += ads->last_parity_bits[ads->tail];
+//		ads->s1 = ads->s1 - 
+//			(ads->multi * ads->last_seed[ads->tail]) + 
+//			(ads->multi * PRIMES[buff[x]]);
+//		ads->s2 = ads->s2 - (ads->multi * ads->seed_len * 
+//			ads->last_seed[ads->tail]) + ads->s1;
+		ads->seed_chars[ads->tail] = buff[x];
+		ads->last_seed[ads->tail] = PRIMES[buff[x]];
+		ads->tail = (ads->tail + 1) % ads->seed_len;
+//		parity -= ads->last_parity_bits[ads->tail];
+//		ads->last_parity_bits[ads->tail] = 
+//			ads->last_seed[ads->tail]  & 0x1;
+//		parity += ads->last_parity_bits[ads->tail];
+		}
+//		ads->parity = (abs(parity) & 0x1);
 	}
-//	ads->parity = (abs(parity) & 0x1);
-    }
 }
 
 unsigned long 
 get_checksum(ADLER32_SEED_CTX *ads)
 {
-//    return(((ads->s2 & 0xffff) << 16) | ((ads->s1 + ads->parity) & 0xffff));
-//    return(((ads->s2 >> 2) + (ads->s1 << 3) + (ads->s2 << 16)) ^ 
-//	ads->s2 ^ ads->s1);
-    return ads->s2;
+//	return(((ads->s2 & 0xffff) << 16) | ((ads->s1 + ads->parity) & 0xffff));
+//	return(((ads->s2 >> 2) + (ads->s1 << 3) + (ads->s2 << 16)) ^ 
+//		ads->s2 ^ ads->s1);
+	return ads->s2;
 }
 
 unsigned int 
 free_adler32_seed(ADLER32_SEED_CTX *ads)
 {
-    //printf("free_adler32_seed\n");
-    free(ads->last_seed);
-    free(ads->seed_chars);
-    free(ads->last_parity_bits);
-    ads->s1 = ads->s2 = ads->parity = ads->tail = 0;
-    return 0;
+	//printf("free_adler32_seed\n");
+	free(ads->last_seed);
+	free(ads->seed_chars);
+	free(ads->last_parity_bits);
+	ads->s1 = ads->s2 = ads->parity = ads->tail = 0;
+	return 0;
 }
 
 

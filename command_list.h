@@ -21,22 +21,22 @@
 #include "defs.h"
 
 typedef struct {
-    off_u64 offset;
-    off_u64 len;
+	off_u64 offset;
+	off_u64 len;
 } DCLoc;
 
 typedef struct {
-    off_u64 src_pos;
-    off_u64 ver_pos;
-    off_u64 len;
+	off_u64 src_pos;
+	off_u64 ver_pos;
+	off_u64 len;
 } DCLoc_match;
 
 typedef struct {
-    DCLoc		*command;
-    DCLoc_match		*full_command;
-    unsigned char	*src_id;
-    unsigned long	com_count;
-    unsigned long	com_size;
+	DCLoc				*command;
+	DCLoc_match				*full_command;
+	unsigned char		*src_id;
+	unsigned long		com_count;
+	unsigned long		com_size;
 } command_list;
 
 int
