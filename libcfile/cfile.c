@@ -166,7 +166,7 @@ internal_copen(cfile *cfh, int fh, size_t raw_fh_start, size_t raw_fh_end,
 		}
 		dcprintf("got %ld\n", ret_val);
 		cfh->compressor_type = ret_val;
-		FLAG_LSEEK_NEEDED(cfh);
+		flag_lseek_needed(cfh);
 	} else {
 		cfh->compressor_type = compressor_type;
 	}
@@ -285,8 +285,8 @@ internal_gzopen(cfile *cfh)
 	/* skip the headers */
 	cfh->raw.offset = 2;
 		
-	if(ENSURE_LSEEK_POSITION(cfh)) {
-		dcprintf("internal_gzopen:%u ENSURE_LSEEK_POSITION failed.n", __LINE__);
+	if(ensure_lseek_position(cfh)) {
+		dcprintf("internal_gzopen:%u ensure_lseek_position failed.n", __LINE__);
 		return IO_ERROR;
 	}
 	x = read(cfh->raw_fh, cfh->raw.buff, MIN(cfh->raw.size, 
@@ -500,7 +500,7 @@ cseek(cfile *cfh, ssize_t offset, int offset_type)
 	switch(cfh->compressor_type) {
 	case NO_COMPRESSOR:
 		dcprintf("cseek: %u: no_compressor, flagging it\n", cfh->cfh_id);
-		FLAG_LSEEK_NEEDED(cfh);
+		flag_lseek_needed(cfh);
 		break;
 	case GZIP_COMPRESSOR:
 		dcprintf("cseek: %u: bz2: data_off(%li), data.offset(%lu)\n", cfh->cfh_id, data_offset, cfh->data.offset);
@@ -520,11 +520,11 @@ cseek(cfile *cfh, ssize_t offset, int offset_type)
 			/* note this ain't optimal, but the alternative is modifying 
 			   zlib to support seeking... */
 			dcprintf("cseek: gz: data_offset < cfh->data.offset, resetting\n");
-			FLAG_LSEEK_NEEDED(cfh);
+			flag_lseek_needed(cfh);
 			inflateEnd(cfh->zs);
 			cfh->state_flags &= ~CFILE_EOF;
 			internal_gzopen(cfh);
-			if(ENSURE_LSEEK_POSITION(cfh)) {
+			if(ensure_lseek_position(cfh)) {
 				return (cfh->err = IO_ERROR);
 			}
 			if(cfh->data_fh_offset) {
@@ -536,7 +536,7 @@ cseek(cfile *cfh, ssize_t offset, int offset_type)
 				cfh->data.offset -= cfh->data_fh_offset;
 			}
 		} else {
-			if(ENSURE_LSEEK_POSITION(cfh)) {
+			if(ensure_lseek_position(cfh)) {
 				return (cfh->err = IO_ERROR);
 			}
 		}
@@ -568,7 +568,7 @@ cseek(cfile *cfh, ssize_t offset, int offset_type)
 			/* note this ain't optimal, but the alternative is modifying 
 			   bzlib to support seeking... */
 			dcprintf("cseek: bz2: data_offset < cfh->data.offset, resetting\n");
-			FLAG_LSEEK_NEEDED(cfh);
+			flag_lseek_needed(cfh);
 			BZ2_bzDecompressEnd(cfh->bzs);
 			cfh->bzs->bzalloc = NULL;
 			cfh->bzs->bzfree =  NULL;
@@ -580,7 +580,7 @@ cseek(cfile *cfh, ssize_t offset, int offset_type)
 			cfh->bzs->avail_in = cfh->bzs->avail_out = 0;
 			cfh->data.end = cfh->raw.end = cfh->data.pos = 
 				cfh->data.offset = cfh->raw.offset = cfh->raw.pos = 0;
-			if(ENSURE_LSEEK_POSITION(cfh)) {
+			if(ensure_lseek_position(cfh)) {
 				return (cfh->err = IO_ERROR);
 			}
 			if(cfh->data_fh_offset) {
@@ -592,7 +592,7 @@ cseek(cfile *cfh, ssize_t offset, int offset_type)
 				cfh->data.offset -= cfh->data_fh_offset;
 			}
 		} else {
-			if(ENSURE_LSEEK_POSITION(cfh)) {
+			if(ensure_lseek_position(cfh)) {
 				return (cfh->err = IO_ERROR);
 			}
 		}
@@ -621,7 +621,7 @@ cseek(cfile *cfh, ssize_t offset, int offset_type)
 signed int
 raw_ensure_position(cfile *cfh)
 {
-	SET_LAST_LSEEKER(cfh);
+	set_last_lseeker(cfh);
 	if(NO_COMPRESSOR == cfh->compressor_type) {
 		return (lseek(cfh->raw_fh, cfh->data.offset + cfh->data_fh_offset +
 			cfh->data.end, SEEK_SET) != 
@@ -659,7 +659,7 @@ cflush(cfile *cfh)
 					cfh->data.offset + cfh->data_fh_offset + cfh->data.write_start) {
 					return (cfh->err = IO_ERROR);
 				}
-			} else if(ENSURE_LSEEK_POSITION(cfh)) {
+			} else if(ensure_lseek_position(cfh)) {
 				return (cfh->err = IO_ERROR);
 			}
 			if(cfh->data.write_end - cfh->data.write_start != 
@@ -667,7 +667,7 @@ cflush(cfile *cfh)
 				return (cfh->err = IO_ERROR);
 			}
 			if((cfh->access_flags & CFILE_READABLE) && (cfh->data.end) && (cfh->data.end != cfh->data.write_end)) {
-				FLAG_LSEEK_NEEDED(cfh);
+				flag_lseek_needed(cfh);
 				cfh->data.offset += cfh->data.end;
 			} else {
 				cfh->data.offset += cfh->data.write_end;
@@ -719,7 +719,7 @@ crefill(cfile *cfh)
 					return 0L;
 			}
 		}
-		if(ENSURE_LSEEK_POSITION(cfh)) {
+		if(ensure_lseek_position(cfh)) {
 			return (cfh->err = IO_ERROR);
 		}
 		cfh->data.offset += cfh->data.end;
@@ -752,7 +752,7 @@ crefill(cfile *cfh)
 				if(0 == cfh->bzs->avail_in && (cfh->raw.offset + 
 					(cfh->raw.end - cfh->bzs->avail_in) < cfh->raw_total_len)) {
 					dcprintf("crefill: %u: bz2, refilling raw: ", cfh->cfh_id);
-					if(ENSURE_LSEEK_POSITION(cfh)) {
+					if(ensure_lseek_position(cfh)) {
 						return (cfh->err = IO_ERROR);
 					}
 					cfh->raw.offset += cfh->raw.end;
@@ -799,7 +799,7 @@ crefill(cfile *cfh)
 				if(0 == cfh->zs->avail_in && (cfh->raw.offset + 
 					(cfh->raw.end - cfh->zs->avail_in) < cfh->raw_total_len)) {
 					dcprintf("crefill: %u: zs, refilling raw: ", cfh->cfh_id);
-					if(ENSURE_LSEEK_POSITION(cfh)) {
+					if(ensure_lseek_position(cfh)) {
 						v1printf("encountered IO_ERROR in gz crefill: %u\n", __LINE__);
 						return IO_ERROR;
 					}
@@ -868,6 +868,38 @@ copy_cfile_block(cfile *out_cfh, cfile *in_cfh, size_t in_offset, size_t len)
 		bytes_wrote+=lb;
 	}
 	return bytes_wrote;
+}
+
+inline void
+flag_lseek_needed(cfile *cfh)
+{
+	if(CFH_IS_CHILD(cfh)) {
+		// if we last lseeked, reset it.
+		if(*cfh->lseek_info.last_ptr == cfh->cfh_id)
+			cfh->lseek_info.last_ptr = 0;
+	} else {
+		// same deal here.
+		if(cfh->lseek_info.parent.last = cfh->cfh_id)
+			cfh->lseek_info.parent.last = 0;
+	}
+}
+
+inline void
+set_last_lseeker(cfile *cfh)
+{
+	if(CFH_IS_CHILD(cfh)) {
+		*cfh->lseek_info.last_ptr = cfh->cfh_id;
+	} else {
+		cfh->lseek_info.parent.last = cfh->cfh_id;
+	}
+}
+
+inline signed int
+ensure_lseek_position(cfile *cfh)
+{
+	if(LAST_LSEEKER(cfh) != cfh->cfh_id)
+		return raw_ensure_position(cfh);
+	return 0;
 }
 
 ssize_t

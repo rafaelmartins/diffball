@@ -123,16 +123,6 @@ typedef struct _cfile {
 #define LAST_LSEEKER(cfh) (CFH_IS_CHILD(cfh) ?								\
 	*((cfh)->lseek_info.last_ptr) : (cfh)->lseek_info.parent.last)
 
-#define FLAG_LSEEK_NEEDED(cfh)												\
-	(LAST_LSEEKER(cfh) = (LAST_LSEEKER(cfh)==(cfh)->cfh_id ? 0 : 		\
-	LAST_LSEEKER(cfh)))
-		
-#define SET_LAST_LSEEKER(cfh)												\
-	(LAST_LSEEKER(cfh) = (cfh)->cfh_id)
-
-#define ENSURE_LSEEK_POSITION(cfh)										\
-	(LAST_LSEEKER(cfh) == (cfh)->cfh_id ? 0 : raw_ensure_position(cfh))
-
 #define IS_LAST_LSEEKER(cfh) ( (cfh)->cfh_id == LAST_LSEEKER((cfh)) )
 
 int internal_copen(cfile *cfh, int fh, 
@@ -150,6 +140,9 @@ cfile *copen_dup_cfh(cfile *cfh);
 int copen_dup_fd(cfile *cfh, int fh, size_t fh_start, size_t fh_end, 
 	unsigned int compressor_type, unsigned int access_flags);
 
+inline signed int ensure_lseek_position(cfile *cfh);
+inline void flag_lseek_needed(cfile *cfh);
+inline void set_last_lseeker(cfile *cfh);
 unsigned int cclose(cfile *cfh);
 ssize_t cread(cfile *cfh, unsigned char *out_buff, size_t len);
 ssize_t cwrite(cfile *cfh, unsigned char *in_buff, size_t len);
