@@ -266,8 +266,6 @@ int DCB_no_buff_init(CommandBuffer *, unsigned long, off_u64, off_u64, cfile *);
 (buff)->reconstruct_pos = 0;		\
 if((buff)->reset != NULL) (buff)->reset((buff)->DCB);
 
-#define DCB_insert DCB_finalize
-
 unsigned int DCB_get_next_gap(CommandBuffer *buff, unsigned long gap_req, 
 	DCLoc *dc);
 

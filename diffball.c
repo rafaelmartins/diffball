@@ -345,8 +345,8 @@ main(int argc, char **argv)
 	v1printf("beginning search for gaps, and unprocessed files\n");
 	err=MultiPassAlg(&dcbuff, &ref_full, ref_id, &ver_full, ver_id, hash_size);
 	check_return(err, "MultiPassAlg", "final multipass run failed");
-	err=DCB_insert(&dcbuff);
-	check_return2(err, "DCB_insert");
+	err=DCB_finalize(&dcbuff);
+	check_return2(err, "DCB_finalize");
 	cclose(&ref_full);
 
 	copen_dup_fd(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY | CFILE_OPEN_FH);

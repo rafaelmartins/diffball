@@ -205,7 +205,7 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, unsigned char ref_id,
 	unsigned char first_run=0;
 	DCLoc dc;
 	assert(buff->DCBtype & DCBUFFER_LLMATCHES_TYPE);
-	err = DCB_insert(buff);
+	err = DCB_finalize(buff);
 	if(err)
 		return err;
 	if( ((DCB_llm *)buff->DCB)->main_head == NULL) {
@@ -279,7 +279,7 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, unsigned char ref_id,
 				err = OneHalfPassCorrecting(buff, &rhash, ref_id, &ver_window, ver_id);
 				if(err)
 					return err;
-				err = DCB_insert(buff);
+				err = DCB_finalize(buff);
 				if(err)
 					return err;
 				cclose(&ver_window);
@@ -306,7 +306,7 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, unsigned char ref_id,
 			err = OneHalfPassCorrecting(buff, &rhash, ref_id, ver_cfh, ver_id);
 			if(err)
 				return err;
-			err = DCB_insert(buff);
+			err = DCB_finalize(buff);
 			if(err)
 				return err;
 		}

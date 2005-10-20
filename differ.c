@@ -168,7 +168,7 @@ int main(int argc, char **argv)
 	ref_id = DCB_REGISTER_ADD_SRC(&buffer, &ver_cfh, NULL, 0);
 	ver_id = DCB_REGISTER_COPY_SRC(&buffer, &ref_cfh, NULL, 0);
 	MultiPassAlg(&buffer, &ref_cfh, ref_id, &ver_cfh, ver_id, hash_size);
-	DCB_insert(&buffer);
+	DCB_finalize(&buffer);
 	DCB_test_total_copy_len(&buffer);
 	v1printf("outputing patch...\n");
 	if(copen_dup_fd(&out_cfh, out_fh, 0, 0, patch_compressor, CFILE_WONLY)) {
