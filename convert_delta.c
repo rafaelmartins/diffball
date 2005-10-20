@@ -204,8 +204,8 @@ main(int argc, char **argv)
 	v1printf("reconstruction return=%ld\n", recon_val);
 	copen_dup_fd(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
 	v1printf("outputing patch...\n");
-	if(DCBUFFER_FULL_TYPE == dcbuff[x % 2].DCBtype) {
-		v1printf("there were %lu commands\n", ((DCB_full *)dcbuff[x % 2].DCB)->cl.com_count);
+	if(DCBUFFER_FULL_TYPE == dcbuff[(patch_count -1 ) % 2].DCBtype) {
+		v1printf("there were %lu commands\n", ((DCB_full *)dcbuff[(patch_count -1) % 2].DCB)->cl.com_count);
 	}
 	if(GDIFF4_FORMAT == trg_format_id) {
 		encode_result = gdiff4EncodeDCBuffer(&dcbuff[(patch_count - 1) % 2], &out_cfh);
