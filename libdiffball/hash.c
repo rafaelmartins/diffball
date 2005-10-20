@@ -100,7 +100,8 @@ base_rh_sort_lookup(RefHash *rhash, ADLER32_SEED_CTX *ads)
 off_u64
 base_rh_bucket_lookup(RefHash *rhash, ADLER32_SEED_CTX *ads) {
 	bucket *hash = (bucket*)rhash->hash;
-	unsigned long index, chksum, pos;
+	unsigned long index, chksum;
+	signed long pos;
 	chksum = get_checksum(ads);
 	index = chksum & 0xffff;
 	if(hash->depth[index]==0) {
@@ -108,8 +109,10 @@ base_rh_bucket_lookup(RefHash *rhash, ADLER32_SEED_CTX *ads) {
 	}
 	chksum = ((chksum >> 16) & 0xffff);
 	pos = RH_bucket_find_chksum(chksum, hash->chksum[index], hash->depth[index]);
-	if(pos >= 0)
+	if(pos >= 0) {
+		assert(hash->depth[index] >= pos);
 		return hash->offset[index][pos];
+	}
 	return 0;
 }
 
