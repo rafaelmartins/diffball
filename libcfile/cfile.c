@@ -387,6 +387,7 @@ cclose(cfile *cfh)
 		}
 		free(cfh->zs);
 	}
+	/* XXX questionable */
 	if(cfh->state_flags & CFILE_OPEN_FH) {
 		close(cfh->raw_fh);
 	}
@@ -875,20 +876,21 @@ flag_lseek_needed(cfile *cfh)
 {
 	if(CFH_IS_CHILD(cfh)) {
 		// if we last lseeked, reset it.
-		if(*cfh->lseek_info.last_ptr == cfh->cfh_id)
-			cfh->lseek_info.last_ptr = 0;
+		if(*(cfh->lseek_info.last_ptr) == cfh->cfh_id)
+			*(cfh->lseek_info.last_ptr) = 0;
 	} else {
 		// same deal here.
 		if(cfh->lseek_info.parent.last = cfh->cfh_id)
 			cfh->lseek_info.parent.last = 0;
 	}
+		
 }
 
 inline void
 set_last_lseeker(cfile *cfh)
 {
 	if(CFH_IS_CHILD(cfh)) {
-		*cfh->lseek_info.last_ptr = cfh->cfh_id;
+		*(cfh->lseek_info.last_ptr) = cfh->cfh_id;
 	} else {
 		cfh->lseek_info.parent.last = cfh->cfh_id;
 	}

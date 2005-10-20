@@ -122,6 +122,7 @@ typedef struct _cfile {
 
 #define LAST_LSEEKER(cfh) (CFH_IS_CHILD(cfh) ?								\
 	*((cfh)->lseek_info.last_ptr) : (cfh)->lseek_info.parent.last)
+//#define LAST_LSEEKER(cfh) (CFH_IS_CHILD(cfh) &&	*((cfh)->lseek_info.last_ptr) || (cfh)->lseek_info.parent.last)
 
 #define IS_LAST_LSEEKER(cfh) ( (cfh)->cfh_id == LAST_LSEEKER((cfh)) )
 
