@@ -65,8 +65,8 @@ copen_dup_cfh(cfile *cfh)
 }
 
 int
-copen_child_cfh(cfile *cfh, cfile *parent, unsigned long fh_start, 
-	unsigned long fh_end, unsigned int compressor_type, unsigned int 
+copen_child_cfh(cfile *cfh, cfile *parent, size_t fh_start, 
+	size_t fh_end, unsigned int compressor_type, unsigned int 
 	access_flags)
 {
 	int err = 0;
@@ -98,7 +98,7 @@ copen(cfile *cfh, const char *filename, unsigned int compressor_type, unsigned i
 	dcprintf("copen: calling internal_copen\n");
     struct stat st;
 	int fd, flags;
-	unsigned long size = 0;
+	size_t size = 0;
 	flags =0;
 	if(access_flags & CFILE_RONLY) {
 		flags = O_RDONLY;
@@ -129,7 +129,7 @@ copen(cfile *cfh, const char *filename, unsigned int compressor_type, unsigned i
 }
 
 int
-copen_dup_fd(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
+copen_dup_fd(cfile *cfh, int fh, size_t fh_start, size_t fh_end,
 	unsigned int compressor_type, unsigned int access_flags)
 {
 	dcprintf("copen: calling internal_copen\n");
@@ -143,9 +143,8 @@ copen_dup_fd(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
 
 
 int
-internal_copen(cfile *cfh, int fh, unsigned long raw_fh_start, unsigned long raw_fh_end, 
-	unsigned long data_fh_start, unsigned long data_fh_end, 
-	unsigned int compressor_type, unsigned int access_flags)
+internal_copen(cfile *cfh, int fh, size_t raw_fh_start, size_t raw_fh_end, 
+	size_t data_fh_start, size_t data_fh_end, unsigned int compressor_type, unsigned int access_flags)
 {
 	signed long ret_val;
 	/* this will need adjustment for compressed files */
@@ -397,12 +396,12 @@ cclose(cfile *cfh)
 	return 0;
 }
 
-signed long
-cread(cfile *cfh, unsigned char *buff, unsigned long len)
+ssize_t
+cread(cfile *cfh, unsigned char *buff, size_t len)
 {
-	unsigned long bytes_wrote=0;
-	unsigned long x;
-	signed long val;
+	size_t bytes_wrote=0;
+	size_t x;
+	ssize_t val;
 	while(bytes_wrote != len) {
 		if(cfh->data.end==cfh->data.pos) {
 			val = crefill(cfh);
@@ -425,10 +424,10 @@ cread(cfile *cfh, unsigned char *buff, unsigned long len)
 	return bytes_wrote;
 }
 
-signed long
-cwrite(cfile *cfh, unsigned char *buff, unsigned long len)
+ssize_t
+cwrite(cfile *cfh, unsigned char *buff, size_t len)
 {
-	unsigned long bytes_wrote=0, x;
+	size_t bytes_wrote=0, x;
 	if(cfh->access_flags & CFILE_RONLY && cfh->data.write_end == 0) {
 
 		//basically, RW mode, and the first write to this buffer.
@@ -448,10 +447,10 @@ cwrite(cfile *cfh, unsigned char *buff, unsigned long len)
 	return bytes_wrote;
 }
 
-unsigned long
-cseek(cfile *cfh, signed long offset, int offset_type)
+ssize_t
+cseek(cfile *cfh, ssize_t offset, int offset_type)
 {
-	signed long data_offset;
+	ssize_t data_offset;
 	if(CSEEK_ABS==offset_type) 
 		data_offset = abs(offset) - cfh->data_fh_offset;
 	else if (CSEEK_CUR==offset_type)
@@ -615,7 +614,7 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 		data_offset);
 }
 
-unsigned long
+signed int
 raw_ensure_position(cfile *cfh)
 {
 	SET_LAST_LSEEKER(cfh);
@@ -632,7 +631,7 @@ raw_ensure_position(cfile *cfh)
 	return IO_ERROR;
 }
 
-unsigned long
+size_t
 ctell(cfile *cfh, unsigned int tell_type)
 {
 	if(CSEEK_ABS==tell_type)
@@ -644,7 +643,7 @@ ctell(cfile *cfh, unsigned int tell_type)
 	return 0;
 }
 
-unsigned long 
+ssize_t
 cflush(cfile *cfh)
 {
 	if(cfh->data.write_end != 0) {
@@ -703,10 +702,10 @@ cflush(cfile *cfh)
 	return 0;
 }
 
-unsigned long 
+ssize_t
 crefill(cfile *cfh)
 {
-	unsigned long x;
+	size_t x;
 	int err;
 	switch(cfh->compressor_type) {
 	case NO_COMPRESSOR:
@@ -830,13 +829,13 @@ crefill(cfile *cfh)
 	return cfh->data.end;
 }
 
-inline unsigned long
+size_t
 cfile_len(cfile *cfh)
 {
 	return cfh->data_total_len;
 }
 
-inline unsigned long
+size_t
 cfile_start_offset(cfile *cfh)
 {
 	return cfh->data_fh_offset;
@@ -848,13 +847,12 @@ cfile_start_offset(cfile *cfh)
 
    deal with it.  :-) */
 
-unsigned long 
-copy_cfile_block(cfile *out_cfh, cfile *in_cfh, unsigned long in_offset, 
-	unsigned long len) 
+ssize_t 
+copy_cfile_block(cfile *out_cfh, cfile *in_cfh, size_t in_offset, size_t len) 
 {
 	unsigned char buff[CFILE_DEFAULT_BUFFER_SIZE];
 	unsigned int lb;
-	unsigned long bytes_wrote=0;;
+	size_t bytes_wrote=0;;
 	if(in_offset!=cseek(in_cfh, in_offset, CSEEK_FSTART))
 		return EOF_ERROR;
 	while(len) {
@@ -868,13 +866,12 @@ copy_cfile_block(cfile *out_cfh, cfile *in_cfh, unsigned long in_offset,
 	return bytes_wrote;
 }
 
-off_t
-copy_add_block(cfile *out_cfh, cfile *src_cfh, off_t src_offset, 
-	off_t len, void *extra)
+ssize_t
+copy_add_block(cfile *out_cfh, cfile *src_cfh, size_t src_offset, size_t len, void *extra)
 {
 	unsigned char buff[CFILE_DEFAULT_BUFFER_SIZE];
 	unsigned int lb;
-	unsigned long bytes_wrote=0;;
+	size_t bytes_wrote=0;;
 	if(src_offset!=cseek(src_cfh, src_offset, CSEEK_FSTART))
 		return EOF_ERROR;
 	while(len) {

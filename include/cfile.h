@@ -72,12 +72,12 @@ SEEK_END
 #define CSEEK_FSTART			3
 
 typedef struct {
-	unsigned long offset;
-	unsigned long pos;
-	unsigned long end;
-	unsigned long size;
-	unsigned long write_start;
-	unsigned long write_end;
+	size_t offset;
+	size_t pos;
+	size_t end;
+	size_t size;
+	size_t write_start;
+	size_t write_end;
 	unsigned char *buff;
 } cfile_window;
 
@@ -88,7 +88,7 @@ typedef signed int			ECFH_ID;
 typedef struct _cfile {
 	CFH_ID				cfh_id;
 	int					raw_fh;
-	unsigned long		raw_fh_len;
+	size_t		raw_fh_len;
 	unsigned int		compressor_type;
 	unsigned int		access_flags;
 	unsigned long		state_flags;
@@ -101,12 +101,12 @@ typedef struct _cfile {
 		unsigned int *last_ptr;
 	} lseek_info;
 
-	unsigned long		data_fh_offset;
-	unsigned long		data_total_len;
+	size_t		data_fh_offset;
+	size_t		data_total_len;
 	cfile_window		data;
 
-	unsigned long		raw_fh_offset;
-	unsigned long		raw_total_len;
+	size_t		raw_fh_offset;
+	size_t		raw_total_len;
 	cfile_window		raw;
 
 	/* compression crap */
@@ -136,34 +136,32 @@ typedef struct _cfile {
 #define IS_LAST_LSEEKER(cfh) ( (cfh)->cfh_id == LAST_LSEEKER((cfh)) )
 
 int internal_copen(cfile *cfh, int fh, 
-	unsigned long raw_fh_start, unsigned long raw_fh_end,
-	unsigned long data_fh_start, unsigned long data_fh_end,
+	size_t raw_fh_start, size_t raw_fh_end,
+	size_t data_fh_start, size_t data_fh_end,
 	unsigned int compressor_type, unsigned int access_flags);
 
 int copen(cfile *cfh, const char *filename, unsigned int compressor_type, unsigned int access_flags);
 
-int copen_child_cfh(cfile *cfh, cfile *parent, unsigned long fh_start,
-	unsigned long fh_end, unsigned int compressor_type, unsigned int
+int copen_child_cfh(cfile *cfh, cfile *parent, size_t fh_start,
+	size_t fh_end, unsigned int compressor_type, unsigned int
 	access_flags);
 
 cfile *copen_dup_cfh(cfile *cfh);
-int copen_dup_fd(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end, 
+int copen_dup_fd(cfile *cfh, int fh, size_t fh_start, size_t fh_end, 
 	unsigned int compressor_type, unsigned int access_flags);
 
-unsigned int  cclose(cfile *cfh);
-signed long cread(cfile *cfh, unsigned char *out_buff, unsigned long len);
-signed long cwrite(cfile *cfh, unsigned char *in_buff, unsigned long len);
-unsigned long crefill(cfile *cfh);
-unsigned long cflush(cfile *cfh);
-unsigned long ctell(cfile *cfh, unsigned int tell_type);
-unsigned long raw_ensure_position(cfile *cfh);
-unsigned long cseek(cfile *cfh, signed long offset, int offset_type);
-unsigned long copy_cfile_block(cfile *out_cfh, cfile *in_cfh, 
-	unsigned long in_offset, unsigned long len);
-off_t copy_add_block(cfile *out_cfh, cfile *src_cfh, off_t src_offset, 
-	off_t len, void *extra);
-unsigned long cfile_len(cfile *cfh);
-unsigned long cfile_start_offset(cfile *cfh);
+unsigned int cclose(cfile *cfh);
+ssize_t cread(cfile *cfh, unsigned char *out_buff, size_t len);
+ssize_t cwrite(cfile *cfh, unsigned char *in_buff, size_t len);
+ssize_t crefill(cfile *cfh);
+ssize_t cflush(cfile *cfh);
+size_t ctell(cfile *cfh, unsigned int tell_type);
+signed int raw_ensure_position(cfile *cfh);
+ssize_t cseek(cfile *cfh, ssize_t offset, int offset_type);
+ssize_t copy_cfile_block(cfile *out_cfh, cfile *in_cfh, size_t in_offset, size_t len);
+ssize_t copy_add_block(cfile *out_cfh, cfile *src_cfh, size_t src_offset, size_t len, void *extra);
+size_t cfile_len(cfile *cfh);
+size_t cfile_start_offset(cfile *cfh);
 cfile_window *expose_page(cfile *cfh);
 cfile_window *next_page(cfile *cfh);
 cfile_window *prev_page(cfile *cfh);
