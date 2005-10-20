@@ -23,8 +23,6 @@
 #include "defs.h"
 #include "config.h"
 
-extern unsigned int global_use_md5;
-
 #define DC_ADD								0x0
 #define DC_COPY								0x1
 #define ENCODING_OFFSET_START				0x0

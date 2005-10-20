@@ -37,7 +37,6 @@ unsigned long seed_len = 0;
 unsigned long hash_size = 0;
 unsigned int patch_compressor = 0;
 unsigned int patch_to_stdout = 0;
-unsigned int global_use_md5 = 0;
 char  *patch_format;
 
 struct poptOption options[] = {

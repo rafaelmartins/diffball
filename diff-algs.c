@@ -269,7 +269,7 @@ MultiPassAlg(CommandBuffer *buff, cfile *ref_cfh, unsigned char ref_id,
 			while(DCB_get_next_gap(buff, gap_req, &dc)) {
 				v2printf("handling gap %llu:%llu, size %u\n", (act_off_u64)dc.offset, 
 					(act_off_u64)(dc.offset + dc.len), dc.len);
-				err=copen(&ver_window, ver_cfh->raw_fh, dc.offset, dc.len + 
+				err=copen_child_cfh(&ver_window, ver_cfh, dc.offset, dc.len + 
 					dc.offset, NO_COMPRESSOR, CFILE_RONLY);
 				if(err)
 					return err;

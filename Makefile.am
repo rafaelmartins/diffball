@@ -1,11 +1,6 @@
 AUTOMAKE_OPTIONS        = dist-bzip2 no-dist-gzip
 
-if COMPILE_PROFILING_CFLAGS
-    EXTRA_CFLAGS = -ftest-coverage -fprofile-arcs -pg -ftest-coverage 
-else
-    EXTRA_CFLAGS =
-endif
-AM_CFLAGS = -Wall -D__USE_GNU $(EXTRA_CFLAGS)
+AM_CFLAGS = -Wall -D__USE_GNU
 
 FORMATS = cfile.c bit-functions.c gdiff.c switching.c bdiff.c \
     bdelta.c xdelta1.c udiff.c bsdiff.c fdtu.c line-util.c formats.c
@@ -26,47 +21,37 @@ else
     hash_bins =
 endif
 
-if COMPILE_PROFILING_CFLAGS
-    lib_LTLIBRARIES = 
-else
-    lib_LTLIBRARIES = libdiffball.la
-endif
+lib_LTLIBRARIES = libdiffball.la
 
 libdiffball_la_SOURCES = $(FORMATS) $(DIFF_FILES)
 
-if COMPILE_PROFILING_CFLAGS
-   DIFF_EXTRAS = ${DIFF_FILES} ${FORMATS}
-   DIFF_LIBS =
-else
-   DIFF_EXTRAS =
-   DIFF_LIBS = libdiffball.la
-endif
+DIFF_LIBS = libdiffball.la
 
 bin_PROGRAMS = differ patcher diffball convert_delta ${cfile_bins} \
     ${hash_bins}
 
 patcher_LDADD	=	${DIFF_LIBS} 
 patcher_SOURCES = 	patcher.c	\
-			apply-patch.c	\
-			options.c	\
-			errors.c	${DIFF_EXTRAS}
+					apply-patch.c	\
+					options.c	\
+					errors.c
 
 diffball_LDADD	= 	${DIFF_LIBS} 
 diffball_SOURCES = 	diffball.c	\
-			string-misc.c	\
-			tar.c 		\
-			options.c 	\
-			errors.c ${DIFF_EXTRAS}
+					string-misc.c	\
+					tar.c 		\
+					options.c 	\
+					errors.c
 
 differ_LDADD	=	${DIFF_LIBS}
 differ_SOURCES = 	differ.c 	\
-			options.c 	\
-			errors.c  ${DIFF_EXTRAS}
+					options.c 	\
+					errors.c
 
 convert_delta_LDADD   =	${DIFF_LIBS}
 convert_delta_SOURCES = convert_delta.c	\
-			options.c 	\
-			errors.c ${DIFF_EXTRAS}
+						options.c 	\
+						errors.c
 man_MANS = differ.1 diffball.1 patcher.1 convert_delta.1
 EXTRA_DIST = $(man_MANS)
 

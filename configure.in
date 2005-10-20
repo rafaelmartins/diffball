@@ -14,15 +14,6 @@ AC_HELP_STRING([--enable-asserts],[enable all asserts (default no)]),
 esac], 
 [enable_asserts=false])
 
-AC_ARG_ENABLE(profiling,
-AC_HELP_STRING([--enable-profiling],[compile profiling support in (default no)]),
-[case "${enableval}" in
-  yes) enable_profiling=true ;;
-  no)  enable_profiling=false ;;
-  *)   AC_MSG_ERROR(bad value ${enableval} for --enable-profiling) ;;
-esac],
-[enable_profiling=false])
-
 AC_ARG_ENABLE(debug-dcbuffer,
 AC_HELP_STRING([--enable-debug-dcbuffer],[enable testing of internal command buffer (default no)]),
 [case "${enableval}" in
@@ -81,19 +72,12 @@ then
 	CFLAGS='-g'
 fi
 
-if test x$enable_profiling = xtrue
-then
-	AC_MSG_RESULT(DEBUGGING: ** BUILDING PROFILING VERSION **.)
-fi
-
 AM_CONDITIONAL(BUILD_DEBUG_CFILE, test x$enable_debug_cfile = xtrue)
 AM_CONDITIONAL(BUILD_DEBUG_HASH, test x$enable_debug_hash = xtrue)
-AM_CONDITIONAL(COMPILE_PROFILING_CFLAGS, test x$enable_profiling = xtrue)
 
 AC_PROG_CC
 
 # Checks for libraries.
-AC_CHECK_LIB(crypto, EVP_get_digestbyname, , AC_MSG_ERROR([libcrypto not found]))
 AC_CHECK_LIB(bz2, BZ2_bzCompressInit, , AC_MSG_ERROR([libbz2 not found]))
 AC_CHECK_LIB(z, gzdopen, , AC_MSG_ERROR([libz not found]))
 AC_CHECK_LIB(m, ceil)

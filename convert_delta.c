@@ -58,8 +58,7 @@ char short_opts[] = STD_SHORT_OPTIONS "s:t:";
 int 
 main(int argc, char **argv)
 {
-	int in_fh[256], out_fh;
-	struct stat in_stat;
+	int out_fh;
 	CommandBuffer dcbuff[2];
 	cfile in_cfh[256], out_cfh;
 	char **patch_name;
@@ -72,7 +71,6 @@ main(int argc, char **argv)
 	signed long recon_val=0, encode_result=0;
 	unsigned int patch_compressor = 0;
 	unsigned int output_to_stdout = 0;
-	unsigned int global_use_md5 = 0;
 	char *src_format = NULL, *trg_format = NULL;
 
 	#define DUMP_USAGE(exit_code) \
@@ -169,11 +167,10 @@ main(int argc, char **argv)
 
 	for(x=0; x < patch_count; x++) {
 		v1printf("%u, opening %s\n", x, patch_name[x]);
-		if((stat(patch_name[x], &in_stat)) || (in_fh[x] = open(patch_name[x], O_RDONLY, 0))==-1) {
-			v0printf( "error opening patch '%s', %d\n", patch_name[x], in_fh[x]);
+		if((err=copen(in_cfh + x, patch_name[x], NO_COMPRESSOR, CFILE_RONLY)) != 0) {
+			v0printf("error opening patch '%s', %d\n", patch_name[x], err);
 			exit(EXIT_FAILURE);
 		}
-		copen(in_cfh + x, in_fh[x], 0, in_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
 		if(src_format == NULL) {
 			src_format_id[x] = identify_format(in_cfh + x);
 			if(src_format_id==0) {
@@ -236,7 +233,7 @@ main(int argc, char **argv)
 	}
 
 	v1printf("reconstruction return=%ld\n", recon_val);
-	copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
+	copen_dup_fd(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY);
 	v1printf("outputing patch...\n");
 	if(DCBUFFER_FULL_TYPE == dcbuff[x % 2].DCBtype) {
 		v1printf("there were %lu commands\n", ((DCB_full *)dcbuff[x % 2].DCB)->cl.com_count);
@@ -257,7 +254,6 @@ main(int argc, char **argv)
 	DCBufferFree(&dcbuff[(patch_count -1) % 2]);
 	for(x = 0; x < patch_count; x++) {
 		cclose(&in_cfh[x]);
-		close(in_fh[x]);
 	}
 	cclose(&out_cfh);
 	return 0;

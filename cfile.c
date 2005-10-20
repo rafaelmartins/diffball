@@ -17,6 +17,7 @@
 */
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include "defs.h"
 #include <string.h>
 #include <fcntl.h>
@@ -92,7 +93,44 @@ copen_child_cfh(cfile *cfh, cfile *parent, unsigned long fh_start,
 
 
 int
-copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end, 
+copen(cfile *cfh, const char *filename, unsigned int compressor_type, unsigned int access_flags)
+{
+	dcprintf("copen: calling internal_copen\n");
+    struct stat st;
+	int fd, flags;
+	mode_t mode;
+	unsigned long size;
+	flags =0;
+	if(access_flags & CFILE_RONLY) {
+		flags = O_RDONLY;
+	    if(stat(filename, &st))
+			return IO_ERROR;
+		size = st.st_size;
+	} else if(access_flags & CFILE_WONLY) {
+		if(access_flags & CFILE_NEW) {
+			flags = O_RDWR | O_CREAT | O_TRUNC;
+			size = 0;
+		} else {
+			flags = O_WRONLY;
+		    if(stat(filename, &st))
+				return IO_ERROR;
+			size = st.st_size;
+		}
+	}
+	fd=open(filename, flags, 0644);
+	if(fd < 0) {
+		return IO_ERROR;
+	}
+	cfh->state_flags = CFILE_OPEN_FH;
+	cfh->lseek_info.parent.last = 0;
+	cfh->lseek_info.parent.handle_count =1;
+	cfh->cfh_id = 1;
+	return internal_copen(cfh, fd, 0, size, 0,0,
+		compressor_type, access_flags);
+}
+
+int
+copen_dup_fd(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
 	unsigned int compressor_type, unsigned int access_flags)
 {
 	dcprintf("copen: calling internal_copen\n");
@@ -101,7 +139,7 @@ copen(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end,
 	cfh->lseek_info.parent.handle_count =1;
 	cfh->cfh_id = 1;
 	return internal_copen(cfh, fh, fh_start, fh_end, 0,0,
-		compressor_type, access_flags);
+	compressor_type, access_flags);
 }
 
 
@@ -110,26 +148,13 @@ internal_copen(cfile *cfh, int fh, unsigned long raw_fh_start, unsigned long raw
 	unsigned long data_fh_start, unsigned long data_fh_end, 
 	unsigned int compressor_type, unsigned int access_flags)
 {
-	const EVP_MD *md;
 	signed long ret_val;
 	/* this will need adjustment for compressed files */
 	cfh->raw_fh = fh;
 
 	assert(raw_fh_start <= raw_fh_end);
-	cfh->access_flags = (access_flags & ~CFILE_COMPUTE_MD5);
-	cfh->data_md5 = NULL;
+	cfh->access_flags = access_flags;
 	cfh->zs = NULL;
-	if(access_flags & CFILE_COMPUTE_MD5) {
-		cfh->state_flags |= CFILE_COMPUTE_MD5;
-		OpenSSL_add_all_digests();
-		md = EVP_get_digestbyname("md5");
-		EVP_DigestInit(cfh->data_md5_ctx, md);
-		cfh->data_md5_pos = 0;
-	} else {
-		cfh->data_md5_ctx = NULL;
-		/* watch this, may need to change it when compression comes about */
-		cfh->data_md5_pos = cfh->data_total_len;
-	}
 
 	if(AUTODETECT_COMPRESSOR == compressor_type) {
 		dcprintf("copen: autodetecting comp_type: ");
@@ -176,8 +201,8 @@ internal_copen(cfile *cfh, int fh, unsigned long raw_fh_start, unsigned long raw
 		cfh->raw.buff = NULL;
 		cfh->raw.pos = cfh->raw.offset  = cfh->raw.end = cfh->raw.write_start = cfh->raw.write_end = cfh->data.pos = 
 			cfh->data.offset = cfh->data.end = cfh->data.write_start = cfh->data.write_end = 0;
-		 break;
-		 
+ 		break;
+ 		
 	case BZIP2_COMPRESSOR:
 		cfh->data.size = CFILE_DEFAULT_BUFFER_SIZE;
 		cfh->raw.size = CFILE_DEFAULT_BUFFER_SIZE;
@@ -344,12 +369,6 @@ cclose(cfile *cfh)
 		free(cfh->data.buff);
 	if(cfh->raw.buff)
 		free(cfh->raw.buff);
-	if(cfh->state_flags & CFILE_COMPUTE_MD5) {
-		free(cfh->data_md5_ctx);
-		if(cfh->state_flags & CFILE_MD5_FINALIZED)
-			free(cfh->data_md5);
-		cfh->data_md5_pos = 0;
-	}
 	if(cfh->compressor_type == BZIP2_COMPRESSOR) {
 		if(cfh->access_flags & CFILE_WONLY) {
 			BZ2_bzCompressEnd(cfh->bzs);
@@ -365,6 +384,9 @@ cclose(cfile *cfh)
 			inflateEnd(cfh->zs);
 		}
 		free(cfh->zs);
+	}
+	if(cfh->state_flags & CFILE_OPEN_FH) {
+		close(cfh->raw_fh);
 	}
 	if(cfh->state_flags & CFILE_FREE_AT_CLOSING) {
 		free(cfh);
@@ -757,7 +779,7 @@ crefill(cfile *cfh)
 					cfh->data_total_len = MAX(cfh->bzs->total_out_lo32, 
 						cfh->data_total_len);
 					cfh->state_flags |= CFILE_EOF;
-				 }
+		 		}
 //			}while((!(cfh->state_flags & CFILE_EOF)) && cfh->bzs->avail_in==0 && cfh->bzs->avail_out==cfh->raw.size);
 			}while((!(cfh->state_flags & CFILE_EOF)) && cfh->bzs->avail_out > 0);  //&& cfh->bzs->avail_out==cfh->raw.size);
 			cfh->data.end = cfh->data.size - cfh->bzs->avail_out;
@@ -804,19 +826,13 @@ crefill(cfile *cfh)
 					cfh->data_total_len = MAX(cfh->zs->total_out, 
 						cfh->data_total_len);
 					cfh->state_flags |= CFILE_EOF;
-				 }
+		 		}
 //			} while((!(cfh->state_flags & CFILE_EOF)) && cfh->zs->avail_in==0 && cfh->zs->avail_out==cfh->raw.size);
 			} while((!(cfh->state_flags & CFILE_EOF)) && cfh->zs->avail_out > 0); // && cfh->zs->avail_out==cfh->raw.size);
 			cfh->data.end = cfh->data.size - cfh->zs->avail_out;
 			cfh->data.pos = 0;
 		}
 		break;		
-	}
-	if((cfh->state_flags & CFILE_COMPUTE_MD5) &&
-		((cfh->state_flags & CFILE_MD5_FINALIZED)==0) && 
-		(cfh->data.offset == cfh->data_md5_pos)) {
-		EVP_DigestUpdate(cfh->data_md5_ctx, cfh->data.buff, cfh->data.end);
-		cfh->data_md5_pos += cfh->data.end;
 	}
 	return cfh->data.end;
 }
@@ -878,30 +894,6 @@ copy_add_block(cfile *out_cfh, cfile *src_cfh, off_u64 src_offset,
 	return bytes_wrote;
 }
 
-/* it's here for the moment, move it once the necessary changes are finished. */
-
-
-unsigned int
-cfile_finalize_md5(cfile *cfh)
-{
-	unsigned int md5len;
-	/* check to see if someone is being a bad monkey... */
-	assert(cfh->state_flags & CFILE_COMPUTE_MD5);
-	/* better handling needed... */
-	if((cfh->data_md5 = (unsigned char *)malloc(16))==NULL)
-		return 1;
-	if(ctell(cfh, CSEEK_FSTART)!=cfh->data_md5_pos) 
-		cseek(cfh, cfh->data_md5_pos, CSEEK_FSTART);
-
-	/* basically read in all data needed. 
-		since commiting of md5 data is done by crefill, call it till tis empty
-		*/
-	while(cfh->data_md5_pos != cfh->data_total_len) 
-		crefill(cfh);
-	EVP_DigestFinal(cfh->data_md5_ctx, cfh->data_md5, &md5len);
-	cfh->state_flags |= CFILE_MD5_FINALIZED;
-	return 0;
-}
 
 cfile_window *
 expose_page(cfile *cfh)

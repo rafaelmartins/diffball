@@ -34,7 +34,6 @@
 #include "options.h"
 
 unsigned int global_verbosity = 0;
-unsigned int global_use_md5 = 0;
 
 unsigned int src_common_len=0, trg_common_len=0;
 
@@ -47,7 +46,7 @@ unsigned int patch_compressor = 0;
 int 
 main(int argc, char **argv)
 {
-	int src_fh, trg_fh, out_fh;
+	int out_fh;
 	tar_entry *source = NULL;
 	tar_entry **src_ptrs = NULL;
 	tar_entry *target = NULL;
@@ -180,18 +179,17 @@ main(int argc, char **argv)
 	if(hash_size==0) {
 		hash_size = MIN(DEFAULT_MAX_HASH_COUNT, ref_stat.st_size);
 	}
-	if((src_fh = open(src_file, O_RDONLY,0)) == -1) {
-		v0printf( "error opening source file '%s'\n", src_file);
-		exit(1);
-	}
-	if((trg_fh = open(trg_file, O_RDONLY,0)) == -1) {
-		v0printf( "error opening target file '%s'\n", trg_file);
-		exit(1);
-	}
+//	if((src_fh = open(src_file, O_RDONLY,0)) == -1) {
+//		v0printf( "error opening source file '%s'\n", src_file);
+//		exit(1);
+//	}
+//	if((trg_fh = open(trg_file, O_RDONLY,0)) == -1) {
+//		v0printf( "error opening target file '%s'\n", trg_file);
+//		exit(1);
+//	}
 
-	if(copen(&ref_full, src_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY |
-		CFILE_OPEN_FH ) ||
-		copen(&ver_full, trg_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY)) {
+	if(copen(&ref_full, src_file, NO_COMPRESSOR, CFILE_RONLY) ||
+		copen(&ver_full, trg_file, NO_COMPRESSOR, CFILE_RONLY)) {
 		v0printf("error opening file; exiting\n");
 		exit(1);
 	}
@@ -375,7 +373,7 @@ main(int argc, char **argv)
 	check_return2(err, "DCB_insert");
 	cclose(&ref_full);
 
-	copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY | CFILE_OPEN_FH);
+	copen_dup_fd(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WONLY | CFILE_OPEN_FH);
 	v1printf("outputing patch...\n");
 	if(GDIFF4_FORMAT == patch_format_id) { 
 		encode_result = gdiff4EncodeDCBuffer(&dcbuff, &out_cfh);
@@ -393,8 +391,6 @@ main(int argc, char **argv)
 	DCBufferFree(&dcbuff);
 	cclose(&ver_full);
 	cclose(&out_cfh);
-	close(src_fh);
-	close(trg_fh);
 	close(out_fh);
 	return 0;
 }

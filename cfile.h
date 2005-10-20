@@ -19,12 +19,11 @@
 #define _HEADER_CFILE
 
 #include "defs.h"
-#include <openssl/evp.h>
 #include <bzlib.h>
 #include <zlib.h>
 
-#define CFILE_DEFAULT_BUFFER_SIZE		 (4096)
-//#define CFILE_DEFAULT_BUFFER_SIZE		 (BUFSIZ)
+#define CFILE_DEFAULT_BUFFER_SIZE 		(4096)
+//#define CFILE_DEFAULT_BUFFER_SIZE 		(BUFSIZ)
 #define NO_COMPRESSOR						(0x0)
 #define GZIP_COMPRESSOR						(0x1)
 #define BZIP2_COMPRESSOR				(0x2)
@@ -32,17 +31,15 @@
 
 #define CFILE_RONLY						(0x1)
 #define CFILE_WONLY						(0x2)
+#define CFILE_NEW						(0x10)
 #define CFILE_READABLE						(0x1)
 #define CFILE_WRITEABLE						(0x2)
 #define CFILE_WR						(CFILE_READABLE | CFILE_WRITEABLE)
 
-/* note, CFILE_COMPUTE_MD5 is common to both state_flags and access_flags */
-#define CFILE_COMPUTE_MD5				(0x4)
 #define CFILE_OPEN_FH						(0x8)
 
 #define CFILE_SEEKABLE						(0x10)
 
-#define CFILE_MD5_FINALIZED				(0x10)
 #define CFILE_BUFFER_ALL				(0x20)
 #define CFILE_MEM_ALIAS						(0x40)
 #define CFILE_CHILD_CFH						(0x80)
@@ -84,7 +81,7 @@ typedef struct {
 } cfile_window;
 
 typedef struct _cfile **cfile_ptr_array;
-typedef unsigned short		 CFH_ID;
+typedef unsigned short 		CFH_ID;
 typedef signed int		ECFH_ID;
 
 typedef struct _cfile {
@@ -116,11 +113,6 @@ typedef struct _cfile {
 	z_stream				*zs;
 	gzFile				gz_handle;
 
-	/* other fun stuff, md5 related. */
-	EVP_MD_CTX				 *data_md5_ctx;
-	/* used to track where the md5 computation is at */
-	unsigned long		data_md5_pos;
-	unsigned char		*data_md5;
 } cfile;
 
 #define CFH_IS_SEEKABLE(cfh)		(((cfh)->access_flags & CFILE_SEEKABLE) > 1)
@@ -131,7 +123,7 @@ typedef struct _cfile {
 	*((cfh)->lseek_info.last_ptr) : (cfh)->lseek_info.parent.last)
 
 #define FLAG_LSEEK_NEEDED(cfh)												\
-	(LAST_LSEEKER(cfh) = (LAST_LSEEKER(cfh)==(cfh)->cfh_id ? 0 :		 \
+	(LAST_LSEEKER(cfh) = (LAST_LSEEKER(cfh)==(cfh)->cfh_id ? 0 : 		\
 	LAST_LSEEKER(cfh)))
 		
 #define SET_LAST_LSEEKER(cfh)												\
@@ -147,15 +139,15 @@ int internal_copen(cfile *cfh, int fh,
 	unsigned long data_fh_start, unsigned long data_fh_end,
 	unsigned int compressor_type, unsigned int access_flags);
 
-int copen(cfile *cfh, int fh, unsigned long fh_start,
-	unsigned long fh_end, unsigned int compressor_type, 
-	unsigned int access_flags);
+int copen(cfile *cfh, const char *filename, unsigned int compressor_type, unsigned int access_flags);
 
 int copen_child_cfh(cfile *cfh, cfile *parent, unsigned long fh_start,
 	unsigned long fh_end, unsigned int compressor_type, unsigned int
 	access_flags);
 
 cfile *copen_dup_cfh(cfile *cfh);
+int copen_dup_fd(cfile *cfh, int fh, unsigned long fh_start, unsigned long fh_end, 
+	unsigned int compressor_type, unsigned int access_flags);
 
 unsigned int  cclose(cfile *cfh);
 signed long cread(cfile *cfh, unsigned char *out_buff, unsigned long len);
@@ -171,7 +163,6 @@ off_u64 copy_add_block(cfile *out_cfh, cfile *src_cfh, off_u64 src_offset,
 	off_u64 len, void *extra);
 unsigned long cfile_len(cfile *cfh);
 unsigned long cfile_start_offset(cfile *cfh);
-unsigned int  cfile_finalize_md5(cfile *cfh);
 cfile_window *expose_page(cfile *cfh);
 cfile_window *next_page(cfile *cfh);
 cfile_window *prev_page(cfile *cfh);

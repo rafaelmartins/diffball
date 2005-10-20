@@ -74,7 +74,6 @@ main(int argc, char **argv)
 	signed long int recon_val=0;
 	unsigned int out_compressor = 0;
 	unsigned int output_to_stdout = 0;
-	unsigned int global_use_md5 = 0;
 	char  *patch_format = NULL;
 	int optr = 0;
 	unsigned long reconst_size = 0xffff;
@@ -154,24 +153,23 @@ main(int argc, char **argv)
 	   concern; it shouldn't be hard completing the support, just no motivation currently :) */
 
 	for(x=0; x < patch_count; x++) {
-		if(stat(patch_name[x], &patch_stat)) {
-		   v0printf("error stat'ing patch file '%s'\n", patch_name[x]);
-		   exit(EXIT_FAILURE);
-		}
-			if((patch_fh[x] = open(patch_name[x], O_RDONLY,0))==-1) {
-			v0printf( "error opening patch file '%s'\n", patch_name[x]);
-			exit(EXIT_FAILURE);
-			}
-		v1printf("patch_fh size=%lu\n", (unsigned long)patch_stat.st_size);
-			err=copen(&patch_cfh[x], patch_fh[x], 0, patch_stat.st_size, 
-			AUTODETECT_COMPRESSOR, CFILE_RONLY);
+//		if(stat(patch_name[x], &patch_stat)) {
+//		   v0printf("error stat'ing patch file '%s'\n", patch_name[x]);
+//		   exit(EXIT_FAILURE);
+//		}
+//		if((patch_fh[x] = open(patch_name[x], O_RDONLY,0))==-1) {
+//			v0printf( "error opening patch file '%s'\n", patch_name[x]);
+//			exit(EXIT_FAILURE);
+//		}
+//		v1printf("patch_fh size=%lu\n", (unsigned long)patch_stat.st_size);
+		err=copen(&patch_cfh[x], patch_name[x], AUTODETECT_COMPRESSOR, CFILE_RONLY);
 		check_return2(err,"copen of patch")
 		/* if compression is noticed, reorganize. */
 		if(patch_cfh[x].compressor_type != NO_COMPRESSOR) {
 			reorder_commands = 1;
 		}
 
-			if(patch_format==NULL) {
+		if(patch_format==NULL) {
 			patch_id[x] = identify_format(&patch_cfh[x]);
 			if(patch_id[x]==0) {
 					v0printf( "Couldn't identify the patch format for patch %lu, aborting\n", patch_id[x]);
@@ -188,19 +186,20 @@ main(int argc, char **argv)
 				exit(1);
 			}
 		}
-			v1printf("patch_type=%lu\n", patch_id[x]);
-			cseek(&patch_cfh[x], 0, CSEEK_FSTART);
+		v1printf("patch_type=%lu\n", patch_id[x]);
+		cseek(&patch_cfh[x], 0, CSEEK_FSTART);
 	}
 
 	v1printf("verbosity level(%u)\n", global_verbosity);
-	if ((src_fh = open(src_name, O_RDONLY,0)) == -1) {
-		v0printf("error opening source file '%s'\n", src_name);
+//	if ((src_fh = open(src_name, O_RDONLY,0)) == -1) {
+//		v0printf("error opening source file '%s'\n", src_name);
+//		exit(EXIT_FAILURE);
+//	}
+
+	if(err=copen(&src_cfh, src_name, AUTODETECT_COMPRESSOR, CFILE_RONLY)) {
+		v0printf("error opening source file '%s': %i\n", src_name, err);
 		exit(EXIT_FAILURE);
 	}
-
-	v1printf("src_fh size=%lu\n", (unsigned long)src_stat.st_size);
-	copen(&src_cfh, src_fh, 0, src_stat.st_size, AUTODETECT_COMPRESSOR, 
-		CFILE_RONLY);
 	if(src_cfh.compressor_type != NO_COMPRESSOR) {
 			reorder_commands = 1;
 	}
@@ -214,12 +213,12 @@ main(int argc, char **argv)
 	}
 
 
-	if((out_fh = open(out_name, O_RDWR | O_TRUNC | O_CREAT, 0644))==-1) {
-		v0printf( "error creating out file (open failed)\n");
-		exit(1);
-	}
-	if(copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WR)) {
-		v0printf("error opening output file, exitting\n");
+//	if((out_fh = open(out_name, O_RDWR | O_TRUNC | O_CREAT, 0644))==-1) {
+//		v0printf( "error creating out file (open failed)\n");
+//		exit(1);
+//	}
+	if((err=copen(&out_cfh, out_name, NO_COMPRESSOR, CFILE_WONLY|CFILE_NEW)) != 0) {
+		v0printf("error opening output file, exitting %i\n", err);
 		exit(EXIT_FAILURE);
 	}
 
@@ -332,12 +331,11 @@ main(int argc, char **argv)
 	DCBufferFree(&dcbuff[(patch_count - 1) % 2]);
 	cclose(&out_cfh);
 	cclose(&src_cfh);
-	close(src_fh);
 	for(x=0; x < patch_count; x++) {
 			cclose(&patch_cfh[x]);
-			close(patch_fh[x]);
+//			close(patch_fh[x]);
 	}
-	close(out_fh);
+//	close(out_fh);
 	return 0;
 }
 

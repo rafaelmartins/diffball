@@ -57,7 +57,7 @@ int main(int argc, char **argv)
 {
 	struct stat ref_stat, ver_stat;
 	cfile out_cfh, ref_cfh, ver_cfh;
-	int ref_fh, ver_fh, out_fh;
+	int out_fh;
 	signed int ref_id, ver_id;
 	CommandBuffer buffer;
 
@@ -72,7 +72,6 @@ int main(int argc, char **argv)
 	unsigned long hash_size = 0;
 	unsigned int patch_compressor = 0;
 	unsigned int patch_to_stdout = 0;
-	unsigned int global_use_md5 = 0;
 
 	#define DUMP_USAGE(exit_code)		\
 		print_usage("differ", "src_file trg_file [patch_file|or to stdout]", help_opts, exit_code);
@@ -149,16 +148,8 @@ int main(int argc, char **argv)
 	if (NULL!=get_next_arg(argc, argv)) {
 		DUMP_USAGE(EXIT_USAGE);
 	}
-	if ((ref_fh = open(src_file, O_RDONLY,0)) == -1) {
-		v0printf( "error opening src_file\n");
-		exit(EXIT_FAILURE);
-	}
-	if ((ver_fh = open(trg_file, O_RDONLY,0)) == -1) {
-		v0printf( "error opening trg_file\n");
-		exit(EXIT_FAILURE);
-	}
-	copen(&ver_cfh, ver_fh, 0, ver_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
-	copen(&ref_cfh, ref_fh, 0, ref_stat.st_size, NO_COMPRESSOR, CFILE_RONLY);
+	copen(&ver_cfh, trg_file, NO_COMPRESSOR, CFILE_RONLY);
+	copen(&ref_cfh, src_file, NO_COMPRESSOR, CFILE_RONLY);
 	if(hash_size==0) {
 		/* implement a better assessment based on mem and such */
 		hash_size = MIN(DEFAULT_MAX_HASH_COUNT, ref_stat.st_size);
@@ -248,7 +239,7 @@ int main(int argc, char **argv)
 */
 	DCB_test_total_copy_len(&buffer);
 	v1printf("outputing patch...\n");
-	if(copen(&out_cfh, out_fh, 0, 0, patch_compressor, CFILE_WONLY)) {
+	if(copen_dup_fd(&out_cfh, out_fh, 0, 0, patch_compressor, CFILE_WONLY)) {
 		v0printf("error allocing needed memory for output, exiting\n");
 		exit(1);
 	}
@@ -275,7 +266,5 @@ int main(int argc, char **argv)
 	v1printf("closing version file\n");
 	cclose(&ver_cfh);
 	close(out_fh);
-	close(ver_fh);
-	close(ref_fh);
 	return 0;
 }

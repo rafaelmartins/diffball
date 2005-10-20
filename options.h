@@ -63,9 +63,10 @@ struct usage_options {
 #define STD_SHORT_OPTIONS										\
 "Vvcuh"
 
-/*{"bzip2-compress",		'j', POPT_ARG_NONE,0, OBZIP2,0,0},		\
-{"gzip-compress",		'z', POPT_ARG_NONE,0, OGZIP,0,0}		 \
-{"use-md5",				'm', POPT_ARG_NONE, &global_use_md5, 0,0,0},*/		\
+/*
+{"bzip2-compress",		'j', POPT_ARG_NONE,0, OBZIP2,0,0},		\
+{"gzip-compress",		'z', POPT_ARG_NONE,0, OGZIP,0,0}
+*/
 
 #define STD_LONG_OPTIONS										\
 {"version",				0, 0, OVERSION},						\
