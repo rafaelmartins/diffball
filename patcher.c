@@ -22,13 +22,13 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "string-misc.h"
-#include "cfile.h"
-#include "apply-patch.h"
-#include "formats.h"
-#include "defs.h"
+#include <cfile.h>
+#include <diffball/apply-patch.h>
+#include <diffball/formats.h>
+#include <diffball/defs.h>
 #include "options.h"
-#include "errors.h"
-#include "dcbuffer.h"
+#include <diffball/errors.h>
+#include <diffball/dcbuffer.h>
 
 unsigned int global_verbosity = 0;
 
@@ -55,9 +55,7 @@ static char short_opts[] = STD_SHORT_OPTIONS "f:b:";
 int
 main(int argc, char **argv)
 {
-	struct stat src_stat, patch_stat;
-	int src_fh, out_fh;
-	int patch_fh[256];
+	int out_fh;
 	cfile src_cfh, out_cfh;
 	cfile patch_cfh[256];
 	CommandBuffer dcbuff[2];
@@ -120,8 +118,7 @@ main(int argc, char **argv)
 		
 		}
 	}
-	if( ((src_name=(char *)get_next_arg(argc, argv))==NULL) || 
-		(stat(src_name, &src_stat))) {
+	if((src_name=(char *)get_next_arg(argc, argv))==NULL) {
 		if(src_name) {
 			v0printf("Must specify an existing source file!- %s not found\n", src_name);
 			exit(EXIT_USAGE);
@@ -183,7 +180,7 @@ main(int argc, char **argv)
 
 	v1printf("verbosity level(%u)\n", global_verbosity);
 
-	if(err=copen(&src_cfh, src_name, AUTODETECT_COMPRESSOR, CFILE_RONLY)) {
+	if((err=copen(&src_cfh, src_name, AUTODETECT_COMPRESSOR, CFILE_RONLY)) != 0) {
 		v0printf("error opening source file '%s': %i\n", src_name, err);
 		exit(EXIT_FAILURE);
 	}

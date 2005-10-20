@@ -23,12 +23,12 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <string.h>
-#include "cfile.h"
-#include "dcbuffer.h"
-#include "formats.h"
-#include "defs.h"
+#include <cfile.h>
+#include <diffball/dcbuffer.h>
+#include <diffball/formats.h>
+#include <diffball/defs.h>
 #include "options.h"
-#include "errors.h"
+#include <diffball/errors.h>
 
 unsigned int global_verbosity = 0;
 

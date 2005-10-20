@@ -24,13 +24,13 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include "tar.h"
-#include "cfile.h"
-#include "dcbuffer.h"
-#include "hash.h"
-#include "diff-algs.h"
-#include "formats.h"
-#include "defs.h"
-#include "errors.h"
+#include <cfile.h>
+#include <diffball/dcbuffer.h>
+#include <diffball/hash.h>
+#include <diffball/diff-algs.h>
+#include <diffball/formats.h>
+#include <diffball/defs.h>
+#include <diffball/errors.h>
 #include "options.h"
 
 unsigned int global_verbosity = 0;

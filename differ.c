@@ -22,16 +22,16 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include "cfile.h"
-#include "diff-algs.h"
+#include <cfile.h>
+#include <diffball/diff-algs.h>
 #include "string-misc.h"
-#include "formats.h"
-#include "cfile.h"
-#include "defs.h"
+#include <diffball/formats.h>
+#include <diffball/defs.h>
 #include "options.h"
-#include "errors.h"
+#include <diffball/errors.h>
 
 unsigned int global_verbosity=0;
+
 char  *patch_format;
 
 struct option long_opts[] = {

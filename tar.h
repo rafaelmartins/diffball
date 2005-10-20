@@ -18,8 +18,8 @@
 #ifndef _HEADER_TAR
 #define _HEADER_TAR 1
 
-#include "defs.h"
-#include "cfile.h"
+#include <diffball/defs.h>
+#include <cfile.h>
 
 /* the data structs were largely taken/modified/copied from gnutar's header file.
    I had to go there for the stupid gnu extension... */

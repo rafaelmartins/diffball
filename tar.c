@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
-#include "defs.h"
+#include <diffball/defs.h>
 #include "tar.h"
 
 int check_str_chksum(const char *block)

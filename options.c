@@ -19,7 +19,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include "defs.h"
+#include <diffball/defs.h>
 #include "options.h"
 
 void
