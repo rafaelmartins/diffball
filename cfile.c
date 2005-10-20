@@ -98,8 +98,7 @@ copen(cfile *cfh, const char *filename, unsigned int compressor_type, unsigned i
 	dcprintf("copen: calling internal_copen\n");
     struct stat st;
 	int fd, flags;
-	mode_t mode;
-	unsigned long size;
+	unsigned long size = 0;
 	flags =0;
 	if(access_flags & CFILE_RONLY) {
 		flags = O_RDONLY;
@@ -416,7 +415,9 @@ cread(cfile *cfh, unsigned char *buff, unsigned long len)
 			}
 		}
 		x = MIN(cfh->data.end - cfh->data.pos, len - bytes_wrote);
+
 		/* possible to get stuck in a loop here, fix this */
+
 		memcpy(buff + bytes_wrote, cfh->data.buff + cfh->data.pos, x);
 		bytes_wrote += x;
 		cfh->data.pos += x;
@@ -429,6 +430,7 @@ cwrite(cfile *cfh, unsigned char *buff, unsigned long len)
 {
 	unsigned long bytes_wrote=0, x;
 	if(cfh->access_flags & CFILE_RONLY && cfh->data.write_end == 0) {
+
 		//basically, RW mode, and the first write to this buffer.
 		cfh->data.write_start = cfh->data.pos;
 	}
@@ -453,8 +455,7 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 	if(CSEEK_ABS==offset_type) 
 		data_offset = abs(offset) - cfh->data_fh_offset;
 	else if (CSEEK_CUR==offset_type)
-		data_offset = cfh->data.offset + cfh->data.pos +
-			offset;
+		data_offset = cfh->data.offset + cfh->data.pos + offset;
 	else if (CSEEK_END==offset_type)
 		data_offset = cfh->data_total_len + offset;
 	else if (CSEEK_FSTART==offset_type)
@@ -484,8 +485,8 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 		return (CSEEK_ABS==offset_type ? data_offset + cfh->data_fh_offset: 
 			data_offset);
 	} else if((cfh->access_flags &! CFILE_WRITEABLE) && data_offset >= cfh->data.end + cfh->data.offset && 
-		data_offset < cfh->data.end + cfh->data.size + cfh->data.offset &&
-		IS_LAST_LSEEKER(cfh) ) {
+		data_offset < cfh->data.end + cfh->data.size + cfh->data.offset && IS_LAST_LSEEKER(cfh) ) {
+
 		// see if the desired location is the next page (avoid lseek + read, get read instead).
 		crefill(cfh);
 		if(cfh->data.end + cfh->data.offset > data_offset)
@@ -606,7 +607,6 @@ cseek(cfile *cfh, signed long offset, int offset_type)
 	cfh->data.pos = cfh->data.end = 0;
 	if(cfh->access_flags & CFILE_WONLY) {
 		if(raw_ensure_position(cfh)) {
-//		if(ENSURE_LSEEK_POSITION(cfh)) {
 			dcprintf("%u: raw_ensure_position on WONLY cfile failed\n", cfh->cfh_id);
 			return IO_ERROR;
 		}
@@ -620,7 +620,6 @@ raw_ensure_position(cfile *cfh)
 {
 	SET_LAST_LSEEKER(cfh);
 	if(NO_COMPRESSOR == cfh->compressor_type) {
-//		v0printf("lseeking in raw_ensure\n");
 		return (lseek(cfh->raw_fh, cfh->data.offset + cfh->data_fh_offset +
 			cfh->data.end, SEEK_SET) != 
 			(cfh->data.offset + cfh->data_fh_offset + cfh->data.end));
@@ -641,8 +640,7 @@ ctell(cfile *cfh, unsigned int tell_type)
 	else if (CSEEK_FSTART==tell_type)
 		return cfh->data.offset + cfh->data.pos;
 	else if (CSEEK_END==tell_type)
-		return cfh->data_total_len - 
-			(cfh->data.offset + cfh->data.pos);
+		return cfh->data_total_len - (cfh->data.offset + cfh->data.pos);
 	return 0;
 }
 
@@ -654,7 +652,6 @@ cflush(cfile *cfh)
 		case NO_COMPRESSOR:
 			// position the sucker, either at write_end, or at write_start (for CFILE_WR)
 			if(cfh->access_flags & CFILE_READABLE) {
-//				v0printf("lseeking in cflush\n");
 				if(lseek(cfh->raw_fh, cfh->data.offset + cfh->data_fh_offset + cfh->data.write_start, SEEK_SET) !=
 					cfh->data.offset + cfh->data_fh_offset + cfh->data.write_start) {
 					return (cfh->err = IO_ERROR);
@@ -667,12 +664,10 @@ cflush(cfile *cfh)
 				return (cfh->err = IO_ERROR);
 			}
 			if((cfh->access_flags & CFILE_READABLE) && (cfh->data.end) && (cfh->data.end != cfh->data.write_end)) {
-//					if(cfh->data.end != 0 && cfh->data.end != cfh->data.write_end) {
-						FLAG_LSEEK_NEEDED(cfh);
-//					}
-					cfh->data.offset += cfh->data.end;
+				FLAG_LSEEK_NEEDED(cfh);
+				cfh->data.offset += cfh->data.end;
 			} else {
-					cfh->data.offset += cfh->data.write_end;
+				cfh->data.offset += cfh->data.write_end;
 			}
 			cfh->data.write_end = cfh->data.write_start = cfh->data.pos = cfh->data.end = 0;
 			break;
@@ -780,8 +775,7 @@ crefill(cfile *cfh)
 						cfh->data_total_len);
 					cfh->state_flags |= CFILE_EOF;
 		 		}
-//			}while((!(cfh->state_flags & CFILE_EOF)) && cfh->bzs->avail_in==0 && cfh->bzs->avail_out==cfh->raw.size);
-			}while((!(cfh->state_flags & CFILE_EOF)) && cfh->bzs->avail_out > 0);  //&& cfh->bzs->avail_out==cfh->raw.size);
+			} while((!(cfh->state_flags & CFILE_EOF)) && cfh->bzs->avail_out > 0);
 			cfh->data.end = cfh->data.size - cfh->bzs->avail_out;
 			cfh->data.pos = 0;
 		}
@@ -827,8 +821,7 @@ crefill(cfile *cfh)
 						cfh->data_total_len);
 					cfh->state_flags |= CFILE_EOF;
 		 		}
-//			} while((!(cfh->state_flags & CFILE_EOF)) && cfh->zs->avail_in==0 && cfh->zs->avail_out==cfh->raw.size);
-			} while((!(cfh->state_flags & CFILE_EOF)) && cfh->zs->avail_out > 0); // && cfh->zs->avail_out==cfh->raw.size);
+			} while((!(cfh->state_flags & CFILE_EOF)) && cfh->zs->avail_out > 0);
 			cfh->data.end = cfh->data.size - cfh->zs->avail_out;
 			cfh->data.pos = 0;
 		}
@@ -854,6 +847,7 @@ cfile_start_offset(cfile *cfh)
    eh, it's going here.
 
    deal with it.  :-) */
+
 unsigned long 
 copy_cfile_block(cfile *out_cfh, cfile *in_cfh, unsigned long in_offset, 
 	unsigned long len) 

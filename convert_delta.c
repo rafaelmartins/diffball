@@ -95,31 +95,8 @@ main(int argc, char **argv)
 		default:
 			v0printf("unknown option %s\n", argv[optind]);
 			DUMP_USAGE(EXIT_USAGE);
-
-/*		case OBZIP2:
-			if(patch_compressor) {
-				// bitch at em.
-			} else 
-				patch_compressor = BZIP2_COMPRESSOR;
-			break;
-		case OGZIP:
-			if(patch_compressor) {
-				// bitch at em.
-			} else 
-				patch_compressor = GZIP_COMPRESSOR;
-			break;
-*/
 		}
 	}
-/*	if( ((src_file=(char *)get_next_arg(argc, argv))==NULL) || 
-		(stat(src_file, &in_stat))) {
-		if(src_file) {
-			v0printf("Must specify an existing patch\n");
-			exit(EXIT_USAGE);
-		}
-		DUMP_USAGE(EXIT_USAGE);
-	}
-*/
 	patch_count = argc - optind;
 	patch_name = argv + optind;
 
@@ -151,10 +128,6 @@ main(int argc, char **argv)
 		}
 	}
 
-//	if(NULL!= get_next_arg(argc,argv)) {
-//		DUMP_USAGE(EXIT_USAGE);
-//	}
-
 	if(src_format != NULL) {
 		src_format_id[0] = check_for_format(src_format, strlen(src_format));
 		if(src_format_id[0] == 0) {
@@ -185,13 +158,10 @@ main(int argc, char **argv)
 	}
 
 
-//	DCB_full_init(&dcbuff, 4096,0,0);
 	for(x = 0; x < patch_count; x++) {
 		if(x == 0) {
 			err=DCB_full_init(&dcbuff[0], 4096, 0, 0);
 			check_return2(err, "DCBufferInit");
-//			src_id = internal_DCB_register_cfh_src(dcbuff, NULL, &bail_if_called_func, 
-//				&bail_if_called_func, DC_COPY, 0);
 			src_id = DCB_register_fake_src(dcbuff, DC_COPY);
 			check_return2(src_id, "internal_DCB_register_cfh_src");
 		} else {
@@ -205,20 +175,20 @@ main(int argc, char **argv)
 			recon_val = switchingReconstructDCBuff(src_id, &in_cfh[x], &dcbuff[x % 2]);
 		} else if(GDIFF4_FORMAT == src_format_id[x]) {
 			recon_val = gdiff4ReconstructDCBuff(src_id, &in_cfh[x], &dcbuff[x % 2]);
-			} else if(GDIFF5_FORMAT == src_format_id[x]) {
+		} else if(GDIFF5_FORMAT == src_format_id[x]) {
 			recon_val = gdiff5ReconstructDCBuff(src_id, &in_cfh[x], &dcbuff[x % 2]);	   
-			} else if(BDIFF_FORMAT == src_format_id[x]) {
+		} else if(BDIFF_FORMAT == src_format_id[x]) {
 			recon_val = bdiffReconstructDCBuff(src_id, &in_cfh[x], &dcbuff[x % 2]);	   
-			} else if(XDELTA1_FORMAT == src_format_id[x]) {
+		} else if(XDELTA1_FORMAT == src_format_id[x]) {
 			recon_val = xdelta1ReconstructDCBuff(src_id, &in_cfh[x], &dcbuff[x % 2], 1);
-			} else if(BDELTA_FORMAT == src_format_id[x]) {
+		} else if(BDELTA_FORMAT == src_format_id[x]) {
 			recon_val = bdeltaReconstructDCBuff(src_id, &in_cfh[x], &dcbuff[x % 2]);
-			} else if(BSDIFF_FORMAT == src_format_id[x]) {
+		} else if(BSDIFF_FORMAT == src_format_id[x]) {
 			v0printf("Sorry, unwilling to do bsdiff conversion in this version.\n");
 			v0printf("Try a newer version.\n");
 			exit(2);
 //			recon_val = bsdiffReconstructDCBuff(&in_cfh[x], &dcbuff[x % 2]);
-//			} else if(UDIFF_FORMAT == src_format_id[x]) {
+//		} else if(UDIFF_FORMAT == src_format_id[x]) {
 //		  recon_val = udiffReconstructDCBuff(&in_cfh[x], &src_cfh, NULL, &dcbuff[x % 2]);
 		}
 		v1printf("%u: resultant ver_size was %llu\n", x, (act_off_u64)dcbuff[x].ver_size);

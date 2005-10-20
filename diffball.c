@@ -68,7 +68,6 @@ main(int argc, char **argv)
 	RefHash rhash_win;
 	CommandBuffer dcbuff;
 
-//	signed long optr;
 	int optr;
 	char  *src_file = NULL;
 	char  *trg_file = NULL;
@@ -121,18 +120,6 @@ main(int argc, char **argv)
 		case OUSAGE:
 		case OHELP:
 			DUMP_USAGE(0);						break;
-/*		case OBZIP2:
-			if(patch_compressor) {
-				// bitch at em.
-			} else
-				patch_compressor = BZIP2_COMPRESSOR;
-			break;
-		case OGZIP:
-			if(patch_compressor) {
-				// bitch at em.
-			} else 
-				patch_compressor = GZIP_COMPRESSOR;
-			break;*/
 		default:
 			v0printf("invalid arg- %s\n", argv[optind]);
 			DUMP_USAGE(EXIT_USAGE);
@@ -179,14 +166,6 @@ main(int argc, char **argv)
 	if(hash_size==0) {
 		hash_size = MIN(DEFAULT_MAX_HASH_COUNT, ref_stat.st_size);
 	}
-//	if((src_fh = open(src_file, O_RDONLY,0)) == -1) {
-//		v0printf( "error opening source file '%s'\n", src_file);
-//		exit(1);
-//	}
-//	if((trg_fh = open(trg_file, O_RDONLY,0)) == -1) {
-//		v0printf( "error opening target file '%s'\n", trg_file);
-//		exit(1);
-//	}
 
 	if(copen(&ref_full, src_file, NO_COMPRESSOR, CFILE_RONLY) ||
 		copen(&ver_full, trg_file, NO_COMPRESSOR, CFILE_RONLY)) {
@@ -329,8 +308,6 @@ main(int argc, char **argv)
 			
 			match_count++;
 			err=rh_bucket_hash_init(&rhash_win, &ref_window, 24, 1, cfile_len(&ref_window));
-//			err=init_RefHash(&rhash_win, &ref_window, 24, 1, 
-//				cfile_len(&ref_window), RH_BUCKET_HASH);
 			check_return2(err,"init_RefHash");
 			err=RHash_insert_block(&rhash_win, &ref_window, 0, 
 				cfile_len(&ref_window));
@@ -348,7 +325,6 @@ main(int argc, char **argv)
 					v0printf("please contact the author so this can be resolved.\n");
 				check_return2(err,"OneHalfPassCorrecting");
 			}
-//			MultiPassAlg(&dcbuff, &ref_window, &ver_window, hash_size);
 			err=free_RefHash(&rhash_win);
 			check_return(err,"free_RefHash","This shouldn't be happening...");
 			cclose(&ver_window);

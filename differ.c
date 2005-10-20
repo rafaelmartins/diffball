@@ -104,19 +104,6 @@ int main(int argc, char **argv)
 		default:
 			v0printf("invalid arg- %s\n", argv[optind]);
 			DUMP_USAGE(EXIT_USAGE);
-/*		case OBZIP2:
-			if(patch_compressor) {
-				// bitch at em.
-			} else
-				patch_compressor = BZIP2_COMPRESSOR;
-			break;
-		case OGZIP:
-			if(patch_compressor) {
-				// bitch at em.
-			} else 
-				patch_compressor = GZIP_COMPRESSOR;
-			break;
-*/
 		}
 	}
 	if( ((src_file=(char *)get_next_arg(argc,argv)) == NULL) ||
@@ -176,67 +163,12 @@ int main(int argc, char **argv)
 	v1printf("verbosity level(%u)\n", global_verbosity);
 	v1printf("initializing Command Buffer...\n");
 
-/*	
-	if(0==1) {
-		err=DCBufferInit(&buffer, 4096, ref_stat.st_size, ver_stat.st_size, 
-			DCBUFFER_MATCHES_TYPE);
-		if(err)
-			exit_error(err);
-		err=init_RefHash(&rhash, &ref_cfh, seed_len, sample_rate, hash_size, 
-			RH_MOD_HASH);
-		if(err)
-			exit_error(err);
-		v1printf("insertting block\n");
-		err = RHash_insert_block(&rhash, &ref_cfh, 0, cfile_len(&ver_cfh));
-		if(err)
-			exit_error(err);
-		v1printf("sorting\n");
-		RHash_sort(&rhash);
-		v1printf("hunting for matches\n");
-		RHash_find_matches(&rhash, &ref_cfh);
-		RHash_cleanse(&rhash);
-		print_RefHash_stats(&rhash);
-		err = OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh);
-		if(err)
-			exit_error(err);
-		free_RefHash(&rhash);
-	} else if (1==1) {
-*/
-		DCB_llm_init(&buffer, 4, ref_stat.st_size, ver_stat.st_size);
-		v1printf("running multipass alg\n");
-		ref_id = DCB_REGISTER_ADD_SRC(&buffer, &ver_cfh, NULL, 0);
-		ver_id = DCB_REGISTER_COPY_SRC(&buffer, &ref_cfh, NULL, 0);
-		MultiPassAlg(&buffer, &ref_cfh, ref_id, &ver_cfh, ver_id, hash_size);
-		DCB_insert(&buffer);
-		//free_RefHash(&rhash);
-/*
-	} else {
-		if(DCBufferInit(&buffer, 4096, ref_stat.st_size, ver_stat.st_size,
-			DCBUFFER_MATCHES_TYPE) ||
-			DCB_llm_init_buff(&buffer, 4096)) {
-			v0printf("error allocing mem, exiting\n");
-			exit(EXIT_FAILURE);
-		}
-		ref_id = DCB_REGISTER_ADD_SRC(&buffer, &ver_cfh, NULL, 0);
-		
-		ver_id = DCB_REGISTER_COPY_SRC(&buffer, &ref_cfh, NULL, 0);
-		v1printf("initializing Reference Hash...\n");
-		if(init_RefHash(&rhash, &ref_cfh, 16, sample_rate, hash_size, 
-			RH_BUCKET_HASH)) {
-			v0printf("error allocing mem, exiting\n");
-			exit(1);
-		}
-		RHash_insert_block(&rhash, &ref_cfh, 0, cfile_len(&ref_cfh));
-		RHash_cleanse(&rhash);
-		print_RefHash_stats(&rhash);
-		v1printf("running 1.5 pass correcting alg...\n");
-		if(OneHalfPassCorrecting(&buffer, &rhash, &ver_cfh)) {
-		   v0printf("Error differencing, exiting\n");
-		   exit(1);
-		DCB_insert(&buffer);
-		free_RefHash(&rhash);
-	}
-*/
+	DCB_llm_init(&buffer, 4, ref_stat.st_size, ver_stat.st_size);
+	v1printf("running multipass alg\n");
+	ref_id = DCB_REGISTER_ADD_SRC(&buffer, &ver_cfh, NULL, 0);
+	ver_id = DCB_REGISTER_COPY_SRC(&buffer, &ref_cfh, NULL, 0);
+	MultiPassAlg(&buffer, &ref_cfh, ref_id, &ver_cfh, ver_id, hash_size);
+	DCB_insert(&buffer);
 	DCB_test_total_copy_len(&buffer);
 	v1printf("outputing patch...\n");
 	if(copen_dup_fd(&out_cfh, out_fh, 0, 0, patch_compressor, CFILE_WONLY)) {

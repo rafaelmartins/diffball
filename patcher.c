@@ -153,15 +153,6 @@ main(int argc, char **argv)
 	   concern; it shouldn't be hard completing the support, just no motivation currently :) */
 
 	for(x=0; x < patch_count; x++) {
-//		if(stat(patch_name[x], &patch_stat)) {
-//		   v0printf("error stat'ing patch file '%s'\n", patch_name[x]);
-//		   exit(EXIT_FAILURE);
-//		}
-//		if((patch_fh[x] = open(patch_name[x], O_RDONLY,0))==-1) {
-//			v0printf( "error opening patch file '%s'\n", patch_name[x]);
-//			exit(EXIT_FAILURE);
-//		}
-//		v1printf("patch_fh size=%lu\n", (unsigned long)patch_stat.st_size);
 		err=copen(&patch_cfh[x], patch_name[x], AUTODETECT_COMPRESSOR, CFILE_RONLY);
 		check_return2(err,"copen of patch")
 		/* if compression is noticed, reorganize. */
@@ -191,10 +182,6 @@ main(int argc, char **argv)
 	}
 
 	v1printf("verbosity level(%u)\n", global_verbosity);
-//	if ((src_fh = open(src_name, O_RDONLY,0)) == -1) {
-//		v0printf("error opening source file '%s'\n", src_name);
-//		exit(EXIT_FAILURE);
-//	}
 
 	if(err=copen(&src_cfh, src_name, AUTODETECT_COMPRESSOR, CFILE_RONLY)) {
 		v0printf("error opening source file '%s': %i\n", src_name, err);
@@ -213,10 +200,6 @@ main(int argc, char **argv)
 	}
 
 
-//	if((out_fh = open(out_name, O_RDWR | O_TRUNC | O_CREAT, 0644))==-1) {
-//		v0printf( "error creating out file (open failed)\n");
-//		exit(1);
-//	}
 	if((err=copen(&out_cfh, out_name, NO_COMPRESSOR, CFILE_WONLY|CFILE_NEW)) != 0) {
 		v0printf("error opening output file, exitting %i\n", err);
 		exit(EXIT_FAILURE);
@@ -226,7 +209,7 @@ main(int argc, char **argv)
 		if(x == patch_count - 1 && reorder_commands == 0 && bufferless) {
 			v1printf("not reordering, and bufferless is %u, going bufferless\n", bufferless);
 			if(x==0) {
-				err=DCB_no_buff_init(&dcbuff[0], 0, src_stat.st_size, 0, &out_cfh);
+				err=DCB_no_buff_init(&dcbuff[0], 0, cfile_len(&src_cfh), 0, &out_cfh);
 				check_return2(err, "DCBufferInit");
 					src_id = internal_DCB_register_cfh_src(&dcbuff[0], &src_cfh, NULL, NULL, DC_COPY, 0);
 					check_return(src_id, "internal_DCB_register_src", "unable to continue");
@@ -239,27 +222,27 @@ main(int argc, char **argv)
 
 		} else {
 			if(x==0) {
-						err=DCB_full_init(&dcbuff[0], 4096, src_stat.st_size, 0);
+				err=DCB_full_init(&dcbuff[0], 4096, 0, 0);
 				check_return2(err, "DCBufferInit");
 					src_id = internal_DCB_register_cfh_src(&dcbuff[0], &src_cfh, NULL, NULL, DC_COPY, 0);
 					check_return2(src_id, "DCB_register_cfh_src");
 				} else {
-						err=DCB_full_init(&dcbuff[x % 2], 4096, dcbuff[(x - 1) % 2].ver_size , 0);
+					err=DCB_full_init(&dcbuff[x % 2], 4096, dcbuff[(x - 1) % 2].ver_size , 0);
 					check_return2(err, "DCBufferInit");
-						src_id = DCB_register_dcb_src(dcbuff + ( x % 2), dcbuff + ((x -1) % 2));
-						check_return2(src_id, "DCB_register_dcb_src");
+					src_id = DCB_register_dcb_src(dcbuff + ( x % 2), dcbuff + ((x -1) % 2));
+					check_return2(src_id, "DCB_register_dcb_src");
 				}
 		}
 
-			if(SWITCHING_FORMAT == patch_id[x]) {
+		if(SWITCHING_FORMAT == patch_id[x]) {
 			recon_val = switchingReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
-			} else if(GDIFF4_FORMAT == patch_id[x]) {
+		} else if(GDIFF4_FORMAT == patch_id[x]) {
 			recon_val = gdiff4ReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
-			} else if(GDIFF5_FORMAT == patch_id[x]) {
+		} else if(GDIFF5_FORMAT == patch_id[x]) {
 			recon_val = gdiff5ReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
-			} else if(BDIFF_FORMAT == patch_id[x]) {
+		} else if(BDIFF_FORMAT == patch_id[x]) {
 			recon_val = bdiffReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
-			} else if(XDELTA1_FORMAT == patch_id[x]) {
+		} else if(XDELTA1_FORMAT == patch_id[x]) {
 			recon_val = xdelta1ReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2], 1);
 
 			/* this could be adjusted a bit, since with xdelta it's optional to compress the patch
@@ -267,9 +250,9 @@ main(int argc, char **argv)
 			if(patch_count > 1)
 					reorder_commands = 1;
 
-			} else if(BDELTA_FORMAT == patch_id[x]) {
+		} else if(BDELTA_FORMAT == patch_id[x]) {
 			recon_val = bdeltaReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
-			} else if(BSDIFF_FORMAT == patch_id[x]) {
+		} else if(BSDIFF_FORMAT == patch_id[x]) {
 			recon_val = bsdiffReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
 
 			/* compressed format- if more then one patch, reorder
@@ -278,25 +261,25 @@ main(int argc, char **argv)
 			if(patch_count > 1)
 					reorder_commands = 1;
 
-			} else if(FDTU_FORMAT == patch_id[x]) {
+		} else if(FDTU_FORMAT == patch_id[x]) {
 			recon_val = fdtuReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
 
 			/* wrapped xdelta format, same reasoning applies */
 			if(patch_count > 1)
 					reorder_commands = 1;
 
-//			} else if(UDIFF_FORMAT == patch_id[x]) {
+//		} else if(UDIFF_FORMAT == patch_id[x]) {
 //			recon_val = udiffReconstructDCBuff(src_id, &patch_cfh[x], &src_cfh, NULL, &dcbuff[x % 2]);
-			}
+		}
 
-			v1printf("reconstruction return=%ld", recon_val);
+		v1printf("reconstruction return=%ld", recon_val);
 		if(DCBUFFER_FULL_TYPE == dcbuff[x % 2].DCBtype) {
-				v1printf(", commands=%ld\n", ((DCB_full *)dcbuff[x % 2].DCB)->cl.com_count);
+			v1printf(", commands=%ld\n", ((DCB_full *)dcbuff[x % 2].DCB)->cl.com_count);
 			v1printf("result was %lu commands\n", ((DCB_full *)dcbuff[x % 2].DCB)->cl.com_count);
-			} else {
-				v1printf("\n");
-			}
-			if(recon_val) {
+		} else {
+			v1printf("\n");
+		}
+		if(recon_val) {
 			v0printf("error detected while processing patch- quitting\n");
 			print_error(recon_val);
 			exit(EXIT_FAILURE);
@@ -304,28 +287,18 @@ main(int argc, char **argv)
 		v1printf("versions size is %llu\n", (act_off_u64)dcbuff[x % 2].ver_size);
 		if(x) {
 			DCBufferFree(&dcbuff[(x - 1) % 2]);
-			}
+		}
 	}
 	v1printf("applied %lu patches\n", patch_count);
 
 	if(! bufferless) {
-/*		if((out_fh = open(out_name, O_RDWR | O_TRUNC | O_CREAT, 0644))==-1) {
-			v0printf( "error creating out file (open failed)\n");
-				exit(1);
-			}
-		if(copen(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR, CFILE_WR)) {
-			v0printf("error opening output file, exitting\n");
-			exit(EXIT_FAILURE);
-			}
-*/
-			v1printf("reordering commands? %u\n", reorder_commands);
-			v1printf("reconstructing target file based off of dcbuff commands...\n");
-			err = reconstructFile(&dcbuff[(patch_count - 1) % 2], &out_cfh, reorder_commands, reconst_size);
-		check_return(err, "reconstructFile", "error detected while reconstructing file, quitting");
-			
-			v1printf("reconstruction completed successfully\n");
+		v1printf("reordering commands? %u\n", reorder_commands);
+		v1printf("reconstructing target file based off of dcbuff commands...\n");
+		err = reconstructFile(&dcbuff[(patch_count - 1) % 2], &out_cfh, reorder_commands, reconst_size);
+		check_return(err, "reconstructFile", "error detected while reconstructing file, quitting");	
+		v1printf("reconstruction completed successfully\n");
 	} else {
-			v1printf("reconstruction completed successfully\n");
+		v1printf("reconstruction completed successfully\n");
 	}
 
 	DCBufferFree(&dcbuff[(patch_count - 1) % 2]);
@@ -333,9 +306,7 @@ main(int argc, char **argv)
 	cclose(&src_cfh);
 	for(x=0; x < patch_count; x++) {
 			cclose(&patch_cfh[x]);
-//			close(patch_fh[x]);
 	}
-//	close(out_fh);
 	return 0;
 }
 

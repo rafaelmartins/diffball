@@ -33,10 +33,10 @@ cmp_dcloc_match(const void *vd1, const void *vd2)
 	#define v_cl(v)		((DCLoc_match *)(v))
 
 	return v_cl(vd1)->src_pos < v_cl(vd2)->src_pos ? -1 : 
-			v_cl(vd1)->src_pos > v_cl(vd2)->src_pos ? 1 :
-			v_cl(vd1)->len < v_cl(vd2)->len ? -1 : 
-			v_cl(vd1)->len > v_cl(vd2)->len ? 1 : 
-			0;
+		v_cl(vd1)->src_pos > v_cl(vd2)->src_pos ? 1 :
+		v_cl(vd1)->len < v_cl(vd2)->len ? -1 : 
+		v_cl(vd1)->len > v_cl(vd2)->len ? 1 : 
+		0;
 }
 
 int 
@@ -63,11 +63,11 @@ reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh, int reorder_for_seq_acces
 		
 		for(x=0, ov_count=0, norm_count=0; x < dcbuff->src_count; x++) {
 			if(dcbuff->srcs[x].ov == NULL) {
-					norm_cl[norm_count] = cl + x;
-					norm_count++;
+				norm_cl[norm_count] = cl + x;
+				norm_count++;
 			} else {
-					ov_cl[ov_count] = cl + x;
-					ov_count++;
+				ov_cl[ov_count] = cl + x;
+				ov_count++;
 			}
 		}
 		
@@ -77,8 +77,8 @@ reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh, int reorder_for_seq_acces
 			v1printf("processing src %u: %lu commands.\n", norm_cl[x] - cl, norm_cl[x]->com_count);
 			if(norm_cl[x]->com_count) {
 				qsort(norm_cl[x]->full_command, norm_cl[x]->com_count, sizeof(DCLoc_match), cmp_dcloc_match);
-					if(read_seq_write_rand(norm_cl[x], dcbuff->srcs + (norm_cl[x] - cl), 0, out_cfh, max_buff_size))
-						return IO_ERROR;
+				if(read_seq_write_rand(norm_cl[x], dcbuff->srcs + (norm_cl[x] - cl), 0, out_cfh, max_buff_size))
+					return IO_ERROR;
 			}
 			CL_free(norm_cl[x]);
 		}
@@ -87,8 +87,8 @@ reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh, int reorder_for_seq_acces
 			v1printf("processing overlay src %u: %lu commands.\n", ov_cl[x] - cl, ov_cl[x]->com_count);
 			if(ov_cl[x]->com_count) {
 				qsort(ov_cl[x]->full_command, ov_cl[x]->com_count, sizeof(DCLoc_match), cmp_dcloc_match);
-					if(read_seq_write_rand(ov_cl[x], dcbuff->srcs + (ov_cl[x] - cl), 1, out_cfh, max_buff_size))
-						return IO_ERROR;
+				if(read_seq_write_rand(ov_cl[x], dcbuff->srcs + (ov_cl[x] - cl), 1, out_cfh, max_buff_size))
+					return IO_ERROR;
 			}
 			CL_free(ov_cl[x]);
 		}
@@ -131,7 +131,6 @@ read_seq_write_rand(command_list *cl, DCB_registered_src *r_src, unsigned char i
 
 	if(is_overlay) {
 		read_func = r_src->mask_read_func;
-//		read_func = r_src->read_func;
 	} else {
 		read_func = r_src->read_func;
 	}
@@ -206,10 +205,10 @@ read_seq_write_rand(command_list *cl, DCB_registered_src *r_src, unsigned char i
 								cfw->write_end = cfw->end;
 								cfw = next_page(out_cfh);
 								if(cfw->end == 0) {
-										ap_printf("bailing from applying overlay mask in read_seq_writ_rand\n");
+									ap_printf("bailing from applying overlay mask in read_seq_writ_rand\n");
 									free(buf);
-										return IO_ERROR;
-									}
+									return IO_ERROR;
+								}
 							}
 							cfw->buff[cfw->pos] += *p;
 							p++;

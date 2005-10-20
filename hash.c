@@ -281,7 +281,7 @@ signed int
 RH_bucket_resize(bucket *hash, unsigned short index, unsigned short size)
 {
 	assert(
-		hash->depth[index]==0		 || 
+		hash->depth[index]==0		|| 
 		hash->depth[index]==4		|| 
 		hash->depth[index]==8		|| 
 		hash->depth[index]==16		||
