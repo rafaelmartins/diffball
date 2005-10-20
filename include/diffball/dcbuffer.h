@@ -253,7 +253,7 @@ void tfree(void *p);
 (buff)->decr((buff))
 
 #define DCB_finalize(buff)		\
-( ((buff)->finalize && (buff)->finalize((buff)->DCB)) || 0)
+( ((buff)->finalize && (buff)->finalize((buff)->DCB)))
 
 void DCBufferFree(CommandBuffer *buffer);
 int DCB_common_init(CommandBuffer *, unsigned long, off_u64, off_u64, unsigned char);
