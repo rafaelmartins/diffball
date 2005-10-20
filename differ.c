@@ -47,7 +47,7 @@ struct usage_options help_opts[] = {
 	FORMAT_HELP_OPTION("patch-format", 'f', "format to output the patch in"),
 	USAGE_FLUFF("differ expects 3 args- source, target, name for the patch\n"
 	"if output to stdout is enabled, only 2 args required- source, target\n"
-	"Example usage- differ older-version newerer-version upgrade-patch"),
+	"Example usage: differ older-version newerer-version upgrade-patch"),
 	END_HELP_OPTS
 };
 
