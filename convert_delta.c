@@ -69,7 +69,6 @@ main(int argc, char **argv)
 	char *trg_file;
 	unsigned long int src_format_id[256], trg_format_id=0;
 	signed long recon_val=0, encode_result=0;
-	unsigned int patch_compressor = 0;
 	unsigned int output_to_stdout = 0;
 	char *src_format = NULL, *trg_format = NULL;
 
