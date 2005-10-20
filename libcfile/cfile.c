@@ -25,6 +25,10 @@
 
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 unsigned int cfile_verbosity;
+unsigned int largefile_support = 0;
+#ifdef _LARGEFILE_SOURCE
+largefile_support = 1;
+#endif
 
 unsigned int internal_gzopen(cfile *cfh);
 
