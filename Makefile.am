@@ -1,6 +1,6 @@
 AUTOMAKE_OPTIONS        = dist-bzip2 no-dist-gzip
 
-AM_CFLAGS = -Wall -D__USE_GNU -I$(top_builddir)/include/
+AM_CFLAGS = -Wall -D_GNU_SOURCE -I$(top_builddir)/include/
 SUBDIRS = libcfile libdiffball include
 
 if BUILD_DEBUG_CFILE

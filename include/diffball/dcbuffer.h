@@ -255,11 +255,6 @@ void tfree(void *p);
 #define DCB_finalize(buff)		\
 ( ((buff)->finalize && (buff)->finalize((buff)->DCB)) || 0)
 
-#define DCBufferCollapseAdds(buff)		\
-(void *)NULL;
-
-//(buffer)->collapse_adds != NULL && (buffer)->collapse_adds((buff)->DCB)
-
 void DCBufferFree(CommandBuffer *buffer);
 int DCB_common_init(CommandBuffer *, unsigned long, off_u64, off_u64, unsigned char);
 int DCB_full_init(CommandBuffer *, unsigned long, off_u64, off_u64);

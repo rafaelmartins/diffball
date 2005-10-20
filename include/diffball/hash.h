@@ -142,6 +142,10 @@ signed int
 base_rh_sort_hash_init(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len, unsigned int sample_rate, unsigned long hr_size, 
 	unsigned int type);
 
+signed int
+base_rh_bucket_hash_init(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len, unsigned int sample_rate, unsigned long hr_size, 
+    unsigned int type);
+
 #define rh_sort_hash_init(rh,rc,sl,sr,hr)		\
 	base_rh_sort_hash_init((rh),(rc),(sl),(sr),(hr), RH_SORT_HASH)
 
