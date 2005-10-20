@@ -23,29 +23,29 @@
 #include <zlib.h>
 
 #define CFILE_DEFAULT_BUFFER_SIZE 		(4096)
-//#define CFILE_DEFAULT_BUFFER_SIZE 		(BUFSIZ)
-#define NO_COMPRESSOR						(0x0)
-#define GZIP_COMPRESSOR						(0x1)
+//#define CFILE_DEFAULT_BUFFER_SIZE		(BUFSIZ)
+#define NO_COMPRESSOR					(0x0)
+#define GZIP_COMPRESSOR					(0x1)
 #define BZIP2_COMPRESSOR				(0x2)
-#define AUTODETECT_COMPRESSOR				(0x4)
+#define AUTODETECT_COMPRESSOR			(0x4)
 
 #define CFILE_RONLY						(0x1)
 #define CFILE_WONLY						(0x2)
 #define CFILE_NEW						(0x10)
-#define CFILE_READABLE						(0x1)
-#define CFILE_WRITEABLE						(0x2)
+#define CFILE_READABLE					(0x1)
+#define CFILE_WRITEABLE					(0x2)
 #define CFILE_WR						(CFILE_READABLE | CFILE_WRITEABLE)
 
-#define CFILE_OPEN_FH						(0x8)
+#define CFILE_OPEN_FH					(0x8)
 
-#define CFILE_SEEKABLE						(0x10)
+#define CFILE_SEEKABLE					(0x10)
 
 #define CFILE_BUFFER_ALL				(0x20)
-#define CFILE_MEM_ALIAS						(0x40)
-#define CFILE_CHILD_CFH						(0x80)
+#define CFILE_MEM_ALIAS					(0x40)
+#define CFILE_CHILD_CFH					(0x80)
 #define CFILE_EOF						(0x100)
-#define CFILE_DATA_SEEK_NEEDED				(0x200)
-#define CFILE_FREE_AT_CLOSING				(0x400)
+#define CFILE_DATA_SEEK_NEEDED			(0x200)
+#define CFILE_FREE_AT_CLOSING			(0x400)
 #define CFILE_FLAG_BACKWARD_SEEKS		(0x800)
 
 #define BZIP2_DEFAULT_COMPRESS_LEVEL		9
@@ -54,7 +54,7 @@
 #else
 #define BZIP2_VERBOSITY_LEVEL				0
 #endif
-#define BZIP2_DEFAULT_WORK_LEVEL		30
+#define BZIP2_DEFAULT_WORK_LEVEL			30
 
 /*lseek type stuff
 SEEK_SET
@@ -68,7 +68,7 @@ SEEK_END
 #define CSEEK_ABS				0
 #define CSEEK_CUR				1
 #define CSEEK_END				2
-#define CSEEK_FSTART		3
+#define CSEEK_FSTART			3
 
 typedef struct {
 	unsigned long offset;
@@ -82,16 +82,16 @@ typedef struct {
 
 typedef struct _cfile **cfile_ptr_array;
 typedef unsigned short 		CFH_ID;
-typedef signed int		ECFH_ID;
+typedef signed int			ECFH_ID;
 
 typedef struct _cfile {
 	CFH_ID				cfh_id;
-	int						raw_fh;
+	int					raw_fh;
 	unsigned long		raw_fh_len;
 	unsigned int		compressor_type;
 	unsigned int		access_flags;
 	unsigned long		state_flags;
-	int						err;
+	int					err;
 	union {
 		struct {
 			unsigned int		last;
@@ -109,8 +109,8 @@ typedef struct _cfile {
 	cfile_window		raw;
 
 	/* compression crap */
-	bz_stream				*bzs;
-	z_stream				*zs;
+	bz_stream			*bzs;
+	z_stream			*zs;
 	gzFile				gz_handle;
 
 } cfile;
