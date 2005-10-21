@@ -18,6 +18,8 @@
 #include <stdlib.h>
 #include <diffball/command_list.h>
 
+unsigned int global_verbosity = 0;
+
 int
 CL_init(command_list *cl, unsigned char full, unsigned long size, unsigned char store_src_ids)
 {
