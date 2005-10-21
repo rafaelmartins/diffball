@@ -1,0 +1,54 @@
+.TH "convert_delta" "1" "Sept 25 2003" "" ""
+.SH "NAME"
+convert_delta
+.SH "SYNOPSIS"
+.PP
+convert_delta -t FORMAT patch [other-patches] new-patch
+.PP
+.SH "DESCRIPTION"
+convert_delta is a program for conversion of patch's from one format to 
+another\&.  Also able to collapse multiple patches down to a single patch\&.
+.SH "OPTIONS"
+.PP
+.nf
+
+-V, --version                   output version, and exit
+-v, --verbose                   increase verbosity
+-c, --to-stdout                 output to-file to stdout
+-s, --src-format FORMAT         used to override the auto
+                                identification of a patch's format\&.
+                                Valid formats are-
+                                bdelta, gdiff4, gdiff5 (a nonstandard 
+                                modification to gdiff4), bdiff, xdelta
+                                and switching\&.
+                                This option is not normally needed, 
+                                since patcher can identify a patch's
+                                format automatically if it is 
+                                supported\&.
+-t, --trg-format FORMAT         Used to specify the new patch's desired
+                                format.
+                                Valid formats are-
+                                bdelta, gdiff4, gdiff5 (a nonstandard 
+                                modification to gdiff4), bdiff, and
+                                switching\&.
+.fi
+.PP
+.SH "SEE ALSO"
+.PP
+differ(1)
+diffball(1)
+patcher(1)
+.PP
+.SH "BUGS"
+none known
+.PP
+.SH "VERSION"
+.PP
+This man page is current for version 0\&.6\&.5 of convert_delta
+.PP
+.SH "CREDITS"
+convert_delta, and by extension the diffball suite, is distributed under the GNU 
+public license\&.  The file COPYING contains the details\&.
+.PP
+.SH "AUTHOR"
+convert_delta was written by Brian Harring <ferringb@gentoo&.org>

@@ -1,0 +1,58 @@
+.TH "differ" "1" "Sept 25 2003" "" ""
+.SH "NAME"
+differ
+.SH "SYNOPSIS"
+.PP
+differ from-file to-file [-f format] patch
+.PP
+.SH "DESCRIPTION"
+differ is a program for identifying the changes between two (versionned) 
+files, and encoding those changes in a binary patch\&.
+.SH "OPTIONS"
+.PP
+.nf
+
+-V, --version                   output version, and exit
+-v, --verbose                   increase verbosity
+-c, --to-stdout                 output patch to stdout
+-b, --seed-len SIZE             set the starting seed size to look for\&. 
+                                For example, -b 32 would only be able to 
+                                find matches 32 bytes or larger
+-s, --sample-rate SKIP          the sampling rate for checksum's\&.  -s 2 
+                                would cause differ to add one checksum 
+                                for every other byte\&.  Used with -a, it 
+                                is a way to cut down on the needed 
+                                memory\&.
+-a, --hash-size SIZE            the hash size to use\&.  
+                                differ normally attempts to use a size 
+                                for the hash array that is that of the
+                                file for small files, decreasing the 
+                                ratio as the file size increases\&.
+-f, --patch-format FORMAT       used to control what format differ
+                                outputs in\&.
+                                Valid formats are-
+                                bdelta, gdiff4, gdiff5 (a nonstandard 
+                                modification to gdiff4), bdiff, and
+                                switching\&.
+                                Default is switching\&.
+.fi
+.PP
+.SH "SEE ALSO"
+.PP
+diffball(1)
+patcher(1)
+convert_delta(1)
+.PP
+.SH "BUGS"
+none known
+.PP
+.SH "VERSION"
+.PP
+This man page is current for version 0\&.6\&.5 of differ
+.PP
+.SH "CREDITS"
+differ, and by extension the diffball suite, is distributed under the GNU 
+public license\&.  The file COPYING contains the details\&.
+.PP
+.SH "AUTHOR"
+differ was written by Brian Harring <ferringb@gentoo&.org>
