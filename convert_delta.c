@@ -30,8 +30,6 @@
 #include "options.h"
 #include <diffball/errors.h>
 
-unsigned int global_verbosity = 0;
-
 struct option long_opts[] = {
 	STD_LONG_OPTIONS,
 	FORMAT_LONG_OPTION("src-format",'s'),

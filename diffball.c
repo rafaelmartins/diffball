@@ -33,8 +33,6 @@
 #include <diffball/errors.h>
 #include "options.h"
 
-unsigned int global_verbosity = 0;
-
 unsigned int src_common_len=0, trg_common_len=0;
 
 int cmp_ver_tar_ent_to_src_tar_ent(const void *te1, const void *te2);

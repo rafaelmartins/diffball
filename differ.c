@@ -58,7 +58,7 @@ int main(int argc, char **argv)
 	struct stat ref_stat, ver_stat;
 	cfile out_cfh, ref_cfh, ver_cfh;
 	int out_fh;
-	signed int ref_id, ver_id;
+	EDCB_SRC_ID ref_id, ver_id;
 	CommandBuffer buffer;
 
 	int optr;

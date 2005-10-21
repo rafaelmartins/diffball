@@ -30,8 +30,6 @@
 #include <diffball/errors.h>
 #include <diffball/dcbuffer.h>
 
-unsigned int global_verbosity = 0;
-
 static struct option long_opts[] = {
 	STD_LONG_OPTIONS,
 	FORMAT_LONG_OPTION("patch-format", 'f'),
