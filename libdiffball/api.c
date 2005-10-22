@@ -63,6 +63,7 @@ simple_difference(cfile *ref_cfh, cfile *ver_cfh, cfile *out_cfh, unsigned int p
 	} else if (BDELTA_FORMAT == patch_id) {
 		encode_result = bdeltaEncodeDCBuffer(&buffer, out_cfh);
 	}
+	DCBufferFree(&buffer);
 	return encode_result;
 }
 
