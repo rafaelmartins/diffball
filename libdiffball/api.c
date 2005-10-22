@@ -120,32 +120,38 @@ simple_reconstruct(cfile *src_cfh, cfile **patch_cfh, unsigned char patch_count,
 	}
 
 
+	#define ret_error(err, msg)				\
+	if(err)	{ 								\
+		DCBufferFree(&dcbuff[(x - 1) % 2]);	\
+		check_return_ret(err, 1, msg);		\
+	}
+
 	for(x=0; x < patch_count; x++) {
 		if(x == patch_count - 1 && reorder_commands == 0 && bufferless) {
 			v1printf("not reordering, and bufferless is %u, going bufferless\n", bufferless);
 			if(x==0) {
 				err=DCB_no_buff_init(&dcbuff[0], 0, cfile_len(src_cfh), 0, out_cfh);
-				check_return_ret(err, 1, "DCB_no_buff_init failure");
+				ret_error(err, "DCB_no_buff_init failure");
 				src_id = internal_DCB_register_cfh_src(&dcbuff[0], src_cfh, NULL, NULL, DC_COPY, 0);
-				check_return_ret(src_id, 1, "DCB_no_buff_init failure");
+				ret_error(src_id, "DCB_no_buff_init failure");
 			} else {
 				err=DCB_no_buff_init(&dcbuff[x % 2], 0, dcbuff[(x - 1) % 2].ver_size, 0, out_cfh);
-				check_return_ret(err, 1, "DCB_no_buff_init failure");
+				ret_error(err, "DCB_no_buff_init failure");
 				src_id = DCB_register_dcb_src(dcbuff + ( x % 2), dcbuff + ((x -1) % 2));
-				check_return(src_id, 1, "internal_DCB_register_src");
+				ret_error(src_id, "internal_DCB_register_src");
 			}
 
 		} else {
 			if(x==0) {
 				err=DCB_full_init(&dcbuff[0], 4096, 0, 0);
-				check_return_ret(err, 1, "DCB_full_init failure");
+				ret_error(err, "DCB_full_init failure");
 				src_id = internal_DCB_register_cfh_src(&dcbuff[0], src_cfh, NULL, NULL, DC_COPY, 0);
-				check_return_ret(src_id, 1, "src_id registration failure");
+				ret_error(src_id, "src_id registration failure");
 			} else {
 				err=DCB_full_init(&dcbuff[x % 2], 4096, dcbuff[(x - 1) % 2].ver_size , 0);
-				check_return_ret(err, 1, "DCBufferInit");
+				ret_error(err, "DCBufferInit");
 				src_id = DCB_register_dcb_src(dcbuff + ( x % 2), dcbuff + ((x -1) % 2));
-				check_return_ret(src_id, 1, "DCB_register_dcb_src");
+				ret_error(src_id, "DCB_register_dcb_src");
 			}
 		}
 
@@ -163,7 +169,7 @@ simple_reconstruct(cfile *src_cfh, cfile **patch_cfh, unsigned char patch_count,
 			/* this could be adjusted a bit, since with xdelta it's optional to compress the patch
 			   in such a case, the decision for reordering shouldn't be strictly controlled here */
 			if(patch_count > 1)
-					reorder_commands = 1;
+				reorder_commands = 1;
 
 		} else if(BDELTA_FORMAT == patch_id[x]) {
 			recon_val = bdeltaReconstructDCBuff(src_id, patch_cfh[x], &dcbuff[x % 2]);
@@ -174,20 +180,20 @@ simple_reconstruct(cfile *src_cfh, cfile **patch_cfh, unsigned char patch_count,
 			   besides that, currently multiple bsdiff patches are supported only via 
 			   read_seq_write_rand.  needs fixing later on */
 			if(patch_count > 1)
-					reorder_commands = 1;
+				reorder_commands = 1;
 
 		} else if(FDTU_FORMAT == patch_id[x]) {
 			recon_val = fdtuReconstructDCBuff(src_id, patch_cfh[x], &dcbuff[x % 2]);
 
 			/* wrapped xdelta format, same reasoning applies */
 			if(patch_count > 1)
-					reorder_commands = 1;
+				reorder_commands = 1;
 
 //		} else if(UDIFF_FORMAT == patch_id[x]) {
 //			recon_val = udiffReconstructDCBuff(src_id, &patch_cfh[x], src_cfh, NULL, &dcbuff[x % 2]);
 		}
 
-		check_return_ret(recon_val, 1, "reconstruct result");
+
 		v1printf("reconstruction return=%ld", recon_val);
 		if(DCBUFFER_FULL_TYPE == dcbuff[x % 2].DCBtype) {
 			v1printf(", commands=%ld\n", ((DCB_full *)dcbuff[x % 2].DCB)->cl.com_count);
@@ -195,14 +201,15 @@ simple_reconstruct(cfile *src_cfh, cfile **patch_cfh, unsigned char patch_count,
 		} else {
 			v1printf("\n");
 		}
-		if(recon_val) {
-			v0printf("error detected while processing patch- quitting\n");
-			return recon_val;
-		}
-		v1printf("versions size is %llu\n", (act_off_u64)dcbuff[x % 2].ver_size);
 		if(x) {
 			DCBufferFree(&dcbuff[(x - 1) % 2]);
 		}
+		if(recon_val) {
+			v1printf("error detected while processing patch- quitting\n");
+			DCBufferFree(&dcbuff[x % 2]);
+			check_return_ret(recon_val, 1, "reconstruct result");
+		}
+		v1printf("versions size is %llu\n", (act_off_u64)dcbuff[x % 2].ver_size);
 	}
 	v1printf("applied %lu patches\n", patch_count);
 
