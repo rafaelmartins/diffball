@@ -18,15 +18,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <unistd.h>
 #include <cfile.h>
-#include <diffball/diff-algs.h>
+#include <fcntl.h>
 #include "string-misc.h"
 #include <diffball/formats.h>
 #include <diffball/defs.h>
+#include <diffball/api.h>
 #include "options.h"
 #include <diffball/errors.h>
 
@@ -55,11 +53,8 @@ char short_opts[] = STD_SHORT_OPTIONS DIFF_SHORT_OPTIONS "f:";
 
 int main(int argc, char **argv)
 {
-	struct stat ref_stat, ver_stat;
 	cfile out_cfh, ref_cfh, ver_cfh;
 	int out_fh;
-	EDCB_SRC_ID ref_id, ver_id;
-	CommandBuffer buffer;
 
 	int optr;
 	char  *src_file = NULL;
@@ -67,10 +62,11 @@ int main(int argc, char **argv)
 	char  *patch_name = NULL;
 	unsigned long patch_id = 0;
 	signed long encode_result=0;
+	int err;
 	unsigned long sample_rate=0;
 	unsigned long seed_len = 0;
 	unsigned long hash_size = 0;
-	unsigned int patch_compressor = 0;
+//	unsigned int patch_compressor = 0;
 	unsigned int patch_to_stdout = 0;
 
 	#define DUMP_USAGE(exit_code)		\
@@ -106,18 +102,28 @@ int main(int argc, char **argv)
 			DUMP_USAGE(EXIT_USAGE);
 		}
 	}
-	if( ((src_file=(char *)get_next_arg(argc,argv)) == NULL) ||
-		(stat(src_file, &ref_stat)) ) {
+	err = 0;
+	if( ((src_file = (char *)get_next_arg(argc,argv)) == NULL) ||
+		(err = copen(&ref_cfh, src_file, NO_COMPRESSOR, CFILE_RONLY)) != 0) {
 		if(src_file) {
-			v0printf("Must specify an existing source file.\n");
+			if(err == MEM_ERROR) {
+				v0printf("alloc failure for src_file\n");
+			} else {
+				v0printf("Must specify an existing source file.\n");
+			}
 			exit(EXIT_USAGE);
 		}
 		DUMP_USAGE(EXIT_USAGE);
 	}
+	err = 0;
 	if( ((trg_file=(char *)get_next_arg(argc, argv)) == NULL) ||
-		(stat(trg_file, &ver_stat)) ) {
+		(err = copen(&ver_cfh, trg_file, NO_COMPRESSOR, CFILE_RONLY)) != 0) {
 		if(trg_file) {
-			v0printf("Must specify an existing target file.\n");
+			if(err == MEM_ERROR) {
+				v0printf("alloc failure for trg_file\n");
+			} else {
+				v0printf("Must specify an existing target file.\n");
+			}
 			exit(EXIT_USAGE);
 		}
 		DUMP_USAGE(EXIT_USAGE);
@@ -135,67 +141,43 @@ int main(int argc, char **argv)
 	if (NULL!=get_next_arg(argc, argv)) {
 		DUMP_USAGE(EXIT_USAGE);
 	}
-	copen(&ver_cfh, trg_file, NO_COMPRESSOR, CFILE_RONLY);
-	copen(&ref_cfh, src_file, NO_COMPRESSOR, CFILE_RONLY);
-	if(hash_size==0) {
-		/* implement a better assessment based on mem and such */
-		hash_size = MIN(DEFAULT_MAX_HASH_COUNT, ref_stat.st_size);
-	}
-	if(sample_rate==0) {
-		/* implement a better assessment based on mem and such */
-		sample_rate = COMPUTE_SAMPLE_RATE(hash_size, cfile_len(&ref_cfh));
-	}
-	if(seed_len==0) {
-		seed_len = DEFAULT_SEED_LEN;
-	}
+
 	if(patch_format==NULL) {
 		patch_id = DEFAULT_PATCH_ID;
 	} else {
 		patch_id = check_for_format(patch_format, strlen(patch_format));
 		if(patch_id==0) {
 			v0printf( "Unknown format '%s'\n", patch_format);
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 	}
+	if(copen_dup_fd(&out_cfh, out_fh, 0, 0, NO_COMPRESSOR /* patch_compressor */, CFILE_WONLY)) {
+		v0printf("error allocing needed memory for output, exiting\n");
+		exit(EXIT_FAILURE);
+	}
+
 	v1printf("using patch format %lu\n", patch_id);
 	v1printf("using seed_len(%lu), sample_rate(%lu), hash_size(%lu)\n", 
 		seed_len, sample_rate, hash_size);
 	v1printf("verbosity level(%u)\n", global_verbosity);
 	v1printf("initializing Command Buffer...\n");
 
-	DCB_llm_init(&buffer, 4, ref_stat.st_size, ver_stat.st_size);
-	v1printf("running multipass alg\n");
-	ref_id = DCB_REGISTER_ADD_SRC(&buffer, &ver_cfh, NULL, 0);
-	ver_id = DCB_REGISTER_COPY_SRC(&buffer, &ref_cfh, NULL, 0);
-	MultiPassAlg(&buffer, &ref_cfh, ref_id, &ver_cfh, ver_id, hash_size);
-	DCB_finalize(&buffer);
-	DCB_test_total_copy_len(&buffer);
-	v1printf("outputing patch...\n");
-	if(copen_dup_fd(&out_cfh, out_fh, 0, 0, patch_compressor, CFILE_WONLY)) {
-		v0printf("error allocing needed memory for output, exiting\n");
-		exit(1);
-	}
-	if(GDIFF4_FORMAT == patch_id) {
-		encode_result = gdiff4EncodeDCBuffer(&buffer, &out_cfh);
-	} else if(GDIFF5_FORMAT == patch_id) {
-		encode_result = gdiff5EncodeDCBuffer(&buffer, &out_cfh);
-	} else if(BDIFF_FORMAT == patch_id) {
-		encode_result = bdiffEncodeDCBuffer(&buffer, &out_cfh);
-	} else if(SWITCHING_FORMAT == patch_id) {
-		encode_result = switchingEncodeDCBuffer(&buffer, &out_cfh);
-	} else if (BDELTA_FORMAT == patch_id) {
-		encode_result = bdeltaEncodeDCBuffer(&buffer, &out_cfh);
-	}
+	encode_result = simple_difference(&ref_cfh, &ver_cfh, &out_cfh, patch_id, seed_len, sample_rate, hash_size);
 	v1printf("flushing and closing out file\n");
 	cclose(&out_cfh);
+	close(out_fh);
+	if(err) {
+		if(! patch_to_stdout) {
+			unlink(patch_name);
+		}
+	}
 	v1printf("encode_result=%ld\n", encode_result);
-	v1printf("all commands processed? %u\n", DCB_commands_remain(&buffer)==0);
 	v1printf("exiting\n");
-	DCBufferFree(&buffer);
 	v1printf("closing reference file\n");
 	cclose(&ref_cfh);
 	v1printf("closing version file\n");
 	cclose(&ver_cfh);
 	close(out_fh);
+	check_return2(encode_result, "encoding result was nonzero")
 	return 0;
 }
