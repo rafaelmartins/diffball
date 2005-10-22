@@ -133,13 +133,14 @@ typedef struct _cfile {
 	*((cfh)->lseek_info.last_ptr) : (cfh)->lseek_info.parent.last)
 //#define LAST_LSEEKER(cfh) (CFH_IS_CHILD(cfh) &&	*((cfh)->lseek_info.last_ptr) || (cfh)->lseek_info.parent.last)
 
-#define IS_LAST_LSEEKER(cfh) ( (cfh)->cfh_id == LAST_LSEEKER((cfh)) )
+#define IS_LAST_LSEEKER(cfh) ( (cfh)->cfh_id == LAST_LSEEKER((cfh)) || ((cfh)->state_flags & CFILE_MEM_ALIAS) )
 
 int internal_copen(cfile *cfh, int fh, 
 	size_t raw_fh_start, size_t raw_fh_end,
 	size_t data_fh_start, size_t data_fh_end,
 	unsigned int compressor_type, unsigned int access_flags);
 
+int copen_mem(cfile *cfh, unsigned char *buff, size_t len, unsigned int compressor_type, unsigned int access_flags);
 int copen(cfile *cfh, const char *filename, unsigned int compressor_type, unsigned int access_flags);
 
 int copen_child_cfh(cfile *cfh, cfile *parent, size_t fh_start,
