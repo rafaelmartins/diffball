@@ -64,7 +64,7 @@ DONE	* auto-identify patches unless explicitly told the type
 	  memory size?  thinking memory size, since MOD_HASH is 4 bytes each 
 	  element, while CMOD_HASH is 8 bytes...
 
-0.60			Jun/July 2004
+0.60/0.6.2/0.65		Feb-Apr 2005
 DONE	* full cfile bzip2 read support (including seeking)
 DONE	* full cfile gzip read support (including seeking)
 DONE	* compressor identification function (auto-detect compressed files, 
@@ -83,38 +83,26 @@ DONE	* use said standardized command_list
 DONE	* bufferless reconstruct; it's not always needed (or wanted, from a memory standpoint)
 	  to read in all commands, then process them.  so... bufferless reconstruct for 
 	  single patch transformations that aren't reordered.
-	* add patch info functions, for polling info on existant patches.
-	  possibly a new binary, although might be overkill.
 
-0.70			Aug 2004
-	* Actually *use* the md5 solution from above.
-	* xdelta write support- could do it as of pre-0.4, although md5 support
-	  is needed, and the lovely serialsource memory allocation problem- 
-	  basically the unknown 8 bytes sandwiched between add data and control
-	  block.  Contact bdharring at wisc.edu if anyone has ideas/better 
-	  solution for the serialsource stored memory requirement.
-	  No clue why the hell that is stored there let alone if that's what 
-	  it is...
-	* check into, and support if viable, past xdelta formats.
-	  likely the serialsource issue listed above is going to be 
-	  problematic- I'm betting that had a hand in the breaking of backwards
-	  compatability in xdelta...
-	* verify bsdiff v3 support works completely; untested currently.
-	* bad-chksum cache?
+0.70			Oct 2005
+DONE * Usable lib, header installation, seperation of libcfile from libdiffball
+DONE * memory aliasing for cfile, read and write
+DONE * code cleanup, implementation of simple api (api.h)
+DONE * cleanup of memory leaks in simple api (mainly error scenarios)
+DONE * assuming good design/api, this won't be hard, but begin *initial*
+	  creation of a library api.  Subject to change obviously by 1.00, but
+	  have something fairly concrete ready to roll.
+DONE * cleanup of cfile bugs forcing unneeded lseeks/page refreshs
 
-0.80			fall 2004
-STARTED	* gnudiff support working, for both recursive and  non-recursive patch.
+0.80			>=Dec 2005
 ???	* possibly adjust formats (encoding/decoding) such that they are 
 	  multiple functions... eg, attempt to make it such that the needed 
 	  command space (CommandBuffer) can be optimized down, so that it 
 	  doesn't require the entire set of delta commands to be stored in mem.
 	* suffix based differencing alg.
-	* bsdiff write support (using suffix alg)
+	* bsdiff write support (using suffix alg) (iffy)
 
-0.90			winter 2004/2005
-	* assuming good design/api, this won't be hard, but begin *initial*
-	  creation of a library api.  Subject to change obviously by 1.00, but
-	  have something fairly concrete ready to roll.
+0.90			>=July 2006
 	* add a correcting one pass differencing alg.
 	  This would be good for backup solutions, differencing in one pass.
 	  If you want this, contact me and I'll be a bit more expedient about it, 
@@ -127,12 +115,38 @@ STARTED	* optimize existing formats, differencing algs, buffering system.
 STARTED	* reiterating, *OPTIMIZE BUFFERING SYSTEM*.
 	* dev version of vcdiff.
 
-1.00			2005 ?
+1.00			200*
 	* enter into a full production release.
 	* locked down library api (obviously).
 
-1.0x			Post July 2004
+1.0x			20** :)
 	* whatever optimizations/bug fixes needed.
+
+would-be nice 	whenever
+	* xdelta write support- could do it as of pre-0.4, although md5 support
+	  is needed, and the lovely serialsource memory allocation problem- 
+	  basically the unknown 8 bytes sandwiched between add data and control
+	  block.  Contact bdharring at wisc.edu if anyone has ideas/better 
+	  solution for the serialsource stored memory requirement.
+	  No clue why the hell that is stored there let alone if that's what 
+	  it is...
+	* check into, and support if viable, past xdelta formats.
+	  likely the serialsource issue listed above is going to be 
+	  problematic- I'm betting that had a hand in the breaking of backwards
+	  compatability in xdelta...
+	* bad-chksum cache?
+	* add patch info functions, for polling info on existant patches.
+	  possibly a new binary, although might be overkill.
+STARTED	* gnudiff support working, for both recursive and  non-recursive patch.
+
+
 
 Tentative versioning and time release obviously...
 Dang crystal ball...
+
+Thing I've found in writing this out, is that there really isn't a helluva lot left libdiffball wise 
+that is bugging me to fix.  I *do* want to break cfile out on it's own, and redesign it, but that's not a high 
+priority, nor does it bring any real gains to the delta compression users; it just provides a way to plugin
+different transformations (useful, but not a deal breaker).
+
+So... Suggestions welcome.

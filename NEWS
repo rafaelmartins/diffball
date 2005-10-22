@@ -1,3 +1,25 @@
+0.7
+* Hard to state this release.  Main work was done in about 2 days time, but it's pretty much across the board.
+Cleaned up libdiffball quite a bit, chunked libcfile out of it fex; added header installs also, since I think the api is usable at 
+this point (namely, I'm not going to be changing it much).
+
+Added memory alias cfiles; basically allows you to wrap a cfile struct around char *, which is useful if everything is done in memory.
+Covers both read, and write.
+
+reworked the hell out of the directory layout; main intention is to split libcfile off sometime in the near future when I 
+decide it's time to implement stacked transforms (someday when portage isn't sucking up my time).
+
+Couple of quiet bugs in the background were fixed, nothing anyone ever saw however.  Quite a bit of worst case error memory leaks
+were also corrected, since this is the first version where the libs are actually usable (namely cause headers are included).
+
+Aside from that, addition of a rather high level api;
+difference(cfile *reference, cfile *version, cfile *out, couple-o-opts)
+reconstruct(cfile *base, cfile **patches, unsigned char patch_count, cfile *out, couple-o-opts);
+if you don't use the opts, just set them to zero.  automatically assumes sane defaults.
+
+That's all.
+Eat the pudding.
+
 0.6.5
 * Bug fixes.  bufferless reconstruction should work without issue now.
 * Further code cleanup in preparation for attempting largefile (>2gb) support.
