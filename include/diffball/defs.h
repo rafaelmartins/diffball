@@ -47,6 +47,7 @@ typedef signed   long long act_off_s64;
 #define DATA_ERROR              	(-5)
 #define PATCH_TRUNCATED				(-17)
 #define PATCH_CORRUPT_ERROR		 	(-18)
+#define UNKNOWN_FORMAT				(-19)
 
 #define v0printf(expr...) fprintf(stderr, expr);
 
