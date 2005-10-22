@@ -57,13 +57,13 @@ copen_dup_cfh(cfile *cfh)
 	cfile *dup;
 	dup = (cfile *)malloc(sizeof(cfile));
 	if(dup == NULL) {
-			return NULL;
+		return NULL;
 	}
 	if(copen_child_cfh(dup, cfh, cfh->data_fh_offset, 
-			cfh->data_total_len == 0 ? 0 : cfh->data_fh_offset + cfh->data_total_len,
-			cfh->compressor_type, cfh->access_flags)) {
-			free(dup);
-			return NULL;
+		cfh->data_total_len == 0 ? 0 : cfh->data_fh_offset + cfh->data_total_len,
+		cfh->compressor_type, cfh->access_flags)) {
+		free(dup);
+		return NULL;
 	}
 	return dup;
 }
@@ -84,13 +84,20 @@ copen_child_cfh(cfile *cfh, cfile *parent, size_t fh_start,
 		if(compressor_type != NO_COMPRESSOR) {
 			/* cfile doesn't handle this. deal. */
 			v0printf("unable to open a compressor w/in a compressor, crapping out.\n");
-			abort();
+			return UNSUPPORTED_OPT;
 		}
 		err = internal_copen(cfh, parent->raw_fh, parent->raw_fh_offset, parent->raw_total_len, 
 			fh_start, fh_end, parent->compressor_type, access_flags);
 	} else {
 		err = internal_copen(cfh, parent->raw_fh, fh_start, fh_end, 0, 0,
 			compressor_type, access_flags);
+	}
+	if(parent->state_flags & CFILE_MEM_ALIAS) {
+		assert((cfh->access_flags & CFILE_WONLY) == 0);
+		free(cfh->data.buff);
+		cfh->data.buff = parent->data.buff + fh_start;
+		cfh->data.size = cfh->data.end = fh_end - fh_start;
+		cfh->state_flags |= CFILE_MEM_ALIAS;
 	}
 	return err;
 }
@@ -99,27 +106,34 @@ int
 copen_mem(cfile *cfh, unsigned char *buff, size_t len, unsigned int compressor_type, unsigned int access_flags)
 {
 	int ret;
+	size_t len2;
 	if(buff == NULL) {
 		if(access_flags &! CFILE_WONLY)
 			return UNSUPPORTED_OPT;
 	}
+	if(access_flags & CFILE_WONLY)
+		len2 = 0;
+	else
+		len2 = len;
+	
 	if(compressor_type != NO_COMPRESSOR) {
 		return UNSUPPORTED_OPT;
 	}
 	cfh->state_flags = CFILE_MEM_ALIAS;
-	cfh->lseek_info.parent.last = 0;
 	cfh->lseek_info.parent.handle_count = 0;
 	cfh->cfh_id = 1;
 	// pass in a daft handle
-	ret = internal_copen(cfh, -1, 0, len, 0,0, compressor_type, access_flags);
+	ret = internal_copen(cfh, -1, 0, len2, 0,0, compressor_type, access_flags);
 	if(ret != 0)
 		return ret;
 	// mangle things a bit.
 	if(buff != NULL) {
 		free(cfh->data.buff);
 		cfh->data.buff = buff;
-		cfh->data.end = cfh->data.size = len;
+		cfh->data_total_len = cfh->data.end = cfh->data.size = len;
 	}
+	cfh->lseek_info.parent.last = cfh->cfh_id;
+
 	return 0;
 }
 
@@ -240,7 +254,7 @@ internal_copen(cfile *cfh, int fh, size_t raw_fh_start, size_t raw_fh_end,
 		cfh->data_total_len = (data_fh_end == 0 ? 0 : data_fh_end - data_fh_start);
 		if((cfh->bzs = (bz_stream *)
 			malloc(sizeof(bz_stream)))==NULL) {
-			v0printf("mem error\n");
+			v1printf("mem error for bz2 stream\n");
 			return MEM_ERROR;
 		} else if((cfh->data.buff = (unsigned char *)malloc(cfh->data.size))==NULL) {
 			return MEM_ERROR;
@@ -498,6 +512,7 @@ cseek(cfile *cfh, ssize_t offset, int offset_type)
 	assert(data_offset >= 0 || NO_COMPRESSOR != cfh->compressor_type);
 
 	if((cfh->state_flags & CFILE_FLAG_BACKWARD_SEEKS) && (data_offset < cfh->data.offset))
+		// this probably is screwed up.
 		v0printf("%i seek backwards, desired %ld, cur base %lu, cur end %lu\n", cfh->cfh_id, data_offset, cfh->data.offset, 
 		cfh->data.offset + cfh->data.pos);
 
@@ -526,6 +541,9 @@ cseek(cfile *cfh, ssize_t offset, int offset_type)
 		return (CSEEK_ABS==offset_type ? cfh->data.pos + cfh->data.offset + cfh->data_fh_offset:
 			cfh->data.pos + cfh->data.offset);
 	}
+
+	assert((cfh->state_flags & CFILE_MEM_ALIAS) == 0);	
+
 	switch(cfh->compressor_type) {
 	case NO_COMPRESSOR:
 		dcprintf("cseek: %u: no_compressor, flagging it\n", cfh->cfh_id);
@@ -682,6 +700,8 @@ cflush(cfile *cfh)
 	/* kind of a hack, I'm afraid. */
 	if(cfh->data.write_end != 0) {
 		if(cfh->state_flags & CFILE_MEM_ALIAS) {
+			if(cfh->data.write_end < cfh->data.size)
+				return 0;
 			unsigned char *p;
 			size_t realloc_size;
 			if(cfh->data.size >= CFILE_DEFAULT_MEM_ALIAS_W_REALLOC)
@@ -693,6 +713,7 @@ cflush(cfile *cfh)
 			if(p == NULL)
 				return MEM_ERROR;
 			cfh->data.size = realloc_size;
+			cfh->data.buff = p;
 			return 0;
 		}
 		switch(cfh->compressor_type) {
@@ -755,6 +776,7 @@ crefill(cfile *cfh)
 {
 	size_t x;
 	int err;
+	assert((cfh->state_flags & CFILE_MEM_ALIAS) == 0);
 	switch(cfh->compressor_type) {
 	case NO_COMPRESSOR:
 		if((cfh->access_flags & CFILE_WRITEABLE) && (cfh->data.write_end != 0)) {
@@ -901,13 +923,16 @@ copy_cfile_block(cfile *out_cfh, cfile *in_cfh, size_t in_offset, size_t len)
 	unsigned char buff[CFILE_DEFAULT_BUFFER_SIZE];
 	unsigned int lb;
 	size_t bytes_wrote=0;;
-	if(in_offset!=cseek(in_cfh, in_offset, CSEEK_FSTART))
+	if(in_offset!=cseek(in_cfh, in_offset, CSEEK_FSTART)) {
 		return EOF_ERROR;
+	}
 	while(len) {
 		lb = MIN(CFILE_DEFAULT_BUFFER_SIZE, len);
 		if( (lb!=cread(in_cfh, buff, lb)) ||
-			(lb!=cwrite(out_cfh, buff, lb)) )
+			(lb!=cwrite(out_cfh, buff, lb)) ) {
+			v2printf("twas copy_cfile_block2, in_offset is %i, lb was %i, remaining len was %i, bytes_wrote %i, pos %i, end %i!\n", in_offset, lb, len, bytes_wrote, in_cfh->data.pos, in_cfh->data.end);
 			return EOF_ERROR;
+		}
 		len -= lb;
 		bytes_wrote+=lb;
 	}
@@ -953,13 +978,17 @@ copy_add_block(cfile *out_cfh, cfile *src_cfh, size_t src_offset, size_t len, vo
 	unsigned char buff[CFILE_DEFAULT_BUFFER_SIZE];
 	unsigned int lb;
 	size_t bytes_wrote=0;;
-	if(src_offset!=cseek(src_cfh, src_offset, CSEEK_FSTART))
+	if(src_offset!=cseek(src_cfh, src_offset, CSEEK_FSTART)) {
+		v2printf("twas copy_add_block!\n");
 		return EOF_ERROR;
+	}
 	while(len) {
 		lb = MIN(CFILE_DEFAULT_BUFFER_SIZE, len);
 		if( (lb!=cread(src_cfh, buff, lb)) ||
-			(lb!=cwrite(out_cfh, buff, lb)) )
+			(lb!=cwrite(out_cfh, buff, lb)) ) {
+			v2printf("twas copy_add_block2\n");
 			return EOF_ERROR;
+		}
 		len -= lb;
 		bytes_wrote+=lb;
 	}
@@ -971,8 +1000,10 @@ cfile_window *
 expose_page(cfile *cfh)
 {
 	if(cfh->access_flags & CFILE_RONLY) {
-			if(cfh->data.end==0) 
+		if(cfh->data.end==0) {
+			assert((cfh->state_flags & CFILE_MEM_ALIAS) == 0);
 			crefill(cfh);
+		}
 	}
 	return &cfh->data;
 }
@@ -984,7 +1015,11 @@ next_page(cfile *cfh)
 			cflush(cfh);
 	}
 	if(cfh->access_flags & CFILE_RONLY) {
-		crefill(cfh);
+		if((cfh->state_flags & CFILE_MEM_ALIAS) == 0)
+			crefill(cfh);
+		else
+			return NULL;
+			
 	}
 	return &cfh->data;
 }
@@ -994,7 +1029,7 @@ prev_page(cfile *cfh)
 {
 	/* possibly do an error check or something here */
 	if(cfh->access_flags & CFILE_WRITEABLE) {
-			cflush(cfh);
+		cflush(cfh);
 	}
 	if(cfh->data.offset ==0) {
 		cfh->data.end=0;
