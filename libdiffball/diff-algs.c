@@ -55,16 +55,20 @@ OneHalfPassCorrecting(CommandBuffer *dcb, RefHash *rh, unsigned char rid, cfile 
 		return(IO_ERROR);
 	
 	#define end_pos(x)		((x)->offset + (x)->end)
-	while(vcfw->end != 0) {
-			if(va < vc) {
-				va = vc;
-			}
-		if(va >= end_pos(vcfw)){
-			if(va != cseek(vcfh, va, CSEEK_FSTART))
-					return(IO_ERROR);
-			vcfw = expose_page(vcfh);
-			if(vcfw->end == 0 && vcfw->offset != ver_len)
+	while(vcfw != NULL) {
+		if(va < vc) {
+			va = vc;
+		}
+		if(va >= end_pos(vcfw)) {
+			vcfw = next_page(vcfh);
+			if(vcfw == NULL) {
+				if(vcfh->data.end + vcfh->data.offset != ver_len) {
 					return IO_ERROR;
+				}
+				continue;
+				assert((vcfh->state_flags & CFILE_MEM_ALIAS) == 0);
+				return IO_ERROR;
+			}
 		}
 		x = MIN(end_pos(vcfw) - va, vc + rh->seed_len - va);
 		update_adler32_seed(&ads, vcfw->buff + va - vcfw->offset, x);
@@ -81,7 +85,6 @@ OneHalfPassCorrecting(CommandBuffer *dcb, RefHash *rh, unsigned char rid, cfile 
 			continue;
 		}
 		if(hash_offset != cseek(rh->ref_cfh, hash_offset, CSEEK_FSTART)) {
-			v0printf("error seeking in ref file\n");
 			return IO_ERROR;
 		}
 
@@ -91,14 +94,14 @@ OneHalfPassCorrecting(CommandBuffer *dcb, RefHash *rh, unsigned char rid, cfile 
 		for(x=0; x < rh->seed_len; x++) {
 			if(rcfw->pos == rcfw->end) {
 				rcfw = next_page(rh->ref_cfh);
-				if(rcfw->end == 0) {
-						return IO_ERROR;
-					}
+				if(rcfw == NULL || rcfw->end == 0) {
+					return IO_ERROR;
+				}
 			}
 			if(ads.seed_chars[(ads.tail + x) % ads.seed_len] != 
-					rcfw->buff[rcfw->pos]) {
-					bad_match++;
-					vc++;
+				rcfw->buff[rcfw->pos]) {
+				bad_match++;
+				vc++;
 				break;
 			}
 			rcfw->pos++;
@@ -121,10 +124,10 @@ OneHalfPassCorrecting(CommandBuffer *dcb, RefHash *rh, unsigned char rid, cfile 
 					return IO_ERROR;
 			}
 			if(vcfw->buff[vm - 1 - vcfw->offset] == rcfw->buff[rm - 1 - rcfw->offset]) {
-					rm--;
-					vm--;
+				rm--;
+				vm--;
 			} else {
-					break;
+				break;
 			}
 		}
 		len = vc + rh->seed_len - vm;
@@ -145,10 +148,10 @@ OneHalfPassCorrecting(CommandBuffer *dcb, RefHash *rh, unsigned char rid, cfile 
 
 		while(vm + len < ver_len && rm + len < ref_len) {
 			if(vm + len >= end_pos(vcfw)) {
-					vcfw = next_page(vcfh);
-					if(vcfw->end == 0) {
-						if(vcfw->offset != ver_len)
-								return IO_ERROR;
+				vcfw = next_page(vcfh);
+				if(vcfw->end == 0) {
+					if(vcfw->offset != ver_len)
+						return IO_ERROR;
 					break;
 				}
 			}
@@ -156,12 +159,12 @@ OneHalfPassCorrecting(CommandBuffer *dcb, RefHash *rh, unsigned char rid, cfile 
 			assert(vm + len >= vcfw->offset);
 
 			if(rm + len >= end_pos(rcfw)) {
-					rcfw = next_page(rh->ref_cfh);
-					if(rcfw->end == 0) {
-						if(rcfw->offset != ref_len)
-								return IO_ERROR;
-						break;
-					}
+				rcfw = next_page(rh->ref_cfh);
+				if(rcfw->end == 0) {
+					if(rcfw->offset != ref_len)
+						return IO_ERROR;
+					break;
+				}
 			}
 			assert(rm + len < rcfw->offset+ rcfw->end);
 			assert(rm + len >= rcfw->offset);
@@ -169,12 +172,12 @@ OneHalfPassCorrecting(CommandBuffer *dcb, RefHash *rh, unsigned char rid, cfile 
 			if(vcfw->buff[vm + len - vcfw->offset] == rcfw->buff[rm + len - rcfw->offset]) {
 				len++;
 			} else {
-					break;
+				break;
 			}
 		}
 		if( vs <= vm) {
 			if (vs < vm) {
-					DCB_add_add(dcb, ver_start + vs, vm - vs, vid);
+				DCB_add_add(dcb, ver_start + vs, vm - vs, vid);
 			}
 			DCB_add_copy(dcb, ref_start + rm, ver_start + vm, len, rid);
 		} else {
@@ -184,7 +187,7 @@ OneHalfPassCorrecting(CommandBuffer *dcb, RefHash *rh, unsigned char rid, cfile 
 		vs = vc = vm + len;
 	}
 	if (vs != ver_len)
-			DCB_add_add(dcb, ver_start + vs, ver_len - vs, vid);
+		DCB_add_add(dcb, ver_start + vs, ver_len - vs, vid);
 	free_adler32_seed(&ads);
 	return 0;
 }
