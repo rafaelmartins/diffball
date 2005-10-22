@@ -101,7 +101,7 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 //	while(DCB_commands_remain(buffer)) {
 //		DCB_get_next_command(buffer, &dc);
 //		if(DC_ADD==dc.type)
-//				total_add_len += dc.data.len;
+//			total_add_len += dc.data.len;
 //	}
 
 	while((count = DCB_get_next_collapsed_command(buffer, &dcc)) > 0) {
@@ -109,6 +109,7 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 			total_add_len += dcc.len;
 	}
 
+	// this looks wrong.
 	if(count != 0)
 		return count;
 
@@ -138,6 +139,7 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 		}
 	}
 				
+	// as does this.
 	if(count < 0) 
 		return count;
 
@@ -157,17 +159,17 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 		if(DC_ADD == dcc.commands[0].type) {
 			temp_len = dcc.len;
 			if(temp_len >= add_len_start[3]) {
-					temp=3;
-					lb=30;
+				temp=3;
+				lb=30;
 			} else if (temp_len >= add_len_start[2]) {
-					temp=2;
-					lb=22;
+				temp=2;
+				lb=22;
 			} else if (temp_len >= add_len_start[1]) {
-					temp=1;
-					lb=14;
+				temp=1;
+				lb=14;
 			} else {
-					temp=0;
-					lb=6;
+				temp=0;
+				lb=6;
 			}
 			temp_len -= add_len_start[temp];
 			writeUBitsBE(out_buff, temp_len, lb);
@@ -189,8 +191,8 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 			//yes this is a hack.  but it works.
 			if(offset_type == ENCODING_OFFSET_DC_POS) {
 				s_off = dcc.commands[commands_processed].data.src_pos - dc_pos;
-					u_off = abs(s_off);
-					v2printf("off(%llu), dc_pos(%u), u_off(%llu), s_off(%lld): ", 
+				u_off = abs(s_off);
+				v2printf("off(%llu), dc_pos(%u), u_off(%llu), s_off(%lld): ", 
 					(act_off_u64)dcc.commands[commands_processed].data.src_pos, 
 					dc_pos, (act_off_u64)u_off, (act_off_s64)s_off);
 			} else {
@@ -198,17 +200,17 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 			}
 			temp_len = dcc.commands[commands_processed].data.len;
 			if(temp_len >= copy_len_start[3]) {
-					temp=3;
-					lb=28;
+				temp=3;
+				lb=28;
 			} else if (temp_len >= copy_len_start[2]) {
-					temp=2;
-					lb=20;
+				temp=2;
+				lb=20;
 			} else if (temp_len >= copy_len_start[1]) {
-					temp=1;
-					lb=12;
+				temp=1;
+				lb=12;
 			} else {
-					temp=0;
-					lb=4;
+				temp=0;
+				lb=4;
 			}
 			temp_len -= copy_len_start[temp];
 			writeUBitsBE(out_buff, temp_len, lb);
@@ -216,21 +218,21 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 			lb = temp +1;
 					
 			if(u_off >= copy_off_array[3]) {
-					temp=3;
-					ob=32;
+				temp=3;
+				ob=32;
 			} else if(u_off >= copy_off_array[2]) {
-					temp=2;
-					ob=24;
+				temp=2;
+				ob=24;
 			} else if (u_off >= copy_off_array[1]) {
-					temp=1;
-					ob=16;
+				temp=1;
+				ob=16;
 			} else {
-					temp=0;
-					ob=8;
+				temp=0;
+				ob=8;
 			}
 			out_buff[0] |= (temp << 4);
 			if(offset_type==ENCODING_OFFSET_DC_POS) {
-					dc_pos += s_off;
+				dc_pos += s_off;
 				if(temp) {
 					if(s_off > 0) { 
 						s_off -= copy_off_array[temp];
@@ -252,12 +254,12 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 			} 
 			cwrite(out_cfh, out_buff, lb + temp + 1);
 			v2printf("writing copy delta_pos(%u), fh_pos(%llu), offset(%lld), len(%u)\n",
-					delta_pos, (act_off_u64)fh_pos, (act_off_s64)ENCODING_OFFSET_DC_POS,
+				delta_pos, (act_off_u64)fh_pos, (act_off_s64)ENCODING_OFFSET_DC_POS,
 				dcc.commands[commands_processed].data.len);
 			fh_pos += dcc.commands[commands_processed].data.len;
 			delta_pos += lb + temp + 1;
 			last_com=DC_COPY;
-		 }
+		}
 		commands_processed++;
 		if(commands_processed >= count) {
 			count = DCB_get_next_collapsed_command(buffer, &dcc);
@@ -267,8 +269,8 @@ int switchingEncodeDCBuffer(CommandBuffer *buffer,
 	free_DCommand_collapsed(&dcc);
 	writeUBytesBE(out_buff, 0, 2);
 	if(last_com==DC_COPY) {
-			cwrite(out_cfh, out_buff,1);
-			delta_pos++;
+		cwrite(out_cfh, out_buff,1);
+		delta_pos++;
 	}
 	cwrite(out_cfh, out_buff, 2);
 	delta_pos+=2;
@@ -295,8 +297,8 @@ switchingReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbu
 	dcbuff->ver_size = 0;
 
 	if(offset_type==ENCODING_OFFSET_DC_POS) {
-			v2printf("using ENCODING_OFFSET_DC_POS\n");
-			   copy_off_array = copy_soff_start;
+		v2printf("using ENCODING_OFFSET_DC_POS\n");
+		   copy_off_array = copy_soff_start;
 	} else if(offset_type==ENCODING_OFFSET_START) {
 		v2printf("using ENCODING_OFFSET_START\n");
 		copy_off_array = copy_off_start;
@@ -319,7 +321,7 @@ switchingReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbu
 		(off_u32)ctell(patchf, CSEEK_ABS));
 
 	while(cread(patchf, buff, 1)==1 && end_of_patch==0) {
-		   v2printf("processing(%u) at pos(%u): ", buff[0], (off_u32)ctell(patchf, CSEEK_ABS) -1);
+		v2printf("processing(%u) at pos(%u): ", buff[0], (off_u32)ctell(patchf, CSEEK_ABS) -1);
 		if(last_com != DC_ADD) {
 			lb = (buff[0] >> 6) & 0x3;
 			len = buff[0] & 0x3f;
@@ -339,33 +341,33 @@ switchingReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbu
 			ob = (buff[0] >> 4) & 0x3;
 			len = buff[0] & 0x0f;
 			if(lb) {
-					cread(patchf, buff, lb);
-					len = (len << (lb * 8)) + readUBytesBE(buff, lb);
-					//v2printf("adding(%u): ", copy_len_start[lb]);
-					len += copy_len_start[lb];
+				cread(patchf, buff, lb);
+				len = (len << (lb * 8)) + readUBytesBE(buff, lb);
+				//v2printf("adding(%u): ", copy_len_start[lb]);
+				len += copy_len_start[lb];
 			}
 			v2printf("ob(%u): ", ob);
 			cread(patchf, buff, ob + 1);
 			if (offset_type == ENCODING_OFFSET_DC_POS) {
 				s_off = readSBytesBE(buff, ob + 1);
 
-				   // positive or negative 0?  Yes, for this, there is a difference... 
-					if(buff[0] & 0x80) {
-						s_off -= copy_off_array[ob];
-					} else {
-						s_off += copy_off_array[ob];
-					}
+			   // positive or negative 0?  Yes, for this, there is a difference... 
+				if(buff[0] & 0x80) {
+					s_off -= copy_off_array[ob];
+				} else {
+					s_off += copy_off_array[ob];
+				}
 				u_off = dc_pos + s_off;
 				v2printf("u_off(%llu), dc_pos(%u), s_off(%lld): ", (act_off_u64)u_off, dc_pos, (act_off_s64)s_off);
 				dc_pos = u_off;
 			} else {
-					u_off = readUBytesBE(buff, ob + 1);
-					u_off += copy_off_start[ob];
+				u_off = readUBytesBE(buff, ob + 1);
+				u_off += copy_off_start[ob];
 			}
 			if(lb==0 && ob==0 && len==0 && u_off==0) {
-					v2printf("zero length, zero offset copy found.\n");
-					end_of_patch=1;
-					continue;
+				v2printf("zero length, zero offset copy found.\n");
+				end_of_patch=1;
+				continue;
 			}
 			if(len) {
 				DCB_add_copy(dcbuff, u_off, 0, len, ref_id);
