@@ -71,6 +71,16 @@ SEEK_END
 #define CSEEK_END				2
 #define CSEEK_FSTART			3
 
+/* errors */
+#define IO_ERROR                (-1)
+#define EOF_ERROR               (-2)
+#define MEM_ERROR               (-3)
+
+// this is thrown when the api allows something, but code doesn't yet.
+// case in point, compressors bound to a copen_mem cfile.
+// doing it this route, rather then changing the api down the line.
+#define UNSUPPORTED_OPT			(-6)
+
 typedef struct {
 	size_t offset;
 	size_t pos;

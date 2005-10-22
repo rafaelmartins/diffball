@@ -42,13 +42,11 @@ typedef signed   long long act_off_s64;
 #define MAX_SAMPLE_RATE		32767
 #define MAX_HASH_SIZE		2147483647		//if you have 2gb for a hash size... yeah, feel free to donate hardware/memory to me :)
 
-#define PATCH_TRUNCATED				(-1)
-#define PATCH_CORRUPT_ERROR		 (-2)
-#define IO_ERROR				(-3)
-#define EOF_ERROR				(-4)
-#define MEM_ERROR				(-5)
-#define FORMAT_ERROR				(-6)
-#define DATA_ERROR				(-7)
+#define MEM_ERROR					(-3)
+#define FORMAT_ERROR            	(-4)
+#define DATA_ERROR              	(-5)
+#define PATCH_TRUNCATED				(-17)
+#define PATCH_CORRUPT_ERROR		 	(-18)
 
 #define v0printf(expr...) fprintf(stderr, expr);
 
