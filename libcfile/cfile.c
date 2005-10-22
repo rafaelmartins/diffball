@@ -108,8 +108,13 @@ copen_mem(cfile *cfh, unsigned char *buff, size_t len, unsigned int compressor_t
 	int ret;
 	size_t len2;
 	if(buff == NULL) {
-		if(access_flags &! CFILE_WONLY)
+		if(access_flags & CFILE_RONLY)
 			return UNSUPPORTED_OPT;
+	} else {
+		if( (access_flags & CFILE_WONLY) && buff != NULL) {
+			v0printf("supplying an initial buffer for a write mem alias isn't totally supported yet, sorry")
+			return UNSUPPORTED_OPT;
+		}
 	}
 	if(access_flags & CFILE_WONLY)
 		len2 = 0;
