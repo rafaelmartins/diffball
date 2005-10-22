@@ -144,7 +144,8 @@ get_nearest_prime(unsigned long near)
 	unsigned long x, y, div, prime;
 	int is_prime;
 
-	init_primes(&ctx);
+	if(init_primes(&ctx))
+		return 0;
 	prime = 0;
 	if(near < ctx.base_primes[ctx.prime_count -1]) {
 		x=0;
