@@ -68,6 +68,10 @@ OneHalfPassCorrecting(CommandBuffer *dcb, RefHash *rh, unsigned char rid, cfile 
 				continue;
 				assert((vcfh->state_flags & CFILE_MEM_ALIAS) == 0);
 				return IO_ERROR;
+			} else if(vcfw->end == 0) {
+				// cover our asses.
+				vcfw = NULL;
+				continue;
 			}
 		}
 		x = MIN(end_pos(vcfw) - va, vc + rh->seed_len - va);
