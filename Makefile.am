@@ -37,5 +37,7 @@ convert_delta_SOURCES = convert_delta.c	\
 # line-util.h is left out, as is udiff.h
 noinst_HEADERS = string-misc.h tar.h options.h
 
-
-
+dist-hook:
+	echo "warning, yanking cxx check in configure.  may fail if it's ran once before!"
+	( cd $(distdir) && patch -p0 -i ../nocxx.patch )
+	echo "yoinked"
