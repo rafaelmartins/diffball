@@ -38,6 +38,7 @@ convert_delta_SOURCES = convert_delta.c	\
 noinst_HEADERS = string-misc.h tar.h options.h
 
 dist-hook:
-	echo "warning, yanking cxx check in configure.  may fail if it's ran once before!"
+	cvs2cl && rm -f ChangeLog.bak && mv ChangeLog $(distdir) && touch ChangeLog
+	echo "warning, yanking cxx check in configure.  This isn't the cleanest thing known to man"
 	( cd $(distdir) && patch -p0 -i ../nocxx.patch )
 	echo "yoinked"
