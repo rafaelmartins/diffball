@@ -8,16 +8,10 @@ if BUILD_DEBUG_CFILE
 else
     cfile_bins = 
 endif
-if BUILD_DEBUG_HASH
-    hash_bins = hash_stats
-else
-    hash_bins =
-endif
 
 DIFF_LIBS = libdiffball/libdiffball.la
 CFILE_LIBS = libcfile/libcfile.la
-bin_PROGRAMS = differ patcher diffball convert_delta ${cfile_bins} \
-    ${hash_bins}
+bin_PROGRAMS = differ patcher diffball convert_delta ${cfile_bins}
 
 patcher_LDADD	=	${DIFF_LIBS} ${CFILE_LIBS}
 patcher_SOURCES = 	patcher.c	\

@@ -29,16 +29,6 @@ AC_HELP_STRING([--enable-debug-cfile],[enable testing of internal cfile buffer (
 esac], 
 [enable_debug_cfile=false])
 
-AC_ARG_ENABLE(debug-hash,
-AC_HELP_STRING([--enable-debug-hash], [enable testing of internal hash (default no)]),
-[case "${enableval}" in
-  yes) enable_debug_hash=true ;;
-  no)  enable_debug_hash=false;;
-  *)   AC_MSG_ERROR(bad value ${enableval} for --enable-debug-hash) ;;
-esac], 
-[enable_debug_hash=false])
-
-
 if test x$enable_debug_cfile = xtrue
 then
 	AC_MSG_RESULT(DEBUGGING: enabling cfile debugging.)
