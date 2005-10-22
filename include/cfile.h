@@ -36,11 +36,8 @@ extern unsigned int cfile_verbosity;
 #define CFILE_READABLE					(0x1)
 #define CFILE_WRITEABLE					(0x2)
 #define CFILE_WR						(CFILE_READABLE | CFILE_WRITEABLE)
-
 #define CFILE_OPEN_FH					(0x8)
-
 #define CFILE_SEEKABLE					(0x10)
-
 #define CFILE_BUFFER_ALL				(0x20)
 #define CFILE_MEM_ALIAS					(0x40)
 #define CFILE_CHILD_CFH					(0x80)
@@ -75,6 +72,8 @@ SEEK_END
 #define IO_ERROR                (-1)
 #define EOF_ERROR               (-2)
 #define MEM_ERROR               (-3)
+
+#define CFILE_DEFAULT_MEM_ALIAS_W_REALLOC 0x40000
 
 // this is thrown when the api allows something, but code doesn't yet.
 // case in point, compressors bound to a copen_mem cfile.

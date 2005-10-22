@@ -95,6 +95,33 @@ copen_child_cfh(cfile *cfh, cfile *parent, size_t fh_start,
 	return err;
 }
 
+int
+copen_mem(cfile *cfh, unsigned char *buff, size_t len, unsigned int compressor_type, unsigned int access_flags)
+{
+	int ret;
+	if(buff == NULL) {
+		if(access_flags &! CFILE_WONLY)
+			return UNSUPPORTED_OPT;
+	}
+	if(compressor_type != NO_COMPRESSOR) {
+		return UNSUPPORTED_OPT;
+	}
+	cfh->state_flags = CFILE_MEM_ALIAS;
+	cfh->lseek_info.parent.last = 0;
+	cfh->lseek_info.parent.handle_count = 0;
+	cfh->cfh_id = 1;
+	// pass in a daft handle
+	ret = internal_copen(cfh, -1, 0, len, 0,0, compressor_type, access_flags);
+	if(ret != 0)
+		return ret;
+	// mangle things a bit.
+	if(buff != NULL) {
+		free(cfh->data.buff);
+		cfh->data.buff = buff;
+		cfh->data.end = cfh->data.size = len;
+	}
+	return 0;
+}
 
 int
 copen(cfile *cfh, const char *filename, unsigned int compressor_type, unsigned int access_flags)
@@ -144,7 +171,6 @@ copen_dup_fd(cfile *cfh, int fh, size_t fh_start, size_t fh_end,
 	return internal_copen(cfh, fh, fh_start, fh_end, 0,0,
 	compressor_type, access_flags);
 }
-
 
 int
 internal_copen(cfile *cfh, int fh, size_t raw_fh_start, size_t raw_fh_end, 
@@ -367,8 +393,10 @@ cclose(cfile *cfh)
 		cflush(cfh);
 	}
 	dcprintf("id(%u), data_size=%lu, raw_size=%lu\n", cfh->cfh_id, cfh->data.size, cfh->raw.size);
-	if(cfh->data.buff)
-		free(cfh->data.buff);
+	if(! ( cfh->state_flags & CFILE_MEM_ALIAS)) {
+		if(cfh->data.buff)
+			free(cfh->data.buff);
+	}
 	if(cfh->raw.buff)
 		free(cfh->raw.buff);
 	if(cfh->compressor_type == BZIP2_COMPRESSOR) {
@@ -651,7 +679,22 @@ ctell(cfile *cfh, unsigned int tell_type)
 ssize_t
 cflush(cfile *cfh)
 {
+	/* kind of a hack, I'm afraid. */
 	if(cfh->data.write_end != 0) {
+		if(cfh->state_flags & CFILE_MEM_ALIAS) {
+			unsigned char *p;
+			size_t realloc_size;
+			if(cfh->data.size >= CFILE_DEFAULT_MEM_ALIAS_W_REALLOC)
+				realloc_size = cfh->data.size + CFILE_DEFAULT_MEM_ALIAS_W_REALLOC;
+			else
+				realloc_size = cfh->data.size * 2;
+		
+			p = realloc(cfh->data.buff, cfh->data.size + CFILE_DEFAULT_MEM_ALIAS_W_REALLOC);
+			if(p == NULL)
+				return MEM_ERROR;
+			cfh->data.size = realloc_size;
+			return 0;
+		}
 		switch(cfh->compressor_type) {
 		case NO_COMPRESSOR:
 			// position the sucker, either at write_end, or at write_start (for CFILE_WR)

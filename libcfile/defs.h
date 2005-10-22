@@ -24,33 +24,20 @@
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
-extern unsigned int cfile_verbosity;
-
-#define IO_ERROR				(-3)
-#define EOF_ERROR				(-4)
-#define MEM_ERROR				(-5)
-#define FORMAT_ERROR				(-6)
-#define DATA_ERROR				(-7)
-
 #define v0printf(expr...) fprintf(stderr, expr);
 
 #ifdef DEV_VERSION
 #include <assert.h>
 #define eprintf(expr...)   abort(); fprintf(stderr, expr);
-#define v1printf(expr...)  fprintf(stderr,expr);
-#define v2printf(expr...)  if(cfile_verbosity>0){fprintf(stderr,expr);}
-#define v3printf(expr...)  if(cfile_verbosity>1){fprintf(stderr,expr);}
-#define v4printf(expr...)  if(cfile_verbosity>2){fprintf(stderr,expr);}
 #else
 #define assert(expr) ((void)0)
 #define eprintf(expr...)   fprintf(stderr, expr);
+#endif
+
 #define v1printf(expr...)  if(cfile_verbosity>0){fprintf(stderr,expr);}
 #define v2printf(expr...)  if(cfile_verbosity>1){fprintf(stderr,expr);}
 #define v3printf(expr...)  if(cfile_verbosity>2){fprintf(stderr,expr);}
 #define v4printf(expr...)  if(cfile_verbosity>3){fprintf(stderr,expr);}
-#endif
-
-#define SLEEP_DEBUG 1
 
 #ifdef DEBUG_CFILE
 #include <stdio.h>
