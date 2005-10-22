@@ -17,6 +17,9 @@ difference(cfile *reference, cfile *version, cfile *out, couple-o-opts)
 reconstruct(cfile *base, cfile **patches, unsigned char patch_count, cfile *out, couple-o-opts);
 if you don't use the opts, just set them to zero.  automatically assumes sane defaults.
 
+Finally, punted that worthless libtool added c++ check.  Hate that check, slightly more worthless then the fortran check (at 
+least the fortan check isn't a failure when unfound).
+
 That's all.
 Eat the pudding.
 
