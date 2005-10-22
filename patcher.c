@@ -23,12 +23,12 @@
 #include <unistd.h>
 #include "string-misc.h"
 #include <cfile.h>
-#include <diffball/apply-patch.h>
 #include <diffball/formats.h>
 #include <diffball/defs.h>
 #include "options.h"
 #include <diffball/errors.h>
 #include <diffball/dcbuffer.h>
+#include <diffball/api.h>
 
 static struct option long_opts[] = {
 	STD_LONG_OPTIONS,
@@ -56,22 +56,18 @@ main(int argc, char **argv)
 	int out_fh;
 	cfile src_cfh, out_cfh;
 	cfile patch_cfh[256];
-	CommandBuffer dcbuff[2];
+	cfile *patch_array[256];
 	unsigned long x;
-	signed int src_id;
-	signed int err;
 	char  *src_name = NULL;
 	char  *out_name = NULL;
 	unsigned long patch_count;
-	unsigned char reorder_commands = 0;
-	unsigned char bufferless = 1;
 	char  **patch_name;
-	unsigned long int patch_id[256];
+	unsigned long format_id;
 	signed long int recon_val=0;
-	unsigned int out_compressor = 0;
+//	unsigned int out_compressor = 0;
 	unsigned int output_to_stdout = 0;
 	char  *patch_format = NULL;
-	int optr = 0;
+	int optr = 0, err;
 	unsigned long reconst_size = 0xffff;
 	
 	#define DUMP_USAGE(exit_code) \
@@ -90,7 +86,7 @@ main(int argc, char **argv)
 			output_to_stdout = 1;		break;
 		case 'f':
 			patch_format = optarg;		break;
-		case OBZIP2:
+/*		case OBZIP2:
 			if(out_compressor) {
 				// bitch at em.
 			} else
@@ -102,7 +98,7 @@ main(int argc, char **argv)
 			} else 
 				out_compressor = GZIP_COMPRESSOR;
 			break;
-		case 'b':
+*/		case 'b':
 			reconst_size = atol(optarg);
 			if(reconst_size > 0x4000000 || reconst_size == 0) {
 				v0printf("requested buffer size %lu isn't sane.  Must be greater then 0, and less then %lu\n", 
@@ -135,10 +131,10 @@ main(int argc, char **argv)
 			DUMP_USAGE(EXIT_USAGE);
 		}
 	} else {
-			if(patch_count == 1) {
+		if(patch_count == 1) {
 			v0printf("Must specify a name for the reconstructed file!\n");
 			DUMP_USAGE(EXIT_USAGE);
-			}
+		}
 		out_name = patch_name[patch_count - 1];
 		patch_name[patch_count] = NULL;
 		patch_count--;
@@ -150,30 +146,7 @@ main(int argc, char **argv)
 	for(x=0; x < patch_count; x++) {
 		err=copen(&patch_cfh[x], patch_name[x], AUTODETECT_COMPRESSOR, CFILE_RONLY);
 		check_return2(err,"copen of patch")
-		/* if compression is noticed, reorganize. */
-		if(patch_cfh[x].compressor_type != NO_COMPRESSOR) {
-			reorder_commands = 1;
-		}
-
-		if(patch_format==NULL) {
-			patch_id[x] = identify_format(&patch_cfh[x]);
-			if(patch_id[x]==0) {
-					v0printf( "Couldn't identify the patch format for patch %lu, aborting\n", patch_id[x]);
-				exit(EXIT_FAILURE);
-			} else if((patch_id[x] & 0xffff)==1) {
-					v0printf( "Unsupported format version\n");
-					exit(EXIT_FAILURE);
-			}
-			patch_id[x] >>=16;
-			} else {
-			patch_id[x] = check_for_format(patch_format, strlen(patch_format));
-			if(patch_id[x]==0) {
-					v0printf( "Unknown format '%s'\n", patch_format);
-				exit(1);
-			}
-		}
-		v1printf("patch_type=%lu\n", patch_id[x]);
-		cseek(&patch_cfh[x], 0, CSEEK_FSTART);
+		patch_array[x] = &patch_cfh[x];
 	}
 
 	v1printf("verbosity level(%u)\n", global_verbosity);
@@ -182,126 +155,32 @@ main(int argc, char **argv)
 		v0printf("error opening source file '%s': %i\n", src_name, err);
 		exit(EXIT_FAILURE);
 	}
-	if(src_cfh.compressor_type != NO_COMPRESSOR) {
-			reorder_commands = 1;
-	}
-
-	if(patch_count == 1 && reorder_commands == 0) {
-			bufferless = 1;
-			v1printf("enabling bufferless, patch_count(%lu) == 1\n", patch_count);
-	} else {
-			bufferless = 0;
-			v1printf("disabling bufferless, patch_count(%lu) == 1 || forced_reorder(%u)\n", patch_count, reorder_commands);
-	}
-
 
 	if((err=copen(&out_cfh, out_name, NO_COMPRESSOR, CFILE_WONLY|CFILE_NEW)) != 0) {
 		v0printf("error opening output file, exitting %i\n", err);
 		exit(EXIT_FAILURE);
 	}
 
-	for(x=0; x < patch_count; x++) {
-		if(x == patch_count - 1 && reorder_commands == 0 && bufferless) {
-			v1printf("not reordering, and bufferless is %u, going bufferless\n", bufferless);
-			if(x==0) {
-				err=DCB_no_buff_init(&dcbuff[0], 0, cfile_len(&src_cfh), 0, &out_cfh);
-				check_return2(err, "DCBufferInit");
-					src_id = internal_DCB_register_cfh_src(&dcbuff[0], &src_cfh, NULL, NULL, DC_COPY, 0);
-					check_return(src_id, "internal_DCB_register_src", "unable to continue");
-			} else {
-					err=DCB_no_buff_init(&dcbuff[x % 2], 0, dcbuff[(x - 1) % 2].ver_size, 0, &out_cfh);
-				check_return2(err, "DCBufferInit");
-						src_id = DCB_register_dcb_src(dcbuff + ( x % 2), dcbuff + ((x -1) % 2));
-					check_return(src_id, "internal_DCB_register_src", "unable to continue");
-			}
-
-		} else {
-			if(x==0) {
-				err=DCB_full_init(&dcbuff[0], 4096, 0, 0);
-				check_return2(err, "DCBufferInit");
-					src_id = internal_DCB_register_cfh_src(&dcbuff[0], &src_cfh, NULL, NULL, DC_COPY, 0);
-					check_return2(src_id, "DCB_register_cfh_src");
-				} else {
-					err=DCB_full_init(&dcbuff[x % 2], 4096, dcbuff[(x - 1) % 2].ver_size , 0);
-					check_return2(err, "DCBufferInit");
-					src_id = DCB_register_dcb_src(dcbuff + ( x % 2), dcbuff + ((x -1) % 2));
-					check_return2(src_id, "DCB_register_dcb_src");
-				}
-		}
-
-		if(SWITCHING_FORMAT == patch_id[x]) {
-			recon_val = switchingReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
-		} else if(GDIFF4_FORMAT == patch_id[x]) {
-			recon_val = gdiff4ReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
-		} else if(GDIFF5_FORMAT == patch_id[x]) {
-			recon_val = gdiff5ReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
-		} else if(BDIFF_FORMAT == patch_id[x]) {
-			recon_val = bdiffReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
-		} else if(XDELTA1_FORMAT == patch_id[x]) {
-			recon_val = xdelta1ReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2], 1);
-
-			/* this could be adjusted a bit, since with xdelta it's optional to compress the patch
-			   in such a case, the decision for reordering shouldn't be strictly controlled here */
-			if(patch_count > 1)
-					reorder_commands = 1;
-
-		} else if(BDELTA_FORMAT == patch_id[x]) {
-			recon_val = bdeltaReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
-		} else if(BSDIFF_FORMAT == patch_id[x]) {
-			recon_val = bsdiffReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
-
-			/* compressed format- if more then one patch, reorder
-			   besides that, currently multiple bsdiff patches are supported only via 
-			   read_seq_write_rand.  needs fixing later on */
-			if(patch_count > 1)
-					reorder_commands = 1;
-
-		} else if(FDTU_FORMAT == patch_id[x]) {
-			recon_val = fdtuReconstructDCBuff(src_id, &patch_cfh[x], &dcbuff[x % 2]);
-
-			/* wrapped xdelta format, same reasoning applies */
-			if(patch_count > 1)
-					reorder_commands = 1;
-
-//		} else if(UDIFF_FORMAT == patch_id[x]) {
-//			recon_val = udiffReconstructDCBuff(src_id, &patch_cfh[x], &src_cfh, NULL, &dcbuff[x % 2]);
-		}
-
-		v1printf("reconstruction return=%ld", recon_val);
-		if(DCBUFFER_FULL_TYPE == dcbuff[x % 2].DCBtype) {
-			v1printf(", commands=%ld\n", ((DCB_full *)dcbuff[x % 2].DCB)->cl.com_count);
-			v1printf("result was %lu commands\n", ((DCB_full *)dcbuff[x % 2].DCB)->cl.com_count);
-		} else {
-			v1printf("\n");
-		}
-		if(recon_val) {
-			v0printf("error detected while processing patch- quitting\n");
-			print_error(recon_val);
+	if(patch_format != NULL) {
+		format_id = check_for_format(patch_format, strlen(patch_format));
+		if(format_id == 0) {
+			v0printf("desired forced patch format '%s' is unknown\n", patch_format);
 			exit(EXIT_FAILURE);
 		}
-		v1printf("versions size is %llu\n", (act_off_u64)dcbuff[x % 2].ver_size);
-		if(x) {
-			DCBufferFree(&dcbuff[(x - 1) % 2]);
+	} else {
+		format_id = 0;
+	}
+	recon_val = simple_reconstruct(&src_cfh, patch_array, patch_count, &out_cfh, format_id, reconst_size);
+	cclose(&out_cfh);
+	if(recon_val != 0) {
+		if (!output_to_stdout) {
+			unlink(out_name);
 		}
 	}
-	v1printf("applied %lu patches\n", patch_count);
-
-	if(! bufferless) {
-		v1printf("reordering commands? %u\n", reorder_commands);
-		v1printf("reconstructing target file based off of dcbuff commands...\n");
-		err = reconstructFile(&dcbuff[(patch_count - 1) % 2], &out_cfh, reorder_commands, reconst_size);
-		check_return(err, "reconstructFile", "error detected while reconstructing file, quitting");	
-		v1printf("reconstruction completed successfully\n");
-	} else {
-		v1printf("reconstruction completed successfully\n");
-	}
-
-	DCBufferFree(&dcbuff[(patch_count - 1) % 2]);
-	cclose(&out_cfh);
 	cclose(&src_cfh);
 	for(x=0; x < patch_count; x++) {
-			cclose(&patch_cfh[x]);
+		cclose(&patch_cfh[x]);
 	}
-	return 0;
+	return recon_val;
 }
 
