@@ -90,6 +90,8 @@ AC_FUNC_MEMCMP
 AC_FUNC_STAT
 AC_CHECK_FUNCS([dup2 memmove strnlen strtol memset realloc])
 
+CFLAGS="$CFLAGS -Wall"
+CXXFLAGS="$CXXFLAGS -Wall"
 
 #AC_CONFIG_FILES([])
 AC_OUTPUT(Makefile)
