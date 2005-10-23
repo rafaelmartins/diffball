@@ -124,7 +124,7 @@ simple_reconstruct(cfile *src_cfh, cfile **patch_cfh, unsigned char patch_count,
 	if(err)	{ 									\
 		if(x != 0)								\
 			DCBufferFree(&dcbuff[(x - 1) % 2]);	\
-		check_return_ret(err, 1, msg);			\
+c		check_return_ret(err, 1, msg);			\
 	}
 
 	for(x=0; x < patch_count; x++) {
@@ -218,7 +218,7 @@ simple_reconstruct(cfile *src_cfh, cfile **patch_cfh, unsigned char patch_count,
 		v1printf("reordering commands? %u\n", reorder_commands);
 		v1printf("reconstructing target file based off of dcbuff commands...\n");
 		err = reconstructFile(&dcbuff[(patch_count - 1) % 2], out_cfh, reorder_commands, max_buff_size);
-		check_return(err, "reconstructFile", "error detected while reconstructing file, quitting");	
+		check_return_ret(err, 1, "reconstructFile");	
 		v1printf("reconstruction completed successfully\n");
 	} else {
 		v1printf("reconstruction completed successfully\n");
