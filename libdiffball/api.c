@@ -62,6 +62,8 @@ simple_difference(cfile *ref_cfh, cfile *ver_cfh, cfile *out_cfh, unsigned int p
 		encode_result = switchingEncodeDCBuffer(&buffer, out_cfh);
 	} else if (BDELTA_FORMAT == patch_id) {
 		encode_result = bdeltaEncodeDCBuffer(&buffer, out_cfh);
+	} else {
+		encode_result = UNSUPPORTED_OPT;
 	}
 	DCBufferFree(&buffer);
 	return encode_result;
@@ -113,10 +115,10 @@ simple_reconstruct(cfile *src_cfh, cfile **patch_cfh, unsigned char patch_count,
 
 	if(patch_count == 1 && reorder_commands == 0) {
 		bufferless = 1;
-		v1printf("enabling bufferless, patch_count(%lu) == 1\n", patch_count);
+		v1printf("enabling bufferless, patch_count(%i) == 1\n", patch_count);
 	} else {
 		bufferless = 0;
-		v1printf("disabling bufferless, patch_count(%lu) == 1 || forced_reorder(%u)\n", patch_count, reorder_commands);
+		v1printf("disabling bufferless, patch_count(%u) == 1 || forced_reorder(%u)\n", patch_count, reorder_commands);
 	}
 
 
@@ -212,7 +214,7 @@ simple_reconstruct(cfile *src_cfh, cfile **patch_cfh, unsigned char patch_count,
 		}
 		v1printf("versions size is %llu\n", (act_off_u64)dcbuff[x % 2].ver_size);
 	}
-	v1printf("applied %lu patches\n", patch_count);
+	v1printf("applied %u patches\n", patch_count);
 
 	if(! bufferless) {
 		v1printf("reordering commands? %u\n", reorder_commands);
