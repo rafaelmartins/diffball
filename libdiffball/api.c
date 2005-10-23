@@ -124,7 +124,7 @@ simple_reconstruct(cfile *src_cfh, cfile **patch_cfh, unsigned char patch_count,
 	if(err)	{ 									\
 		if(x != 0)								\
 			DCBufferFree(&dcbuff[(x - 1) % 2]);	\
-c		check_return_ret(err, 1, msg);			\
+		check_return_ret(err, 1, msg);			\
 	}
 
 	for(x=0; x < patch_count; x++) {
