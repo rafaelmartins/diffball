@@ -1,3 +1,9 @@
+0.7.1
+bug fixes, since -Wall wasn't enabled during previous build (it's enabled by default now).
+* removed an exit that slipped in via a macro in libdiffball/api.c
+* simple_reconstruct now properly catches unknown format id's, and returns UNSUPPORTED_OPT
+* cfile bug with flag_lseek_needed, that was doing exactly opposite of what was required
+
 0.7
 * Hard to state this release.  Main work was done in about 2 days time, but it's pretty much across the board.
 Cleaned up libdiffball quite a bit, chunked libcfile out of it fex; added header installs also, since I think the api is usable at 
