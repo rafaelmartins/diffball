@@ -23,6 +23,7 @@
 #include <diffball/primes.h>
 #include <diffball/defs.h>
 #include <diffball/hash.h>
+#include <diffball/bit-functions.h>
 
 int 
 cmp_chksum_ent(const void *ce1, const void *ce2)
@@ -103,7 +104,7 @@ base_rh_bucket_lookup(RefHash *rhash, ADLER32_SEED_CTX *ads) {
 	unsigned long index, chksum;
 	signed long pos;
 	chksum = get_checksum(ads);
-	index = chksum & 0xffff;
+	index = chksum & RHASH_INDEX_MASK;
 	if(hash->depth[index]==0) {
 		return 0;
 	}
@@ -248,15 +249,27 @@ signed int
 base_rh_bucket_hash_init(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len, unsigned int sample_rate, unsigned long hr_size, unsigned int type)
 {
 	bucket *rh;
-	unsigned long x;
+	unsigned long x, hash_shift;
+	
 	common_init_RefHash(rhash, ref_cfh, seed_len, sample_rate, type, base_rh_bucket_hash_insert, rh_bucket_free, base_rh_bucket_lookup);
-	rhash->hr_size = 0x10000;
+	if(hr_size == 0)
+		hr_size = DEFAULT_RHASH_SIZE;
+	if(hr_size < MIN_RHASH_SIZE)
+		return MEM_ERROR;
+	hash_shift = unsignedBitsNeeded(hr_size);
+	assert((hr_size & ~(1 << hash_shift)) == 0);
+
+	rhash->hr_size = hr_size;
 	rh = (bucket*)malloc(sizeof(bucket));
 	if(rh == NULL)
 		return MEM_ERROR;
-	rh->max_depth = 255;
-
-	if((rh->depth = (unsigned char *)malloc(rhash->hr_size)) == NULL) {
+	rh->max_depth = DEFAULT_RHASH_BUCKET_SIZE;
+/*	rh->hash_mask = 0;
+	while(hash_shift) {
+		rh->hash_mask = (rh->hash_mask << 1) | 1;
+		hash_shift >>= 1;
+	}
+*/	if((rh->depth = (unsigned char *)malloc(rhash->hr_size)) == NULL) {
 		free(rh);
 		return MEM_ERROR;
 	} else if((rh->chksum = (unsigned short **)malloc(rhash->hr_size * sizeof(unsigned short *)))==NULL) {
@@ -281,7 +294,7 @@ base_rh_bucket_hash_init(RefHash *rhash, cfile *ref_cfh, unsigned int seed_len, 
 }
 
 signed int
-RH_bucket_resize(bucket *hash, unsigned short index, unsigned short size)
+RH_bucket_resize(bucket *hash, unsigned long index, unsigned short size)
 {
 	assert(
 		hash->depth[index]==0		|| 
@@ -294,8 +307,11 @@ RH_bucket_resize(bucket *hash, unsigned short index, unsigned short size)
 	if(hash->depth[index]==0) {
 		if((hash->chksum[index] = (unsigned short *)malloc(size * sizeof(unsigned short)))==NULL)
 			return MEM_ERROR;
-		if((hash->offset[index] = (off_u64 *)malloc(size * sizeof(off_u64)))==NULL)
+		if((hash->offset[index] = (off_u64 *)malloc(size * sizeof(off_u64)))==NULL) {
+			free(hash->chksum[index]);
 			return MEM_ERROR;
+		}
+		return 0;
 	}
 	if((hash->chksum[index] = (unsigned short *)realloc(hash->chksum[index], size * sizeof(unsigned short))) == NULL)
 		return MEM_ERROR;
@@ -342,7 +358,7 @@ base_rh_bucket_hash_insert(RefHash *rhash, ADLER32_SEED_CTX *ads, off_u64 offset
 	bucket *hash;
 	hash = (bucket *)rhash->hash;
 	chksum = get_checksum(ads);
-	index = chksum & 0xffff;
+	index = (chksum & RHASH_INDEX_MASK);
 	chksum = ((chksum >>16) & 0xffff);
 	if(! hash->depth[index]) {
 		if(RH_bucket_resize(hash, index, RH_BUCKET_MIN_ALLOC)) {
@@ -373,11 +389,10 @@ base_rh_bucket_hash_insert(RefHash *rhash, ADLER32_SEED_CTX *ads, off_u64 offset
 		if(hash->chksum[index][low] != chksum) {
 			/* expand bucket if needed */
 
-#define NEED_RESIZE(x)														\
-	((x)==128 || (x)==64 || (x)==32 || (x)==16 || (x)==8 || (x)==4)
+#define NEED_RESIZE(x)	RH_BUCKET_NEED_RESIZE(x)
 
 			if(NEED_RESIZE(hash->depth[index])) {
-				if (RH_bucket_resize(hash, index, MIN(hash->max_depth, (hash->depth[index] << 1)))) {
+				if (RH_bucket_resize(hash, index, MIN(hash->max_depth, (hash->depth[index] * RH_BUCKET_REALLOC_RATE)))) {
 					return MEM_ERROR;
 				}
 			}
@@ -585,11 +600,11 @@ rh_rmod_insert_match(RefHash *rhash, ADLER32_SEED_CTX *ads, off_u64 offset)
 signed int
 rh_rbucket_insert_match(RefHash *rhash, ADLER32_SEED_CTX *ads, off_u64 offset)
 {
-	bucket *hash = (bucket *)rhash->hash;
 	unsigned long index, chksum;
+	bucket *hash = (bucket *)rhash->hash;
 	signed long pos;
 	chksum = get_checksum(ads);
-	index = (chksum & 0xffff);
+	index = (chksum & RHASH_INDEX_MASK);
 	chksum = ((chksum >> 16) & 0xffff);
 	if(hash->depth[index]) {
 		pos = RH_bucket_find_chksum(chksum, hash->chksum[index], hash->depth[index]);
@@ -674,7 +689,9 @@ rh_rbucket_cleanse(RefHash *rhash)
 				}
 			}
 			hash->depth[x] -= shift;
-			if(hash->depth[x]==0) {
+			if(hash->depth[x] == 0) {
+				assert(NULL != hash->chksum[x]);
+				assert(NULL != hash->offset[x]);
 				free(hash->chksum[x]);
 				free(hash->offset[x]);
 				hash->chksum[x] = NULL;
