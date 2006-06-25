@@ -50,8 +50,33 @@ RHash_sort(RefHash *rh)
 	return 0;
 }
 
+
+inline signed int
+RH_bucket_find_chksum_insert_pos(unsigned short chksum, unsigned short array[],
+	unsigned short count)
+{
+	signed short low, high, mid;
+	low = 0;
+	high = count - 1;
+	if(high == 0)
+		return 0;
+	while(low < high) {
+		mid = (low + high) /2;
+		if(chksum < array[mid])
+			high = mid -1;
+		else if (chksum > array[mid])
+			low = mid + 1;
+		else {
+			low = mid;
+			break;
+		}
+	}
+	assert(low >= 0);
+	return low;
+}
+
 /* ripped straight out of K&R C manual.  great book btw. */
-inline signed long
+inline signed int
 RH_bucket_find_chksum(unsigned short chksum, unsigned short array[], 
 	unsigned short count)
 {
@@ -101,7 +126,7 @@ off_u64
 base_rh_bucket_lookup(RefHash *rhash, ADLER32_SEED_CTX *ads) {
 	bucket *hash = (bucket*)rhash->hash;
 	unsigned long index, chksum;
-	signed long pos;
+	signed int pos;
 	chksum = get_checksum(ads);
 	index = chksum & 0xffff;
 	if(hash->depth[index]==0) {
@@ -333,12 +358,11 @@ base_rh_mod_hash_insert(RefHash *rhash, ADLER32_SEED_CTX *ads, off_u64 offset)
 	return FAILED_HASH_INSERT;
 }
 
-
 signed int
 base_rh_bucket_hash_insert(RefHash *rhash, ADLER32_SEED_CTX *ads, off_u64 offset)
 {
 	unsigned long chksum, index;
-	signed   int low, high, mid;
+	signed   int low;
 	bucket *hash;
 	hash = (bucket *)rhash->hash;
 	chksum = get_checksum(ads);
@@ -357,19 +381,7 @@ base_rh_bucket_hash_insert(RefHash *rhash, ADLER32_SEED_CTX *ads, off_u64 offset
 		hash->depth[index]++;
 		return SUCCESSFULL_HASH_INSERT;
 	} else if(hash->depth[index] < hash->max_depth) {
-		low = 0;
-		high = hash->depth[index] - 1;
-		while(low < high) {
-			mid = (low + high) /2;
-			if(chksum < hash->chksum[index][mid])
-				high = mid -1;
-			else if (chksum > hash->chksum[index][mid]) 
-				low = mid + 1;
-			else {
-				low = mid;
-				break;
-			}
-		}
+		low = RH_bucket_find_chksum_insert_pos(chksum, hash->chksum[index], hash->depth[index]);
 		if(hash->chksum[index][low] != chksum) {
 			/* expand bucket if needed */
 
@@ -381,8 +393,8 @@ base_rh_bucket_hash_insert(RefHash *rhash, ADLER32_SEED_CTX *ads, off_u64 offset
 					return MEM_ERROR;
 				}
 			}
-			if(hash->chksum[index][low] < chksum) {
-				/* shift low 1 element to the right */
+			if(hash->chksum[index][low] > chksum) {
+				/* shift low + 1 element to the right */
 				memmove(hash->chksum[index] + low + 1, hash->chksum[index] + low, (hash->depth[index] - low) * sizeof(unsigned short));
 				hash->chksum[index][low] = chksum;
 				if(rhash->type & RH_BUCKET_HASH) {
@@ -391,6 +403,7 @@ base_rh_bucket_hash_insert(RefHash *rhash, ADLER32_SEED_CTX *ads, off_u64 offset
 				} else {
 					hash->offset[index][hash->depth[index]] = 0;
 				}
+				assert(hash->chksum[index][low] < hash->chksum[index][low + 1]);
 			 } else if(low == hash->depth[index] -1) {
 				hash->chksum[index][hash->depth[index]] = chksum;
 				if(rhash->type & RH_BUCKET_HASH) {
@@ -408,6 +421,7 @@ base_rh_bucket_hash_insert(RefHash *rhash, ADLER32_SEED_CTX *ads, off_u64 offset
 				} else {
 					hash->offset[index][hash->depth[index]] = 0;
 				}
+				assert(hash->chksum[index][low] < hash->chksum[index][low + 1]);
 			}
 			hash->depth[index]++;
 			if(rhash->inserts + 1 == (rhash->hr_size * hash->max_depth))
@@ -587,7 +601,7 @@ rh_rbucket_insert_match(RefHash *rhash, ADLER32_SEED_CTX *ads, off_u64 offset)
 {
 	bucket *hash = (bucket *)rhash->hash;
 	unsigned long index, chksum;
-	signed long pos;
+	signed int pos;
 	chksum = get_checksum(ads);
 	index = (chksum & 0xffff);
 	chksum = ((chksum >> 16) & 0xffff);
