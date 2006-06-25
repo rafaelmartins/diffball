@@ -24,8 +24,6 @@ typedef struct _ADLER32_SEED_CTX {
 		unsigned long last_multi;
 		unsigned int *last_seed;
 		unsigned char *seed_chars;
-		unsigned char *last_parity_bits;
-		unsigned int parity;
 		unsigned int tail;
 		unsigned long s1;
 		unsigned long s2;
