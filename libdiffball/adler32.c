@@ -119,7 +119,7 @@ init_adler32_seed(ADLER32_SEED_CTX *ads, unsigned int seed_len,
 	return 0;
 }
 
-void 
+inline void
 update_adler32_seed(ADLER32_SEED_CTX *ads, unsigned char *buff, 
 	unsigned int len) 
 {		

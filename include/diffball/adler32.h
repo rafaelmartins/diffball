@@ -33,7 +33,7 @@ typedef struct _ADLER32_SEED_CTX {
 
 int init_adler32_seed(ADLER32_SEED_CTX *ads, unsigned int seed_len, 
 	unsigned int multi);
-void update_adler32_seed(ADLER32_SEED_CTX *ads, unsigned char *buff, 
+inline void update_adler32_seed(ADLER32_SEED_CTX *ads, unsigned char *buff,
 	unsigned int len); 
 unsigned long get_checksum(ADLER32_SEED_CTX *ads);
 unsigned int free_adler32_seed(ADLER32_SEED_CTX *ads) ;
