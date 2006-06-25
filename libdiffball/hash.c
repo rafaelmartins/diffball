@@ -51,7 +51,7 @@ RHash_sort(RefHash *rh)
 }
 
 /* ripped straight out of K&R C manual.  great book btw. */
-signed long
+inline signed long
 RH_bucket_find_chksum(unsigned short chksum, unsigned short array[], 
 	unsigned short count)
 {
@@ -454,7 +454,7 @@ RHash_find_matches(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start, off_u64 re
 	return internal_loop_block(rhash, ref_cfh, ref_start, ref_end, rhash->insert_match);
 }
 
-signed int
+inline signed int
 internal_loop_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start, off_u64 ref_end, hash_insert_func hif)
 {
 	ADLER32_SEED_CTX ads;
@@ -506,9 +506,9 @@ internal_loop_block(RefHash *rhash, cfile *ref_cfh, off_u64 ref_start, off_u64 r
 		} else if (result == SUCCESSFULL_HASH_INSERT) {
 			rhash->inserts++;
 			if(rhash->sample_rate <= 1) {
-					len = 1;
+				len = 1;
 			} else if(rhash->sample_rate > rhash->seed_len) {
-					len = rhash->seed_len;
+				len = rhash->seed_len;
 				skip = rhash->sample_rate - rhash->seed_len;
 			} else if (rhash->sample_rate > 1){
 				len = rhash->sample_rate;
