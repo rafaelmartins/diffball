@@ -23,12 +23,8 @@
 
 #define DEFAULT_SEED_LEN		 (16)
 #define DEFAULT_MAX_HASH_COUNT		(48000000/sizeof(unsigned long))
-#define RHASH_INDEX_MASK			(0xffff)
-#define DEFAULT_RHASH_SIZE			(0x10000)
-#define MIN_RHASH_SIZE				(0x10000)
-#define DEFAULT_RHASH_BUCKET_SIZE	(0x100)
-#define MAX_RHASH_BUCKET_SIZE		(0x100)
-#define RH_MOD_HASH					(0x1)
+
+#define RH_MOD_HASH				(0x1)
 #define RH_RMOD_HASH				(0x2)
 #define RH_CMOD_HASH				(0x4)
 #define RH_SORT_HASH				(0x8)
@@ -36,10 +32,7 @@
 #define RH_BUCKET_HASH				(0x20)
 #define RH_RBUCKET_HASH				(0x40)
 
-#define RH_BUCKET_MIN_ALLOC 		(16)
-#define RH_BUCKET_REALLOC_RATE 		(2)
-#define RH_BUCKET_NEED_RESIZE(x)	\
-( (x) == 16 || (x) == 32 || (x) == 64 || (x) == 128)
+#define RH_BUCKET_MIN_ALLOC (4)
 
 #define SUCCESSFULL_HASH_INSERT_NOW_IS_FULL		2
 #define SUCCESSFULL_HASH_INSERT						1
@@ -124,7 +117,7 @@ signed int free_RefHash(RefHash *rhash);
 void print_RefHash_stats(RefHash *rhash);
 
 signed int
-RH_bucket_resize(bucket *hash, unsigned long index, unsigned short size);
+RH_bucket_resize(bucket *hash, unsigned short index, unsigned short size);
 
 
 //hash type initializations.

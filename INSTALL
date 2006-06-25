@@ -1,0 +1,6 @@
+Pretty straightforward, just 
+   ./configure
+   make
+   make install
+
+
