@@ -1,9 +1,12 @@
-0.8
+1.0
 bug fixes, and re-enabling of hr_size option in api.
 main changes
 * invalid bucket ordering/generation; end result was poisoning of certain buckets (thus unusable for matches lookup), and wasteful
   entries in the hash.
 * bit of optimization, inlining in of certain common funcs, change of algo choice for certain searches where applicable
+
+Aside from that, bumped it to 1.0; it's been feature complete for a long while, stuff I'm intending beyond it are refinements of
+existing code.
 
 0.7.1
 bug fixes, since -Wall wasn't enabled during previous build (it's enabled by default now).
