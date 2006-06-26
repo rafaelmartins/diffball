@@ -305,7 +305,7 @@ main(int argc, char **argv)
 				NO_COMPRESSOR, CFILE_RONLY | CFILE_BUFFER_ALL);
 			
 			match_count++;
-			err=rh_bucket_hash_init(&rhash_win, &ref_window, 24, 1, cfile_len(&ref_window));
+			err=rh_bucket_hash_init(&rhash_win, &ref_window, 24, 1, 0);
 			check_return2(err,"init_RefHash");
 			err=RHash_insert_block(&rhash_win, &ref_window, 0, 
 				cfile_len(&ref_window));
