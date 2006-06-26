@@ -411,7 +411,7 @@ base_rh_bucket_hash_insert(RefHash *rhash, ADLER32_SEED_CTX *ads, off_u64 offset
 		return SUCCESSFULL_HASH_INSERT;
 	} else if(hash->depth[index] < hash->max_depth) {
 		low = RH_bucket_find_chksum_insert_pos(chksum, hash->chksum[index], hash->depth[index]);
-		if(low != -1 && hash->chksum[index][low] != chksum) {
+		if(low != -1 && (low == hash->depth[index] || hash->chksum[index][low] != chksum)) {
 			/* expand bucket if needed */
 
 #define NEED_RESIZE(x)	RH_BUCKET_NEED_RESIZE(x)
