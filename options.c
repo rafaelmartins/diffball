@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2003-2005 Brian Harring
+  Copyright (C) 2003-2006 Brian Harring
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -79,10 +79,10 @@ print_usage(const char *prog, const char *usage_portion, struct usage_options *t
 void
 print_version(const char *prog)
 {
-	fprintf(stdout,"diffball version %s, program %s (C) 2003-2005 Brian Harring\n", VERSION, prog);
+	fprintf(stdout,"diffball version %s, program %s (C) 2003-2006 Brian Harring\n", VERSION, prog);
 	fprintf(stdout,"http://diffball.sourceforge.net\n");
 	fprintf(stdout,"THIS SOFTWARE COMES WITH ABSOLUTELY NO WARRANTY! USE AT YOUR OWN RISK!\n");
-	fprintf(stdout,"Report bugs to <ferringb@gentoo.org>\n\n");
+	fprintf(stdout,"Report bugs to <ferringb@gmail.com>\n\n");
 }
 
 char *
