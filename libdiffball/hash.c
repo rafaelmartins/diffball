@@ -429,7 +429,7 @@ base_rh_bucket_hash_insert(RefHash *rhash, ADLER32_SEED_CTX *ads, off_u64 offset
 					hash->offset[index][low] = 0;
 				}
 				assert(hash->chksum[index][low - 1] < hash->chksum[index][low]);
-			} else { /*if(hash->chksum[index][low] > chksum) {
+			} else {
 				assert(low == 0 || hash->chksum[index][low] < chksum);
 				/* shift low + 1 element to the right */
 				memmove(hash->chksum[index] + low + 1, hash->chksum[index] + low, (hash->depth[index] - low) * sizeof(unsigned short));
