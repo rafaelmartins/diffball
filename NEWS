@@ -1,3 +1,10 @@
+0.8
+bug fixes, and re-enabling of hr_size option in api.
+main changes
+* invalid bucket ordering/generation; end result was poisoning of certain buckets (thus unusable for matches lookup), and wasteful
+  entries in the hash.
+* bit of optimization, inlining in of certain common funcs, change of algo choice for certain searches where applicable
+
 0.7.1
 bug fixes, since -Wall wasn't enabled during previous build (it's enabled by default now).
 * removed an exit that slipped in via a macro in libdiffball/api.c
