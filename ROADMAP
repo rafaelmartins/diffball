@@ -41,7 +41,7 @@ DONE	* verified hash.  Basically, scan the version file for chksum's
 	  matches/worthless seeks.
 
 0.50			Dec 2003
-STARTED	* write *GOOD* man pages (eye of the beholder?)
+DONE	* write *GOOD* man pages (eye of the beholder?)
 DONE	* DCBuffer should be a general struct, with different ways of
 	  storing entries.  Full for patching/conversion, matches for
 	  standard differencing (difference is it eliminates storing
