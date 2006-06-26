@@ -298,12 +298,7 @@ int DCB_add_copy(CommandBuffer *buffer, off_u64 src_pos, off_u64 ver_pos, off_u3
 #define DCB_add_copy(buff, sp, vp, l, si)  (buff)->add_copy((buff),(sp),(vp),(l),(si))
 #endif
 
-#ifdef DEV_VERSION
 int DCB_add_add(CommandBuffer *buffer, off_u64 src_pos, off_u32 len, DCB_SRC_ID src_id);
-#else
-#define DCB_add_add(buff, sp, l, si) \
-( ((buff)->add_add && (buff)->add_add((buff),(sp),(l),(si))) || 0)
-#endif
 
 off_u64
 process_ovchain(CommandBuffer *dcb, off_u64 ver_pos, command_list *cl,

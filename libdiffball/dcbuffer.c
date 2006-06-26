@@ -963,6 +963,16 @@ DCB_add_add(CommandBuffer *buffer, off_u64 src_pos, off_u32 len, DCB_SRC_ID src_
 		return buffer->add_add(buffer, src_pos, len, src_id);
 	return 0;
 }
+#else
+
+int
+DCB_add_add(CommandBuffer *buffer, off_u64 src_pos, off_u32 len, DCB_SRC_ID src_id)
+{
+	if(buffer->add_add)
+		return buffer->add_add(buffer, src_pos, len, src_id);
+	return 0;
+}
+
 #endif
 
 int
