@@ -1,6 +1,3 @@
-* Command line hash_size is not always abided by, notable BUCKET/RBUCKET- will 
-  be fixed in the next release.
-
 * remove CommandBuffer.default_(add,copy)_src.  The current macros are just glue from old setup to new- it's a kludge.
 
 * need to implement something a bit better performance wise for RH_RBUCKET_HASH and RH_BUCKET_HASH.
@@ -29,7 +26,5 @@
   
 * Split cfile into it's own lib, making transformations (whether rle, bzip2, or gzip) stackable.  Not sure if this will ever be done.
 
-* create shared libs for formats, dcbuffer, and diff-algs. (perhaps all in one lib).  Moving towards it now, no rush.
-
-Aside from that, if  you've got a suggestion, email it to ferringb at gentoo dot org.
+Aside from that, if  you've got a suggestion, email it to ferringb at gmail dot com.
 
