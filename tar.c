@@ -23,7 +23,7 @@
 #include <diffball/defs.h>
 #include "tar.h"
 
-int check_str_chksum(const char *block)
+int check_str_chksum(const unsigned char *block)
 {
 	/* the chksum is 8 bytes and lives at byte 148.
 	  for where the chksum exists in the string, you treat each byte as ' '*/
@@ -35,12 +35,12 @@ int check_str_chksum(const char *block)
 	chksum+=' '* 8;
 	for(x=156; x< 512; x++)
 		chksum += (unsigned char)block[x];
-	return (chksum==octal_str2long((char *)(block + TAR_CHKSUM_LOC), TAR_CHKSUM_LEN));
+	return (chksum==octal_str2long((block + TAR_CHKSUM_LOC), TAR_CHKSUM_LEN));
 }
 
 /* possibly this could be done different, what of endptr of strtol?
    Frankly I worry about strtol trying to go too far and causing a segfault, due to tar fields not always having trailing \0 */
-inline unsigned long octal_str2long(char *string, unsigned int length)
+inline unsigned long octal_str2long(const unsigned char *string, unsigned int length)
 {
 	char *ptr = (char *)malloc(length +1);
 	unsigned long x;
@@ -107,10 +107,10 @@ read_entry(cfile *src_cfh, off_u64 start, tar_entry *entry)
 	}
 	entry->start = start;
 	entry->end = 512 + start;
-	if(strnlen(block, 512)==0)  {
+	if(strnlen((const char *)block, 512)==0)  {
 		return TAR_EMPTY_ENTRY;
 	}
-	if (! check_str_chksum((const char *)block)) {
+	if (! check_str_chksum(block)) {
 		v0printf("checksum failed on a tarfile, bailing\n");
 		return IO_ERROR;
 	}
@@ -131,7 +131,7 @@ read_entry(cfile *src_cfh, off_u64 start, tar_entry *entry)
 			v0printf("unable to allocate memory for fullname, bailing\n");
 			return EOF_ERROR;
 		}
-		if(! check_str_chksum((const char *)block)) {
+		if(! check_str_chksum(block)) {
 			v0printf("tar checksum failed for tar entry at %llu, bailing\n", (act_off_u64)start);
 			// IO_ERROR? please.  add data_error.
 			return IO_ERROR;
@@ -139,8 +139,8 @@ read_entry(cfile *src_cfh, off_u64 start, tar_entry *entry)
 		entry->fullname[name_len] = '\0';
 		entry->end += octal_str2long(block + TAR_SIZE_LOC, TAR_SIZE_LEN) + 1024;
 	} else {
-		name_len = strnlen(block + TAR_NAME_LOC, TAR_NAME_LEN);
-		prefix_len = strnlen(block + TAR_PREFIX_LOC, TAR_PREFIX_LEN);
+		name_len = strnlen((char *)block + TAR_NAME_LOC, TAR_NAME_LEN);
+		prefix_len = strnlen((char *)block + TAR_PREFIX_LOC, TAR_PREFIX_LEN);
 
 		// check if space will be needed for the slash
 		prefix_len += (prefix_len==0 ? 0 : 1);

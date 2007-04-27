@@ -208,7 +208,7 @@ main(int argc, char **argv)
 /* alg to basically figure out the common dir prefix... eg, if everything 
    is in dir debianutils-1.16.3; note, we want the slash, hence +1 */
 
-	p = rindex(src_ptrs[0]->fullname, '/');
+	p = rindex((const char *)src_ptrs[0]->fullname, '/');
 	if(p!=NULL) {
 		src_common_len = ((char *)p - (char *)src_ptrs[0]->fullname) + 1;
 		strncpy((char *)src_common, (char *)src_ptrs[0]->fullname, 
@@ -237,7 +237,7 @@ main(int argc, char **argv)
 		}
 	}
 	v1printf("final src_common='%.*s'\n", src_common_len, src_common);
-	p = rindex(target[0].fullname, '/');
+	p = rindex((const char *)target[0].fullname, '/');
 	if(p!=NULL) {
 		trg_common_len = ((char *)p - (char *)target[0].fullname) + 1;
 		strncpy((char *)trg_common, (char *)target[0].fullname, trg_common_len);
@@ -371,14 +371,16 @@ main(int argc, char **argv)
 int 
 cmp_ver_tar_ent_to_src_tar_ent(const void *te1, const void *te2)
 {
-	return strcmp( (*((tar_entry **)te1))->fullname + trg_common_len, (*((tar_entry **)te2))->fullname + src_common_len);
+	return strcmp((const char *)(*((tar_entry **)te1))->fullname + trg_common_len,
+	    (const char *)(*((tar_entry **)te2))->fullname + src_common_len);
 }
 
 int 
 cmp_tar_ents(const void *te1, const void *te2)
 {
-	return strcmp(		 (*((tar_entry **)te1))->fullname, 
-							(*((tar_entry **)te2))->fullname);
+	return strcmp(
+	    (const char *)(*((tar_entry **)te1))->fullname,
+        (const char *)(*((tar_entry **)te2))->fullname);
 }
 
 

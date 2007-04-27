@@ -68,8 +68,8 @@ typedef struct {
 } tar_entry;
 
 
-int check_str_chksum(const char *entry);
-inline unsigned long octal_str2long(char *string, unsigned int length);
+int check_str_chksum(const unsigned char *entry);
+inline unsigned long octal_str2long(const unsigned char *string, unsigned int length);
 signed int read_fh_to_tar_entry(cfile *src_fh, tar_entry **tar_entries, unsigned long *total_count);
 int read_entry(cfile *src_cfh, off_u64 start, tar_entry *te);
 int readh_cfh_to_tar_entries(cfile *src_cfh, tar_entry ***file, 

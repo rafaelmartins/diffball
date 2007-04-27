@@ -50,7 +50,8 @@ simple_difference(cfile *ref_cfh, cfile *ver_cfh, cfile *out_cfh, unsigned int p
 	ref_id = DCB_REGISTER_ADD_SRC(&buffer, ver_cfh, NULL, 0);
 	ver_id = DCB_REGISTER_COPY_SRC(&buffer, ref_cfh, NULL, 0);
 	MultiPassAlg(&buffer, ref_cfh, ref_id, ver_cfh, ver_id, hash_size);
-	DCB_finalize(&buffer);
+	if((encode_result = DCB_finalize(&buffer)) != 0)
+	    return encode_result;
 	DCB_test_total_copy_len(&buffer);
 	if(GDIFF4_FORMAT == patch_id) {
 		encode_result = gdiff4EncodeDCBuffer(&buffer, out_cfh);

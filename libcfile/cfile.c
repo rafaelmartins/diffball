@@ -277,8 +277,8 @@ internal_copen(cfile *cfh, int fh, size_t raw_fh_start, size_t raw_fh_end,
 		else {
 */
 			BZ2_bzDecompressInit(cfh->bzs, BZIP2_VERBOSITY_LEVEL, 0);
-			cfh->bzs->next_in = cfh->raw.buff;
-			cfh->bzs->next_out = cfh->data.buff;
+			cfh->bzs->next_in = (char *)cfh->raw.buff;
+			cfh->bzs->next_out = (char *)cfh->data.buff;
 			cfh->bzs->avail_in = cfh->bzs->avail_out = 0;
 //		}
 		cfh->raw.pos = cfh->raw.offset  = cfh->raw.end = cfh->data.pos = 
@@ -449,7 +449,7 @@ cclose(cfile *cfh)
 }
 
 ssize_t
-cread(cfile *cfh, unsigned char *buff, size_t len)
+cread(cfile *cfh, void *buff, size_t len)
 {
 	size_t bytes_wrote=0;
 	size_t x;
@@ -477,7 +477,7 @@ cread(cfile *cfh, unsigned char *buff, size_t len)
 }
 
 ssize_t
-cwrite(cfile *cfh, unsigned char *buff, size_t len)
+cwrite(cfile *cfh, void *buff, size_t len)
 {
 	size_t bytes_wrote=0, x;
 	if(cfh->access_flags & CFILE_RONLY && cfh->data.write_end == 0) {
@@ -622,8 +622,8 @@ cseek(cfile *cfh, ssize_t offset, int offset_type)
 			cfh->bzs->opaque = NULL;
 			cfh->state_flags &= ~CFILE_EOF;
 			BZ2_bzDecompressInit(cfh->bzs, BZIP2_VERBOSITY_LEVEL, 0);
-			cfh->bzs->next_in = cfh->raw.buff;
-			cfh->bzs->next_out = cfh->data.buff;
+			cfh->bzs->next_in = (char *)cfh->raw.buff;
+			cfh->bzs->next_out = (char *)cfh->data.buff;
 			cfh->bzs->avail_in = cfh->bzs->avail_out = 0;
 			cfh->data.end = cfh->raw.end = cfh->data.pos = 
 				cfh->data.offset = cfh->raw.offset = cfh->raw.pos = 0;
@@ -813,7 +813,7 @@ crefill(cfile *cfh)
 			cfh->data.offset += cfh->data.end;
 			dcprintf("crefill: %u: bz2, refilling data\n", cfh->cfh_id);
 			cfh->bzs->avail_out = cfh->data.size;
-			cfh->bzs->next_out = cfh->data.buff;
+			cfh->bzs->next_out = (char *)cfh->data.buff;
 			do {
 				if(0 == cfh->bzs->avail_in && (cfh->raw.offset + 
 					(cfh->raw.end - cfh->bzs->avail_in) < cfh->raw_total_len)) {
@@ -827,7 +827,7 @@ crefill(cfile *cfh)
 					dcprintf("read %lu of possible %lu\n", x, cfh->raw.size);
 					cfh->bzs->avail_in = cfh->raw.end = x;
 					cfh->raw.pos = 0;
-					cfh->bzs->next_in = cfh->raw.buff;
+					cfh->bzs->next_in = (char *)cfh->raw.buff;
 				}
 				err = BZ2_bzDecompress(cfh->bzs);
 
