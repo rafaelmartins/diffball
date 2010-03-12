@@ -624,8 +624,8 @@ rh_rbucket_insert_match(RefHash *rhash, ADLER32_SEED_CTX *ads, off_u64 offset)
 	signed int pos;
 	chksum = get_checksum(ads);
 	index = (chksum & RHASH_INDEX_MASK);
-	chksum = ((chksum >> 16) & 0xffff);
 	if(hash->depth[index]) {
+		chksum = ((chksum >> 16) & 0xffff);
 		pos = RH_bucket_find_chksum(chksum, hash->chksum[index], hash->depth[index]);
 		if(pos >= 0 && hash->offset[index][pos]==0) {
 			hash->offset[index][pos] = offset;
