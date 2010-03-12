@@ -142,11 +142,13 @@ update_adler32_seed(ADLER32_SEED_CTX *ads, unsigned char *buff,
 	}
 }
 
-unsigned long 
+/*
+unsigned long
 get_checksum(ADLER32_SEED_CTX *ads)
 {
 	return ads->s2;
 }
+*/
 
 unsigned int 
 free_adler32_seed(ADLER32_SEED_CTX *ads)
