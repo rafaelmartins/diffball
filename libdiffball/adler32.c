@@ -94,12 +94,17 @@ init_adler32_seed(ADLER32_SEED_CTX *ads, unsigned int seed_len,
 				//printf("shite, error allocing needed memory\n");
 				return MEM_ERROR;
 		}
+		memset(ads->last_seed, 0, sizeof(unsigned int) * seed_len);
+/*
 		for(x=0; x < seed_len; x++) {
 				ads->last_seed[x] = 0;
 		}
+*/
 		if((ads->seed_chars = (unsigned char *)malloc(seed_len))==NULL) {
 				return MEM_ERROR;
 		}
+
+		// this looks fishy...
 		for(x=0; x < seed_len; x++) {
 				ads->seed_chars[x] = x;
 		}
