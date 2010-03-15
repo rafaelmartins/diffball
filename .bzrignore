@@ -21,3 +21,6 @@ patcher
 stamp-h1
 aclocal.m4
 convert_delta
+./missing
+./depcomp
+./compile
