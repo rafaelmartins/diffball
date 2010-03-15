@@ -26,3 +26,4 @@ convert_delta
 ./compile
 ./install-sh
 ./ChangeLog
+./config.h
