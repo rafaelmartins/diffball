@@ -372,15 +372,15 @@ int
 cmp_ver_tar_ent_to_src_tar_ent(const void *te1, const void *te2)
 {
 	return strcmp((const char *)(*((tar_entry **)te1))->fullname + trg_common_len,
-	    (const char *)(*((tar_entry **)te2))->fullname + src_common_len);
+		(const char *)(*((tar_entry **)te2))->fullname + src_common_len);
 }
 
 int 
 cmp_tar_ents(const void *te1, const void *te2)
 {
 	return strcmp(
-	    (const char *)(*((tar_entry **)te1))->fullname,
-        (const char *)(*((tar_entry **)te2))->fullname);
+		(const char *)(*((tar_entry **)te1))->fullname,
+		(const char *)(*((tar_entry **)te2))->fullname);
 }
 
 

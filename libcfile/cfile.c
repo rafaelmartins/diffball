@@ -146,13 +146,13 @@ int
 copen(cfile *cfh, const char *filename, unsigned int compressor_type, unsigned int access_flags)
 {
 	dcprintf("copen: calling internal_copen\n");
-    struct stat st;
+	struct stat st;
 	int fd, flags;
 	size_t size = 0;
 	flags =0;
 	if(access_flags & CFILE_RONLY) {
 		flags = O_RDONLY;
-	    if(stat(filename, &st))
+		if(stat(filename, &st))
 			return IO_ERROR;
 		size = st.st_size;
 	} else if(access_flags & CFILE_WONLY) {
@@ -161,7 +161,7 @@ copen(cfile *cfh, const char *filename, unsigned int compressor_type, unsigned i
 			size = 0;
 		} else {
 			flags = O_WRONLY;
-		    if(stat(filename, &st))
+			if(stat(filename, &st))
 				return IO_ERROR;
 			size = st.st_size;
 		}
