@@ -80,6 +80,25 @@ SEEK_END
 // doing it this route, rather then changing the api down the line.
 #define UNSUPPORTED_OPT			(-6)
 
+typedef struct _cfile *cfile_ptr;
+typedef int (*copen_io_func)(cfile_ptr);
+typedef unsigned int (*cclose_io_func)(cfile_ptr);
+typedef ssize_t (*cwrite_io_func)(cfile_ptr, void *src, size_t len);
+typedef ssize_t (*cread_io_func)(cfile_ptr, void *out, size_t len);
+typedef ssize_t (*crefill_io_func)(cfile_ptr);
+typedef ssize_t (*cflush_io_func)(cfile_ptr);
+typedef ssize_t (*cseek_io_func)(cfile_ptr, size_t offset);
+
+typedef struct _cfile_io {
+	copen_io_func       open;
+	cclose_io_func      close;
+	cwrite_io_func      write;
+	cread_io_func       read;
+	crefill_io_func     refill;
+	cflush_io_func      flush;
+	cseek_io_func       seek;
+} cfile_io;
+
 typedef struct {
 	size_t offset;
 	size_t pos;
@@ -117,6 +136,9 @@ typedef struct _cfile {
 	size_t		raw_fh_offset;
 	size_t		raw_total_len;
 	cfile_window		raw;
+
+	/* io backing */
+	cfile_io 			*io;
 
 	/* compression crap */
 	bz_stream			*bzs;
