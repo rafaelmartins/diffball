@@ -25,6 +25,7 @@
  * For conditions of distribution and use, see copyright notice in zlib.h 
  */
 #include <stdlib.h>
+#include <string.h>
 #include <diffball/adler32.h>
 #include <diffball/defs.h>
 
