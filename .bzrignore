@@ -25,3 +25,4 @@ convert_delta
 ./depcomp
 ./compile
 ./install-sh
+./ChangeLog
