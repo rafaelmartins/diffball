@@ -148,7 +148,7 @@ xdelta1ReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff
 	count = readXDInt(ctrl_cfh, buff);
 	proc_count=0;
 	/* so starts the commands... */
-	v2printf("supposedly %lu commands...\nstarting command processing at %d\n", 
+	v2printf("supposedly %lu commands...\nstarting command processing at %zi\n",
 		count, ctell(ctrl_cfh, CSEEK_FSTART));
 	if(flags & XD_COMPRESSED_FLAG) {
 		add_pos = 0;
@@ -179,7 +179,7 @@ xdelta1ReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff
 			DCB_add_add(dcbuff, offset, len, add_id);
 		}
 	}
-	v2printf("finishing position was %d\n", ctell(ctrl_cfh, CSEEK_FSTART));
+	v2printf("finishing position was %zi\n", ctell(ctrl_cfh, CSEEK_FSTART));
 	v2printf("processed %lu of %lu commands\n", proc_count, count);
 	dcbuff->ver_size = dcbuff->reconstruct_pos;
 	if(flags & XD_COMPRESSED_FLAG) {

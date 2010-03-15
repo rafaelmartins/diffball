@@ -274,7 +274,7 @@ gdiffReconstructDCBuff(DCB_SRC_ID  src_id, cfile *patchf, CommandBuffer *dcbuff,
 	}
 	dcbuff->ver_size = dcbuff->reconstruct_pos;
 	v2printf("closing command was (%u)\n", *buff);
-	v2printf("cread fh_pos(%d)\n", ctell(patchf, CSEEK_ABS)); 
+	v2printf("cread fh_pos(%zi)\n", ctell(patchf, CSEEK_ABS));
 	v2printf("ver_pos(%llu)\n", (act_off_u64)dcbuff->ver_size);
 	return 0;
 }

@@ -204,7 +204,7 @@ bsdiffReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff)
 			if(buff[15] & 0x80) {
 				seek = -seek;
 			}
-			v2printf("len1(%u), seek(%d)\n", len1, seek);
+			v2printf("len1(%u), seek(%zi)\n", len1, seek);
 		}
 		 if(len1) {
 			DCB_add_overlay(dcbuff, diff_offset, len1, diff_id, src_pos, ref_id);

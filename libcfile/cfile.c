@@ -930,7 +930,7 @@ copy_cfile_block(cfile *out_cfh, cfile *in_cfh, size_t in_offset, size_t len)
 		lb = MIN(CFILE_DEFAULT_BUFFER_SIZE, len);
 		if( (lb!=cread(in_cfh, buff, lb)) ||
 			(lb!=cwrite(out_cfh, buff, lb)) ) {
-			v2printf("twas copy_cfile_block2, in_offset is %i, lb was %i, remaining len was %i, bytes_wrote %i, pos %i, end %i!\n", in_offset, lb, len, bytes_wrote, in_cfh->data.pos, in_cfh->data.end);
+			v2printf("twas copy_cfile_block2, in_offset is %zi, lb was %i, remaining len was %zi, bytes_wrote %zi, pos %zi, end %zi!\n", in_offset, lb, len, bytes_wrote, in_cfh->data.pos, in_cfh->data.end);
 			return EOF_ERROR;
 		}
 		len -= lb;
