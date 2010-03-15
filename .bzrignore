@@ -24,3 +24,4 @@ convert_delta
 ./missing
 ./depcomp
 ./compile
+./install-sh
