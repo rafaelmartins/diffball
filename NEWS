@@ -1,3 +1,7 @@
+
+
+* convert_delta didn't bail on unidentifiable formats- now does.
+
 1.0
 bug fixes, and re-enabling of hr_size option in api.
 main changes

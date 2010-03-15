@@ -143,7 +143,7 @@ main(int argc, char **argv)
 		}
 		if(src_format == NULL) {
 			src_format_id[x] = identify_format(in_cfh + x);
-			if(src_format_id==0) {
+			if(src_format_id[x]==0) {
 				v0printf("Couldn't identify the patch format, aborting\n");
 				exit(EXIT_FAILURE);
 			} else if((src_format_id[x] >> 16)==1) {
