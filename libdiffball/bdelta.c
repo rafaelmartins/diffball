@@ -46,7 +46,7 @@ bdeltaEncodeDCBuffer(CommandBuffer *dcbuff, cfile *patchf)
 	unsigned char prev, current;
 	unsigned int intsize;
 	unsigned char buff[16];
-	off_u32  match_orig = matches;
+	off_u32  match_orig;
 	unsigned long ver_size = 0;
 	DCommand dc;
 
