@@ -74,7 +74,7 @@ reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh, int reorder_for_seq_acces
 		DCB_free_commands(dcbuff);
 
 		for(x=0; x < norm_count; x++) {
-			v1printf("processing src %u: %lu commands.\n", norm_cl[x] - cl, norm_cl[x]->com_count);
+			v1printf("processing src %lu: %lu commands.\n", (unsigned long)(norm_cl[x] - cl), norm_cl[x]->com_count);
 			if(norm_cl[x]->com_count) {
 				qsort(norm_cl[x]->full_command, norm_cl[x]->com_count, sizeof(DCLoc_match), cmp_dcloc_match);
 				if(read_seq_write_rand(norm_cl[x], dcbuff->srcs + (norm_cl[x] - cl), 0, out_cfh, max_buff_size))
@@ -84,7 +84,7 @@ reconstructFile(CommandBuffer *dcbuff, cfile *out_cfh, int reorder_for_seq_acces
 		}
 
 		for(x=0; x < ov_count; x++) {
-			v1printf("processing overlay src %u: %lu commands.\n", ov_cl[x] - cl, ov_cl[x]->com_count);
+			v1printf("processing overlay src %lu: %lu commands.\n", (unsigned long)(ov_cl[x] - cl), ov_cl[x]->com_count);
 			if(ov_cl[x]->com_count) {
 				qsort(ov_cl[x]->full_command, ov_cl[x]->com_count, sizeof(DCLoc_match), cmp_dcloc_match);
 				if(read_seq_write_rand(ov_cl[x], dcbuff->srcs + (ov_cl[x] - cl), 1, out_cfh, max_buff_size))
