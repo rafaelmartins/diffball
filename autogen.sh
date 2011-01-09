@@ -1,5 +1,6 @@
 #!/bin/sh
 
+touch ChangeLog
 aclocal-1.10 || { echo "failed aclocal"; exit 1; };
 libtoolize --automake -c -f || { echo "failed libtoolize"; exit 1; }
 autoconf || { echo "failed autoconf"; exit 1; }
