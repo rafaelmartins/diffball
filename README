@@ -103,18 +103,19 @@ the problem. :)
 
 ---COPYRIGHT----
 
-The diffball suite is releaed under the GPL v2
-Look in the file COPYING if you're curious of the specifics.
+The diffball suite is releaed under the BSD 3 clause; as of the time of this
+writing, all copyright is copyright Brian Harring- the project however does not
+require centralized copyright assignment for any patches.
+
+For exact terms of BSD 3 clause, please see the COPYING file.
 
 --AVAILABILITY--
 
-For the foreseeable future diffball will be hosted through berlios.de, 
+For the foreseeable future diffball will be hosted git://pkgore.org/diffball
 
 -----AUTHOR-----
 
 Diffball was written, and is maintained by Brian Harring.
-If you need to contact me, my email address is ferringb at gentoo dot org 
-(pardon the spelling of at, spam harvesters suck).  Any weirdness, suggestions, 
-or complaints kindly contact me and I'll see what I can do to make it better.
-
-Hope it's useful for y'all!
+If you need to contact me, my email address is ferringb@gmail.com
+Any weirdness, suggestions, or complaints kindly contact me and
+I'll see what I can do to make it better.
