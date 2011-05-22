@@ -581,7 +581,7 @@ DCB_full_truncate(CommandBuffer *buffer, unsigned long len)
 		if (dcb->cl.command[dcb->command_pos].len <= len) {
 
 #ifdef DEBUG_DCBUFFER
-			if((buff->srcs[dcb->cl.src_id[dcb->command_pos]].type & 0x1) == DC_COPY) {
+			if((buffer->srcs[dcb->cl.src_id[dcb->command_pos]].type & 0x1) == DC_COPY) {
 				buffer->total_copy_len -= dcb->cl.command[dcb->command_pos].len;
 			}
 #endif
