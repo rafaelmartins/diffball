@@ -143,6 +143,7 @@ typedef struct _cfile {
 	/* compression crap */
 	bz_stream			*bzs;
 	z_stream			*zs;
+	lzma_stream			*xzs;
 	gzFile				gz_handle;
 
 } cfile;
