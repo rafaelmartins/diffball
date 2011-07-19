@@ -22,12 +22,14 @@ extern unsigned int cfile_verbosity;
 
 #include <bzlib.h>
 #include <zlib.h>
+#include <lzma.h>
 
 #define CFILE_DEFAULT_BUFFER_SIZE 		(4096)
 //#define CFILE_DEFAULT_BUFFER_SIZE		(BUFSIZ)
 #define NO_COMPRESSOR					(0x0)
 #define GZIP_COMPRESSOR					(0x1)
 #define BZIP2_COMPRESSOR				(0x2)
+#define XZ_COMPRESSOR					(0x3)
 #define AUTODETECT_COMPRESSOR			(0x4)
 
 #define CFILE_RONLY						(0x1)

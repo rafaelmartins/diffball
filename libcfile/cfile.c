@@ -36,16 +36,18 @@ unsigned int internal_gzopen(cfile *cfh);
 signed long
 cfile_identify_compressor(int fh)
 {
-	unsigned char buff[2];
-	if(read(fh, buff, 2)!=2) {
+	unsigned char buff[5]; // XZ magic number length is 5
+	if(read(fh, buff, 5)!=5) {
 		return EOF_ERROR;
 	} else {
-		lseek(fh, -2, SEEK_CUR);
+		lseek(fh, -5, SEEK_CUR);
 	}
 	if(memcmp(buff, "BZ", 2)==0) {
 		return BZIP2_COMPRESSOR;
 	} else if(0x1f==buff[0] && 0x8b==buff[1]) {
 		return GZIP_COMPRESSOR;
+	} else if(0xfd==buff[0] && '7'==buff[1] && 'z'==buff[2] && 'X'==buff[3] && 'Z'==buff[4]) {
+		return XZ_COMPRESSOR;
 	}
 	return NO_COMPRESSOR;
 }
