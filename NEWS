@@ -1,5 +1,6 @@
+* added XZ decompression support
 
-* all warnings were cleaned out flagged by 4.4.3
+* all warnings were cleaned out flagged by 4.5.2
 
 * convert_delta didn't bail on unidentifiable formats- now does.
 
