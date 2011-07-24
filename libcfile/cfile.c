@@ -564,7 +564,7 @@ cseek(cfile *cfh, ssize_t offset, int offset_type)
 		}
 
 		if(data_offset < cfh->data.offset ) {
-			/* note this ain't optimal, but the alternative is modifying 
+			/* note this ain't optimal, but the alternative is modifying
 			   zlib to support seeking... */
 			dcprintf("cseek: gz: data_offset < cfh->data.offset, resetting\n");
 			flag_lseek_needed(cfh);
