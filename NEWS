@@ -1,3 +1,5 @@
+1.0.1: Aug 01, 2011
+
 * added XZ decompression support
 
 * all warnings were cleaned out flagged by 4.5.2
