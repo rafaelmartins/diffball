@@ -38,7 +38,4 @@ convert_delta_SOURCES = convert_delta.c	\
 noinst_HEADERS = string-misc.h tar.h options.h
 
 dist-hook:
-	bzr log --verbose > $(distdir)/ChangeLog
-	echo "warning, yanking cxx check in configure.  This isn't the cleanest thing known to man"
-	( cd $(distdir) && patch -p0 -i ../nocxx.patch && rm configure.orig )
-	echo "yoinked"
+	git log --format=short > $(distdir)/ChangeLog
