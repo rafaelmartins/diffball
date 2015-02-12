@@ -27,7 +27,7 @@ differ_LDADD	=	${DIFF_LIBS} ${CFILE_LIBS}
 differ_SOURCES = 	differ.c 	\
 					options.c 
 
-convert_delta_LDADD   =	${DIFF_LIBS}
+convert_delta_LDADD   =	${DIFF_LIBS} ${CFILE_LIBS}
 convert_delta_SOURCES = convert_delta.c	\
 						options.c
 

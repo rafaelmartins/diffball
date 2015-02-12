@@ -98,8 +98,10 @@ CFLAGS="$CFLAGS -Wall"
 CXXFLAGS="$CXXFLAGS -Wall"
 
 #AC_CONFIG_FILES([])
-AC_OUTPUT(Makefile)
-AC_OUTPUT(libdiffball/Makefile)
-AC_OUTPUT(libcfile/Makefile)
-AC_OUTPUT(include/Makefile)
-AC_OUTPUT(man/Makefile)
+AC_OUTPUT([
+    Makefile
+    libdiffball/Makefile
+    libcfile/Makefile
+    include/Makefile
+    man/Makefile
+])
