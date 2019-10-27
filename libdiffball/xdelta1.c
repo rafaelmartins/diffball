@@ -54,7 +54,7 @@ readXDInt(cfile *patchf, unsigned char *buff)
 	do {
 		count++;
 		cread(patchf, buff + count, 1);
-	} while(buff[count] & 0x80);
+	} while(count < 31 && buff[count] & 0x80);
 	for(; count >= 0; count--) {
 		num <<= 7;
 		num |= (buff[count] & 0x7f); 
