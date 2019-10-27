@@ -171,6 +171,8 @@ bdeltaReconstructDCBuff(DCB_SRC_ID src_id, cfile *patchf, CommandBuffer *dcbuff)
 	cread(patchf, buff, 1);
 	int_size = buff[0];
 	v2printf("int_size=%u\n", int_size);
+	if(int_size < 1 || int_size > 4)
+		return PATCH_CORRUPT_ERROR;
 	/* yes, this is an intentional switch fall through. */
 	switch(int_size) {
 		case 1: or_mask |= 0x0000ff00;
