@@ -192,7 +192,7 @@ signed int
 gdiffReconstructDCBuff(DCB_SRC_ID  src_id, cfile *patchf, CommandBuffer *dcbuff, 
 		unsigned int offset_type)
 {
-	const unsigned int buff_size = 5;
+	const unsigned int buff_size = 13;
 	unsigned char buff[buff_size];
 	off_u32 len, dc_pos=0;
 	off_u64 ver_pos=0;
